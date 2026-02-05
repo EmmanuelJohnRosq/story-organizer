@@ -1,4 +1,5 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef, useCallback } from "react";
+import { useDropzone } from "react-dropzone";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { faFileExport } from "@fortawesome/free-solid-svg-icons";
 import { faTrashCan } from "@fortawesome/free-solid-svg-icons";
@@ -39,8 +40,21 @@ export default function StoryOrganizer() {
   const [showEditModal, setShowEditModal] = useState(false);
   const [showFileModal, setShowFileModal] = useState(false);
 
+  // IMPORT Variables
+  // const fileInputRef = useRef<HTMLInputElement>(null);
+  const [selectedFile, setSelectedFile] = useState<File | null>(null);
+
   // USER STATE STATUS
   const [setDrag, setIsDragOver] = useState(false);
+  
+  const onDrop = useCallback((acceptedFiles: File[]) => {
+    setSelectedFile(acceptedFiles[0]); // 🔥 THIS triggers re-render
+  }, []);
+
+  const { getRootProps, getInputProps, isDragActive } = useDropzone({
+    onDrop,
+    multiple: false,
+  });
 
   const [bookTitle, setBookTitle] = useState("");
   const [name, setName] = useState("");
@@ -92,6 +106,7 @@ export default function StoryOrganizer() {
     };
 
     reader.readAsText(file);
+    showModalFile(false);
   }
 
   // Background styles for themes
@@ -199,6 +214,7 @@ export default function StoryOrganizer() {
   // Show IMPORT/EXPORT MODAL
   function showModalFile(state: boolean) {
     setShowFileModal(state);
+    setSelectedFile(null);
     document.body.classList.toggle('overflow-hidden', state);
   } 
 
@@ -485,36 +501,74 @@ export default function StoryOrganizer() {
             {/* EXPORT/IMPORT MODAL */}
             {showFileModal && (
                 <div className="fixed inset-0 flex items-center justify-center bg-black/50 z-50" onClick={() => showModalFile(false)}>
-                  <div className="bg-white dark:bg-gray-100 max-h-[90vh] overflow-y-auto p-6 rounded-xl w-96 shadow-lg" onClick={(e) => e.stopPropagation()}>
-                    <div>
-                      <h2 className="text-x1 font-bold">SAVE YOUR BOOKS</h2>
-                      <p className="text-sm text-gray-500 mb-2">From your impulsive actions</p>
-                    </div>
-
-                    {/* INPUT IMPORT FILE */}
-                    <input
-                      className="w-full border p-2 rounded mb-3" 
-                      placeholder="Choose File:"
-                      type="file"
-                      accept=".json"
-                      onChange={(e) => {
-                        const file = e.target.files?.[0];
-                        if (file) importData(file);
-                        showModalFile(false)
-                      }}
-                    />
-
-                    {/* Buttons */}
-                    <div className="flex justify-between mt-4">
-                      {/* <div className="space-x-2"> */}
+                  <div className="bg-white dark:bg-gray-100 max-h-[90vh] overflow-y-auto p-6 rounded-xl max-w-120 shadow-lg" onClick={(e) => e.stopPropagation()}>
+                    
+                    {/* DOWNLOAD YOUR DATA as JSON */}
+                    <div className="flex justify-between">
+                      <div>
+                        <h2 className="text-x1 font-bold">SAVE YOUR BOOKS</h2>
+                        <p className="text-sm text-gray-500">From your impulsive actions, download now.</p>
+                      </div>
+                      <div className="px-2">
                         <button
                           onClick={exportData}
-                          className="px-4 py-1 bg-blue-500 text-white rounded hover:border hover:border-blue-900"
-                        > Download File
+                          className="border bg-blue-500 px-4 py-2 text-white rounded-xl cursor-pointer hover:border hover:border-blue-900"> 
+                          Export File
                         </button>
-                      {/* </div> */}
+                      </div>
                     </div>
 
+                    {/* DIVIDER LINE OR */}
+                    <div className="my-6 flex items-center">
+                      <div className="flex-grow border-t border-gray-300"></div>
+                      <span className="mx-4 text-sm text-gray-500 font-medium">OR</span>
+                      <div className="flex-grow border-t border-gray-300"></div>
+                    </div>
+
+                    {/* UPLOAD YOUR DOWNLOADED JSON FILE TO use in OTHER BROWSER */}
+                    <div className="flex items-center justify-center w-full">
+                        <div 
+                          {...getRootProps()}
+                          className={`flex flex-col items-center justify-center w-full h-35 bg-neutral-secondary-medium border border-dashed border-default-strong rounded-base cursor-pointer hover:bg-neutral-tertiary-medium ${isDragActive ? "border-blue-500 bg-blue-50" : "border-gray-300"}`}>
+                            <input {...getInputProps()} 
+                              accept=".json"
+                              onChange={(e) => {
+                                if (e.target.files?.[0]) {
+                                setSelectedFile(e.target.files[0]);
+                                }
+                              }}
+                            />
+
+                            {selectedFile ? (
+                              <span className="text-lg text-gray-500 truncate max-w-100">
+                                  {selectedFile.name}
+                                </span>
+                            ) : (
+                              <div className="flex flex-col items-center justify-center text-body pt-5 pb-6">
+                                  <svg className="w-8 h-8 mb-4" aria-hidden="true" xmlns="http://www.w3.org/2000/svg" width="24" height="24" fill="none" viewBox="0 0 24 24"><path stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 17h3a3 3 0 0 0 0-6h-.025a5.56 5.56 0 0 0 .025-.5A5.5 5.5 0 0 0 7.207 9.021C7.137 9.017 7.071 9 7 9a4 4 0 1 0 0 8h2.167M12 19v-9m0 0-2 2m2-2 2 2"/></svg>
+                                  <p className="mb-2 text-sm"><span className="font-semibold">Click to upload</span></p>
+                                  <p className="text-xs">Exported file only, Json file.</p>
+                              </div>
+                            )}
+                        </div>
+                    </div> 
+
+                    {/* Submit */}
+                      <div className="flex justify-between mt-3">
+                        <div>
+                          <h2 className="text-x1 font-bold">EXTRICATE YOUR CHARACTERS</h2>
+                          <p className="text-sm text-gray-500">From your own chaotic life, upload now.</p>
+                        </div>
+                        <div className="px-2">
+                          <button
+                            disabled={!selectedFile}
+                            onClick={() => importData(selectedFile!)}
+                            className="border bg-blue-500 px-4 py-2 text-white rounded-xl cursor-pointer hover:border hover:border-blue-900 disabled:opacity-40 disabled:cursor-not-allowed
+                            text-white"> 
+                            Import FIle
+                          </button>
+                        </div>
+                      </div>
                   </div>
                 </div>
             )}
