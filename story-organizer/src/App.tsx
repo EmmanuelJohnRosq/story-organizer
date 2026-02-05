@@ -1,4 +1,7 @@
 import { useState, useEffect } from "react";
+import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
+import { faFileExport } from "@fortawesome/free-solid-svg-icons";
+import { faTrashCan } from "@fortawesome/free-solid-svg-icons";
 
 type Character = {
   id: number;
@@ -30,8 +33,13 @@ export default function StoryOrganizer() {
   const [currentBookId, setCurrentBookId] = useState<number | null>(null);
   const [showAddCharacter, setShowAddCharacter] = useState(false);
   const [editingCharacter, setEditingCharacter] = useState<EditableCharacter | null>(null);
-  const [showEditModal, setShowEditModal] = useState(false);
   const [draggingId, setDraggingId] = useState<number | null>(null);
+
+  // MODALS
+  const [showEditModal, setShowEditModal] = useState(false);
+  const [showFileModal, setShowFileModal] = useState(false);
+
+  // USER STATE STATUS
   const [setDrag, setIsDragOver] = useState(false);
 
   const [bookTitle, setBookTitle] = useState("");
@@ -45,6 +53,46 @@ export default function StoryOrganizer() {
 //   const [darkMode, setDarkMode] = useState(false);
 
   const currentBook = books.find(book => book.id === currentBookId);
+
+  // EXPORT DATA/SAVE TO Json FILE
+  const exportData = () => {
+    const data = {
+      app: "story-organizer",
+      version: "1.0",
+      exportedAt: new Date().toISOString(),
+      books,
+    };
+
+    const blob = new Blob(
+      [JSON.stringify(data, null, 2)],
+      { type: "application/json" }
+    );
+
+    const url = URL.createObjectURL(blob);
+
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = "story-export.json";
+    a.click();
+
+    URL.revokeObjectURL(url);
+  };
+
+  // IMPORT DATA/SAVE File
+  const importData = (file: File) => {
+    const reader = new FileReader();
+
+    reader.onload = () => {
+      try {
+        const parsed = JSON.parse(reader.result as string);
+        setBooks(parsed.books);
+      } catch {
+        alert("Invalid file format");
+      }
+    };
+
+    reader.readAsText(file);
+  }
 
   // Background styles for themes
   const themeBackgrounds: Record<string, string> = {
@@ -148,6 +196,12 @@ export default function StoryOrganizer() {
     document.body.classList.toggle('overflow-hidden', state);
   }
 
+  // Show IMPORT/EXPORT MODAL
+  function showModalFile(state: boolean) {
+    setShowFileModal(state);
+    document.body.classList.toggle('overflow-hidden', state);
+  } 
+
   // delete character block
   function deleteCharacter(characterId: number) {
     if (currentBookId === null) return;
@@ -198,15 +252,38 @@ export default function StoryOrganizer() {
                 <h1 className="text-3xl font-bold">📖 Story Organizer</h1>
 
                 <div className="flex gap-2">
-                    <select value={theme} onChange={e => setTheme(e.target.value as any)} className="cursor-pointer border font-bold rounded px-2 py-1">
-                        <option value="default">Default</option>
-                        <option value="fantasy">Fantasy</option>
-                        <option value="scifi">Sci-Fi</option>
-                        <option value="horror">Horror</option>
-                        <option value="romance">Romance</option>
-                        <option value="xianxia">Xianxia</option>
-                    </select>
-                </div>
+                  <select value={theme} onChange={e => setTheme(e.target.value as any)} className="cursor-pointer border font-bold rounded px-2 py-1">
+                      <option value="default">Default</option>
+                      <option value="fantasy">Fantasy</option>
+                      <option value="scifi">Sci-Fi</option>
+                      <option value="horror">Horror</option>
+                      <option value="romance">Romance</option>
+                      <option value="xianxia">Xianxia</option>
+                  </select>
+
+                  {/* EXPORT/IMPORT BUTTON */}
+                  <div className="relative group inline-block">
+                    <button 
+                      className="cursor-pointer p-1 hover:scale-115 transition" 
+                      onClick={() => showModalFile(true)} > 
+                      <FontAwesomeIcon icon={faFileExport} size="xl" />
+                    </button>
+
+                    {/* TOOLTIP */}
+                    <div
+                      className="
+                        absolute top-full left-1/2 -translate-x-1/2 mt-2
+                        opacity-0 group-hover:opacity-100
+                        pointer-events-none
+                        transition-opacity duration-200
+                        bg-black/80 text-white text-xs px-2 py-1 rounded-md
+                        whitespace-nowrap
+                      ">
+                      Import/Export File
+                    </div>
+                  </div>
+
+                </div>  
 
             </div>
 
@@ -215,23 +292,42 @@ export default function StoryOrganizer() {
                 <div>
                   <h2 className="text-2xl font-semibold mb-2">My Books</h2>
                   
-                  <div className="mb-4 flex gap-2">
+                  <div className="mb-4 flex gap-2 group">
                       <input
                       className="border px-3 py-3 w-full rounded-xl"
                       placeholder="New Book Title"
                       value={bookTitle}
                       onChange={e => setBookTitle(e.target.value)}
                       />
-                      <button onClick={addBook} className="bg-black text-white px-8 py-1 rounded-xl cursor-pointer hover:scale-105">
+                      <button onClick={addBook} className="bg-gray-900 text-white px-8 py-1 rounded-xl cursor-pointer hover:not-focus:bg-gray-700 transition">
                       Add Book
                       </button>
-                      <div className={`bg-red-500 text-white px-2 py-2 rounded-xl ${setDrag === true ? "scale-120 opacity-80" : ""}`}
-                        onDragOver={handleDragOver}
-                        onDrop={handleDrop}
-                        onDragLeave={handleDragLeave}
-                        >
-                       Drag here to delete  🗑️ 
-                      </div>
+                      
+                      {/* <div className="relative group inline-block"> */}
+                        <div className={`relative group inline-block bg-red-200 px-2 py-2 border border-red-300 rounded-xl hover:bg-red-300 ${setDrag === true ? "scale-110 opacity-80" : ""}`}
+                          onDragOver={handleDragOver}
+                          onDrop={handleDrop}
+                          onDragLeave={handleDragLeave}
+                          >
+                            <FontAwesomeIcon className="opacity-0 group-hover:opacity-100 absolute" icon={faTrashCan} bounce size="2xl"/>
+                            <FontAwesomeIcon className="opacity-100 group-hover:opacity-0" icon={faTrashCan} size="2xl"/>
+
+                            {/* TOOLTIP */}
+                            <span
+                              className="
+                                absolute bottom-full left-1/2 -translate-x-1/2 mb-2
+                                hidden group-hover:inline
+                                pointer-events-none
+                                transition-opacity duration-200
+                                bg-black/80 text-white text-xs px-2 py-1 rounded-md
+                                whitespace-nowrap
+                              ">
+                              Drag Book cards here to delete.
+                            </span>
+                        </div>
+
+                      {/* </div> */}
+
                   </div>
 
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -262,7 +358,7 @@ export default function StoryOrganizer() {
             {/* DETAILS / CHARACTERS */}
             {currentBookId !== null && currentBook && (
                 <div>
-                <button onClick={() => setCurrentBookId(null)} className="text-blue-500 mb-4">← Back to Books</button>
+                <button onClick={() => setCurrentBookId(null)} className="text-blue-500 mb-4 cursor-pointer hover:scale-103 hover:underline">← Back to Books</button>
 
                 <h2 className="text-2xl font-semibold mb-4">{currentBook.title}</h2>
 
@@ -287,7 +383,6 @@ export default function StoryOrganizer() {
                     {currentBook.characters.map(char => (
 
                     // Main Char Box
-                    // hover:bg-gray-200 shadow rounded-2xl p-4 rounded-lg shadow-lg cursor-pointer transition duration-300
                     <div key={char.id} 
                     className="cursor-pointer bg-white shadow rounded-2xl p-4 
                     character-card hover:scale-105 transition"
@@ -381,6 +476,43 @@ export default function StoryOrganizer() {
                         > Save
                         </button>
                       </div>
+                    </div>
+
+                  </div>
+                </div>
+            )}
+
+            {/* EXPORT/IMPORT MODAL */}
+            {showFileModal && (
+                <div className="fixed inset-0 flex items-center justify-center bg-black/50 z-50" onClick={() => showModalFile(false)}>
+                  <div className="bg-white dark:bg-gray-100 max-h-[90vh] overflow-y-auto p-6 rounded-xl w-96 shadow-lg" onClick={(e) => e.stopPropagation()}>
+                    <div>
+                      <h2 className="text-x1 font-bold">SAVE YOUR BOOKS</h2>
+                      <p className="text-sm text-gray-500 mb-2">From your impulsive actions</p>
+                    </div>
+
+                    {/* INPUT IMPORT FILE */}
+                    <input
+                      className="w-full border p-2 rounded mb-3" 
+                      placeholder="Choose File:"
+                      type="file"
+                      accept=".json"
+                      onChange={(e) => {
+                        const file = e.target.files?.[0];
+                        if (file) importData(file);
+                        showModalFile(false)
+                      }}
+                    />
+
+                    {/* Buttons */}
+                    <div className="flex justify-between mt-4">
+                      {/* <div className="space-x-2"> */}
+                        <button
+                          onClick={exportData}
+                          className="px-4 py-1 bg-blue-500 text-white rounded hover:border hover:border-blue-900"
+                        > Download File
+                        </button>
+                      {/* </div> */}
                     </div>
 
                   </div>
