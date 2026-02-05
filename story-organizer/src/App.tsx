@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef, useCallback } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { useDropzone } from "react-dropzone";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { faFileExport } from "@fortawesome/free-solid-svg-icons";
@@ -70,12 +70,15 @@ export default function StoryOrganizer() {
 
   // EXPORT DATA/SAVE TO Json FILE
   const exportData = () => {
+    const name = prompt("Enter file name", "story-organizer");
+    if (!name) return;
+
     const data = {
       app: "story-organizer",
       version: "1.0",
       exportedAt: new Date().toISOString(),
       books,
-    };
+    }; 
 
     const blob = new Blob(
       [JSON.stringify(data, null, 2)],
@@ -86,7 +89,7 @@ export default function StoryOrganizer() {
 
     const a = document.createElement("a");
     a.href = url;
-    a.download = "story-export.json";
+    a.download = name;
     a.click();
 
     URL.revokeObjectURL(url);
@@ -259,9 +262,9 @@ export default function StoryOrganizer() {
   // HTML/TAILWIND CSS | INDEX
   return (
     <div className="PARENT MAIN ROOT Component">
-      <div className={`${appliedTheme} relative min-h-screen transition-colors duration-800 p-6 min-w-4xl mx-auto backdrop-blur-lg`}>
+      <div className={`${appliedTheme} relative min-h-[100dvh] w-full min-w-0 md:min-w-4xl mx-auto px-4 transition-colors duration-800 backdrop-blur-lg overflow-x-hidden overflow-y-hidden`}>
         <div className="fixed inset-0 bg-cover bg-center opacity-50 -z-10 transition-opacity duration-800" style={{backgroundImage: `url(/textures/${theme}.png)`}}/>
-          <div className={"max-w-4xl mx-auto"}>
+          <div className={"w-full min-w-0 md:max-w-4xl mx-auto"}>
               
             {/* Title/Menu */}
             <div className="flex justify-between items-center mb-6">
@@ -308,7 +311,7 @@ export default function StoryOrganizer() {
                 <div>
                   <h2 className="text-2xl font-semibold mb-2">My Books</h2>
                   
-                  <div className="mb-4 flex gap-2 group">
+                  <div className="mb-4 flex gap-2">
                       <input
                       className="border px-3 py-3 w-full rounded-xl"
                       placeholder="New Book Title"
@@ -319,7 +322,6 @@ export default function StoryOrganizer() {
                       Add Book
                       </button>
                       
-                      {/* <div className="relative group inline-block"> */}
                         <div className={`relative group inline-block bg-red-200 px-2 py-2 border border-red-300 rounded-xl hover:bg-red-300 ${setDrag === true ? "scale-110 opacity-80" : ""}`}
                           onDragOver={handleDragOver}
                           onDrop={handleDrop}
@@ -338,11 +340,9 @@ export default function StoryOrganizer() {
                                 bg-black/80 text-white text-xs px-2 py-1 rounded-md
                                 whitespace-nowrap
                               ">
-                              Drag Book cards here to delete.
+                              Drag Book cards here to remove.
                             </span>
                         </div>
-
-                      {/* </div> */}
 
                   </div>
 
@@ -421,7 +421,7 @@ export default function StoryOrganizer() {
             {/* EDIT MODAL & Char update */}
             {showEditModal && editingCharacter && (
                 <div className="fixed inset-0 flex items-center justify-center bg-black/50 z-50" onClick={() => showModal(false)}>
-                  <div className="bg-white dark:bg-gray-100 max-h-[90vh] overflow-y-auto p-6 rounded-xl w-96 shadow-lg" onClick={(e) => e.stopPropagation()}>
+                  <div className="w-9/10 min-w-0 md:max-w-120 mx-auto bg-white dark:bg-gray-100 max-h-[90vh] overflow-y-auto p-6 rounded-xl shadow-lg" onClick={(e) => e.stopPropagation()}>
                     <h2 className="text-x1 font-bold mb-4">Edit Character</h2>
 
                     {/* Name */}
@@ -473,22 +473,23 @@ export default function StoryOrganizer() {
                     {/* Buttons */}
                     <div className="flex justify-between mt-4">
 
-                      <button
-                        onClick={() => deleteCharacter(editingCharacter.id)}
-                        className="text-red-500"
-                      > Delete
-                      </button>
+                      <div className="hover:transition flex group">
+                        <button onClick={() => deleteCharacter(editingCharacter.id)}>
+                          <FontAwesomeIcon className="opacity-0 cursor-pointer group-hover:opacity-100 absolute text-red-500" icon={faTrashCan} bounce size="xl"/>
+                          <FontAwesomeIcon className="opacity-100 cursor-pointer group-hover:opacity-0" icon={faTrashCan} size="xl"/>
+                        </button>
+                      </div>
 
                       <div className="space-x-2">
                         <button
                           onClick={() => showModal(false)}
-                          className="px-4 py-1 border rounded"
+                          className="px-4 py-1 border rounded-lg hover:bg-red-300/50 cursor-pointer"
                         > Cancel
                         </button>
 
                         <button
                           onClick={updateCharacter}
-                          className="px-4 py-1 bg-blue-500 text-white rounded"
+                          className="px-4 py-1 bg-blue-500 text-white border border-black rounded-lg hover:bg-blue-600 cursor-pointer"
                         > Save
                         </button>
                       </div>
@@ -501,19 +502,19 @@ export default function StoryOrganizer() {
             {/* EXPORT/IMPORT MODAL */}
             {showFileModal && (
                 <div className="fixed inset-0 flex items-center justify-center bg-black/50 z-50" onClick={() => showModalFile(false)}>
-                  <div className="bg-white dark:bg-gray-100 max-h-[90vh] overflow-y-auto p-6 rounded-xl max-w-120 shadow-lg" onClick={(e) => e.stopPropagation()}>
+                  <div className="w-9/10 min-w-0 md:max-w-120 mx-auto bg-white dark:bg-gray-100 max-h-[90vh] overflow-y-auto p-6 rounded-xl shadow-lg" onClick={(e) => e.stopPropagation()}>
                     
                     {/* DOWNLOAD YOUR DATA as JSON */}
                     <div className="flex justify-between">
                       <div>
                         <h2 className="text-x1 font-bold">SAVE YOUR BOOKS</h2>
-                        <p className="text-sm text-gray-500">From your impulsive actions, download now.</p>
+                        <p className="text-sm text-gray-500">From your impulsive actions, save your file now.</p>
                       </div>
                       <div className="px-2">
                         <button
                           onClick={exportData}
                           className="border bg-blue-500 px-4 py-2 text-white rounded-xl cursor-pointer hover:border hover:border-blue-900"> 
-                          Export File
+                          Export Books
                         </button>
                       </div>
                     </div>
@@ -565,7 +566,7 @@ export default function StoryOrganizer() {
                             onClick={() => importData(selectedFile!)}
                             className="border bg-blue-500 px-4 py-2 text-white rounded-xl cursor-pointer hover:border hover:border-blue-900 disabled:opacity-40 disabled:cursor-not-allowed
                             text-white"> 
-                            Import FIle
+                            Import Books
                           </button>
                         </div>
                       </div>
