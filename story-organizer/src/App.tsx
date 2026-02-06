@@ -171,6 +171,7 @@ export default function StoryOrganizer() {
   }, [books]);
 
   // FEATURE FUNCTIONS
+
   // create new book
   function addBook() {
     if (!bookTitle) return;
@@ -290,9 +291,35 @@ export default function StoryOrganizer() {
   // HTML/TAILWIND CSS | INDEX
   return (
     <div className="PARENT MAIN ROOT Component">
-      <div className={`${appliedTheme} relative min-h-[100dvh] w-full min-w-0 md:min-w-4xl mx-auto px-4 transition-colors duration-800 backdrop-blur-lg overflow-x-hidden overflow-y-hidden`}>
+      
+      <div className={`${appliedTheme} relative min-h-[100dvh] w-full min-w-0 md:min-w-4xl mx-auto px-4 transition-colors duration-800 backdrop-blur-lg overflow-visible`}>
         <div className="fixed inset-0 bg-cover bg-center opacity-50 -z-10 transition-opacity duration-800" style={{backgroundImage: `url(/textures/${theme}.png)`}}/>
-          <div className={"w-full min-w-0 md:max-w-4xl mx-auto"}>
+          <div className="w-full md:max-w-4xl mx-auto min-h-screen border-b border-transparent">
+
+            {/* STICK THE TRASHCAN TO THE BOTTOM OF THE PAGE FOR DELETION */}
+            {/* <div className="text-3xl font-bold sticky z-50 bottom-0 right-0 left-0">
+
+                <div className={`relative group inline-block bg-red-200 px-2 py-2 border border-red-300 rounded-xl hover:bg-red-300 ${setDrag === true ? "scale-110 opacity-80" : ""}`}
+                  onDragOver={handleDragOver}
+                  onDrop={handleDrop}
+                  onDragLeave={handleDragLeave}
+                  >
+                    <FontAwesomeIcon className="opacity-0 group-hover:opacity-100 absolute" icon={faTrashCan} bounce size="2xl"/>
+                    <FontAwesomeIcon className="opacity-100 group-hover:opacity-0" icon={faTrashCan} size="2xl"/>
+
+                    <span
+                      className="
+                        absolute bottom-full left-1/2 -translate-x-1/2 mb-2
+                        hidden group-hover:inline
+                        pointer-events-none
+                        transition-opacity duration-200
+                        bg-black/80 text-white text-xs px-2 py-1 rounded-md
+                        whitespace-nowrap
+                      ">
+                      Drag Book cards here to remove.
+                    </span>
+                </div>
+            </div> */}
               
             {/* Title/Menu */}
             <div className="flex justify-between items-center mb-6 mt-5">
@@ -345,8 +372,14 @@ export default function StoryOrganizer() {
                       placeholder="New Book Title"
                       value={bookTitle}
                       onChange={e => setBookTitle(e.target.value)}
+                      onKeyDown={(e) => {
+                          if (e.key === "Enter") addBook();
+                        }}
                       />
-                      <button onClick={addBook} className="bg-black border border-black text-white px-5 py-1 rounded-xl cursor-pointer hover:bg-gray-800 transition">
+                      <button 
+                        onClick={addBook} 
+                        className="bg-black border border-black text-white px-5 py-1 rounded-xl cursor-pointer hover:bg-gray-800 transition"
+                      >
                       Add Book
                       </button>
                       
@@ -374,28 +407,48 @@ export default function StoryOrganizer() {
 
                   </div>
 
-                  <div className="grid grid-cols-4 gap-4 mb-5">
-                      {books.map(book => ( 
-                      <div 
+                    {/* SHOW BOOK LIST */}
+                  {/* BOOK CARD */}
+                  <div className="grid grid-cols-3 gap-4 mb-5">
+                      {books.map(book => (
+                      <div
                         key={book.id} 
                         draggable
                         onDragStart={handleDragStart}
                         data-id={book.id}
                         data-title={book.title}
                         onDragEnd={() => setDraggingId(null)}
+                        onClick={() => selectBook(book.id)}
                         className={`
-                          shadow-lg bg-white shadow rounded-2xl p-4 
-                          hover:scale-105
-                          transition-all duration-200 ease-out
-                          cursor-grab active:cursor-grabbing
+                          relative group cursor-pointer
+                          w-55 h-70 rounded-tl-xl rounded-bl-xl
+                          bg-gradient-to-br from-blue-200 to-gray-200
+                          shadow-lg
+                          hover:-translate-y-2 hover:shadow-2xl
+                          transition-all duration-300
                           ${draggingId === book.id ? "opacity-0" : ""}
-                          `}
-                        onClick={() => selectBook(book.id)}>
-                          <h3 className="text-xl font-bold">{book.title}</h3>
-                          <p className="text-sm text-gray-500">{book.characters.length} Characters</p>
+                          `}>
+                        {/* Spine */}
+                        <div
+                          className=" absolute -left-1 top-0 h-full w-4
+                            bg-gray-700
+                            rounded-tl-lg"/>
+
+                        {/* Title */}
+                        <div className="p-4 pt-15 text-center font-semibold text-gray-800 line-clamp-5 max-h-45">
+                          {book.title}
+                          <div className="absolute text-white -left-2 top-1/2 -translate-y-1/2 rotate-180 [writing-mode:vertical-rl] truncate line-clamp-1 max-h-50">
+                            <span className="text-xs font-bold">{book.title}</span>
+                          </div>
+                        </div>
+                        <p className="text-center text-gray-500">{book.characters.length} Characters</p>
+                        
                       </div>
                       ))}
                   </div>
+                  
+
+
                 </div>
             )}
 
