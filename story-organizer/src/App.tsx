@@ -36,6 +36,10 @@ export default function StoryOrganizer() {
   const [editingCharacter, setEditingCharacter] = useState<EditableCharacter | null>(null);
   const [draggingId, setDraggingId] = useState<number | null>(null);
 
+  // EDITING OF BOOK TITLE
+  const [titleDraft, setTitleDraft] = useState("");
+  const [savedTitle, setSavedTitle] = useState(false);
+
   // MODALS
   const [showEditModal, setShowEditModal] = useState(false);
   const [showFileModal, setShowFileModal] = useState(false);
@@ -225,7 +229,7 @@ export default function StoryOrganizer() {
   function deleteCharacter(characterId: number) {
     if (currentBookId === null) return;
 
-    const confirmed = window.confirm("Are you sure you want to delete this character?");
+    const confirmed = window.confirm("Remove this character? No takebacks.");
 
     if (!confirmed) return;
       setBooks(
@@ -258,6 +262,30 @@ export default function StoryOrganizer() {
     showModal(false);
   }
 
+  // BOOK TITLE CHANGES - CHANGEABLE INPUT DATA
+  useEffect(() => {
+    if (currentBook) {
+      setTitleDraft(currentBook.title);
+    }
+  }, [currentBook]);
+
+  function saveBookTitle() {
+    if (!titleDraft.trim() || titleDraft.trim() === currentBook?.title) {
+      setTitleDraft(currentBook!.title); //Revert to previous title'
+      setSavedTitle(false);
+      return;
+    }
+
+    setBooks(
+      books.map(book => book.id === currentBookId ? {
+        ...book, title: titleDraft.trim() 
+      } : book )
+    );
+
+    setSavedTitle(true);
+    setTimeout(() => setSavedTitle(false), 2000);
+  }
+
 
   // HTML/TAILWIND CSS | INDEX
   return (
@@ -267,7 +295,7 @@ export default function StoryOrganizer() {
           <div className={"w-full min-w-0 md:max-w-4xl mx-auto"}>
               
             {/* Title/Menu */}
-            <div className="flex justify-between items-center mb-6">
+            <div className="flex justify-between items-center mb-6 mt-5">
                 <h1 className="text-3xl font-bold">📖 Story Organizer</h1>
 
                 <div className="flex gap-2">
@@ -318,7 +346,7 @@ export default function StoryOrganizer() {
                       value={bookTitle}
                       onChange={e => setBookTitle(e.target.value)}
                       />
-                      <button onClick={addBook} className="bg-gray-900 text-white px-8 py-1 rounded-xl cursor-pointer hover:not-focus:bg-gray-700 transition">
+                      <button onClick={addBook} className="bg-black border border-black text-white px-5 py-1 rounded-xl cursor-pointer hover:bg-gray-800 transition">
                       Add Book
                       </button>
                       
@@ -346,7 +374,7 @@ export default function StoryOrganizer() {
 
                   </div>
 
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div className="grid grid-cols-4 gap-4 mb-5">
                       {books.map(book => ( 
                       <div 
                         key={book.id} 
@@ -374,44 +402,69 @@ export default function StoryOrganizer() {
             {/* DETAILS / CHARACTERS */}
             {currentBookId !== null && currentBook && (
                 <div>
-                <button onClick={() => setCurrentBookId(null)} className="text-blue-500 mb-4 cursor-pointer hover:scale-103 hover:underline">← Back to Books</button>
+                  <div>
+                    <button onClick={() => setCurrentBookId(null)} className="text-blue-500 mb-4 cursor-pointer hover:scale-103 hover:underline">← Back to Books</button>
+                  </div>
+                
+                  {/* Conditional "Changes Saved" message */}
+                  <div className="absolute mt-7">
+                    {savedTitle && (
+                      <span className="mt-2 text-sm text-green-600 font-semibold animate-pulse">
+                        Changes Saved!
+                      </span>
+                    )}
+                  </div>
+                  
+                  <div className="flex items-center gap-3 mb-4">
+                    {/*CHANGEABLE CURRENT BOOK TITLE */}
+                    <div className="flex-1">
+                      <input 
+                        className="text-2xl w-full font-semibold border-none outline-none focus-ring-0 truncate" 
+                        value={titleDraft}
+                        onChange={(e) => setTitleDraft(e.target.value)}
+                        onBlur={saveBookTitle}
+                        onKeyDown={(e) => {
+                          if (e.key === "Enter") saveBookTitle();
+                        }}
+                      />
 
-                <h2 className="text-2xl font-semibold mb-4">{currentBook.title}</h2>
-
-                <button onClick={() => setShowAddCharacter(!showAddCharacter)} className="bg-black text-white px-4 py-2 rounded-xl mb-4">
-                    {showAddCharacter ? 'Cancel' : 'Add Character'}
-                </button>
-
-                {/* Input Character Details */}
-                {showAddCharacter && (
-                    <div className="bg-white shadow rounded-2xl p-4 mb-6">
-                    <input className="border p-2 w-full mb-2 rounded" placeholder="Name" value={name} onChange={e => setName(e.target.value)} />
-                    <input className="border p-2 w-full mb-2 rounded" placeholder="Role / Affiliation" value={role} onChange={e => setRole(e.target.value)} />
-                    <textarea className="border p-2 w-full mb-2 rounded" placeholder="Notes" value={notes} onChange={e => setNotes(e.target.value)} />
-                    <input className="border p-2 w-full mb-2 rounded" placeholder="Abilities (comma separated)" value={abilities} onChange={e => setAbilities(e.target.value)} />
-                    <input type="number" className="border p-2 w-full mb-2 rounded" placeholder="Arc Stage" value={arcStage} onChange={e => setArcStage(e.target.value)} />
-                    <button onClick={addCharacter} className="bg-black text-white px-4 py-2 rounded-xl">Add Character</button>
                     </div>
-                )}
 
-                {/* Display Character Card Block */}
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    {currentBook.characters.map(char => (
+                    <button onClick={() => setShowAddCharacter(!showAddCharacter)} className="bg-black border border-black text-white px-5 py-2 rounded-xl cursor-pointer hover:bg-gray-800 transition">
+                        {showAddCharacter ? 'Cancel' : 'Add Character'}
+                    </button>
+                  </div>
 
-                    // Main Char Box
-                    <div key={char.id} 
-                    className="cursor-pointer bg-white shadow rounded-2xl p-4 
-                    character-card hover:scale-105 transition"
-                    onClick={() => openEditCharacter(char)}>
+                  {/* Input Character Details */}
+                  {showAddCharacter && (
+                      <div className="bg-white shadow rounded-2xl p-4 mb-6 flow-root">
+                        <input className="border p-2 w-full mb-2 rounded" placeholder="Name" value={name} onChange={e => setName(e.target.value)} />
+                        <input className="border p-2 w-full mb-2 rounded" placeholder="Role / Affiliation" value={role} onChange={e => setRole(e.target.value)} />
+                        <textarea className="border p-2 w-full mb-2 rounded" placeholder="Notes" value={notes} onChange={e => setNotes(e.target.value)} />
+                        <input className="border p-2 w-full mb-2 rounded" placeholder="Abilities (comma separated)" value={abilities} onChange={e => setAbilities(e.target.value)} />
+                        <input type="number" className="border p-2 w-full mb-2 rounded" placeholder="Arc Stage" value={arcStage} onChange={e => setArcStage(e.target.value)} />
+                        <button onClick={addCharacter} className="float-right bg-black border border-black text-white px-4 py-2 rounded-xl cursor-pointer hover:bg-gray-800 transition">Confirm</button>
+                      </div>
+                  )}
 
-                        <h3 className="text-xl font-bold">{char.name}</h3>
-                        <p className="text-sm text-gray-500 mb-2">{char.role}</p>
-                        <p className="whitespace-pre-wrap mb-2">{char.notes}</p>
-                        <p className="text-sm mb-1">Abilities: {char.abilities.join(", ")}</p>
-                        <p className="text-sm mb-1">Volume: {char.arcStage}</p>
-                    </div>
-                    ))}
-                </div>
+                  {/* Display Character Card Block */}
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+                      {currentBook.characters.map(char => (
+
+                      // Main Char Box
+                      <div key={char.id} 
+                      className="cursor-pointer bg-white shadow rounded-2xl p-4 
+                      character-card hover:scale-105 transition"
+                      onClick={() => openEditCharacter(char)}>
+
+                          <h3 className="text-xl font-bold">{char.name}</h3>
+                          <p className="text-sm text-gray-500 mb-2">{char.role}</p>
+                          <p className="whitespace-pre-wrap mb-2">{char.notes}</p>
+                          <p className="text-sm mb-1">Abilities: {char.abilities.join(", ")}</p>
+                          <p className="text-sm mb-1">Volume: {char.arcStage}</p>
+                      </div>
+                      ))}
+                  </div>
                 </div>
             )}
 
