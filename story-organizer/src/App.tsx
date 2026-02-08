@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback } from "react";
 import { useDropzone } from "react-dropzone";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
-import { faFileExport } from "@fortawesome/free-solid-svg-icons";
+import { faFileImport } from "@fortawesome/free-solid-svg-icons";
 import { faTrashCan } from "@fortawesome/free-solid-svg-icons";
 
 type Character = {
@@ -39,6 +39,7 @@ export default function StoryOrganizer() {
   // EDITING OF BOOK TITLE
   const [titleDraft, setTitleDraft] = useState("");
   const [savedTitle, setSavedTitle] = useState(false);
+  const [bookAdded, setBookAdded] = useState(false);
 
   // MODALS
   const [showEditModal, setShowEditModal] = useState(false);
@@ -69,7 +70,6 @@ export default function StoryOrganizer() {
   const [arcStage, setArcStage] = useState("");
 
   const [theme, setTheme] = useState<'default'|'fantasy'|'scifi'|'horror'|'romance'|'xianxia'>('default');
-//   const [darkMode, setDarkMode] = useState(false);
 
   const currentBook = books.find(book => book.id === currentBookId);
 
@@ -189,6 +189,8 @@ export default function StoryOrganizer() {
     };
     setBooks([...books, newBook]);
     setBookTitle("");
+    setBookAdded(true);
+    setTimeout(() => setBookAdded(false), 2000);
   }
   // select book element
   function selectBook(id: number) {
@@ -298,102 +300,92 @@ export default function StoryOrganizer() {
   // HTML/TAILWIND CSS | INDEX
   return (
     <div className="PARENT MAIN ROOT Component">
+
+      {/* Title/Menu/HEADER */}
+      <header className="bg-gray-950">
+        <div className="flex justify-between items-center p-2 w-full md:max-w-4xl sm-w-full mx-auto">
+          <h1 className="text-2xl text-white">📖Story Organizer</h1>
+
+          <div className="flex gap-2">
+            
+            <select value={theme} onChange={e => setTheme(e.target.value as any)} className="cursor-pointer border font-bold rounded px-2 py-1 text-white bg-gray-950 hover:bg-gray-200 hover:text-gray-950 transition">
+                <option value="default">Default</option>
+                <option value="fantasy">Fantasy</option>
+                <option value="scifi">Sci-Fi</option>
+                <option value="horror">Horror</option>
+                <option value="romance">Romance</option>
+                <option value="xianxia">Xianxia</option>
+            </select>
+
+            {/* EXPORT/IMPORT BUTTON */}
+            <div className="relative group inline-block group">
+              <button 
+                title="IMPORT/EXPORT FILE"
+                className="cursor-pointer p-1 transition border border-white text-gray-200 rounded hover:bg-gray-200 hover:text-gray-950 transition" 
+                onClick={() => showModalFile(true)} > 
+                <FontAwesomeIcon icon={faFileImport} size="xl" />
+              </button>
+
+              {/* TOOLTIP IN PROGRESS */}
+              <div
+                className="
+                  top-full left-1/2 -translate-x-1/2 mt-2 z-50
+                  hidden
+                  pointer-events-none
+                  transition-opacity duration-200
+                  bg-black/80 text-white text-xs px-2 py-1 rounded-md
+                  whitespace-nowrap
+                ">
+                Import/Export File
+              </div>
+            </div>
+
+          </div>  
+
+        </div>
+      </header>
       
       <div className={`${appliedTheme} relative min-h-[100dvh] w-full min-w-0 md:min-w-4xl mx-auto px-4 transition-colors duration-800 backdrop-blur-lg overflow-hidden`}>
-        <div className="fixed inset-0 bg-cover bg-center opacity-50 -z-10 transition-opacity duration-800" style={{backgroundImage: `url(/textures/${theme}.png)`}}/>
+        <div className="fixed inset-0 bg-cover bg-center opacity-50 -z-10 transition-opacity duration-800" style={{backgroundImage: `url(/textures/${theme}.png)`}}/>      
           <div className="w-full md:max-w-4xl sm-w-full mx-auto min-h-screen border-b border-transparent">
-
-            {/* STICK THE TRASHCAN TO THE BOTTOM OF THE PAGE FOR DELETION */}
-            {/* <div className="text-3xl font-bold sticky z-50 bottom-0 right-0 left-0">
-
-                <div className={`relative group inline-block bg-red-200 px-2 py-2 border border-red-300 rounded-xl hover:bg-red-300 ${setDrag === true ? "scale-110 opacity-80" : ""}`}
-                  onDragOver={handleDragOver}
-                  onDrop={handleDrop}
-                  onDragLeave={handleDragLeave}
-                  >
-                    <FontAwesomeIcon className="opacity-0 group-hover:opacity-100 absolute" icon={faTrashCan} bounce size="2xl"/>
-                    <FontAwesomeIcon className="opacity-100 group-hover:opacity-0" icon={faTrashCan} size="2xl"/>
-
-                    <span
-                      className="
-                        absolute bottom-full left-1/2 -translate-x-1/2 mb-2
-                        hidden group-hover:inline
-                        pointer-events-none
-                        transition-opacity duration-200
-                        bg-black/80 text-white text-xs px-2 py-1 rounded-md
-                        whitespace-nowrap
-                      ">
-                      Drag Book cards here to remove.
-                    </span>
-                </div>
-            </div> */}
-              
-            {/* Title/Menu */}
-            <div className="flex justify-between items-center mb-6 mt-5">
-                <h1 className="text-3xl font-bold">📖 Story Organizer</h1>
-
-                <div className="flex gap-2">
-                  <select value={theme} onChange={e => setTheme(e.target.value as any)} className="cursor-pointer border font-bold rounded px-2 py-1">
-                      <option value="default">Default</option>
-                      <option value="fantasy">Fantasy</option>
-                      <option value="scifi">Sci-Fi</option>
-                      <option value="horror">Horror</option>
-                      <option value="romance">Romance</option>
-                      <option value="xianxia">Xianxia</option>
-                  </select>
-
-                  {/* EXPORT/IMPORT BUTTON */}
-                  <div className="relative group inline-block">
-                    <button 
-                      className="cursor-pointer p-1 hover:scale-115 transition" 
-                      onClick={() => showModalFile(true)} > 
-                      <FontAwesomeIcon icon={faFileExport} size="xl" />
-                    </button>
-
-                    {/* TOOLTIP */}
-                    <div
-                      className="
-                        absolute top-full left-1/2 -translate-x-1/2 mt-2
-                        opacity-0 group-hover:opacity-100
-                        pointer-events-none
-                        transition-opacity duration-200
-                        bg-black/80 text-white text-xs px-2 py-1 rounded-md
-                        whitespace-nowrap
-                      ">
-                      Import/Export File
-                    </div>
-                  </div>
-
-                </div>  
-
-            </div>
 
             {/* BOOK LIST / HOMEPAGE */}
             {currentBookId === null && (
                 <div>
-                  <h2 className="text-2xl font-semibold mb-2">My Books</h2>
                   
-                  <div className="mb-4 flex gap-2">
-                      <input
-                      className="border px-3 py-3 w-full rounded-xl"
-                      placeholder="New Book Title"
-                      value={bookTitle}
-                      onChange={e => setBookTitle(e.target.value)}
-                      onKeyDown={(e) => {
-                          if (e.key === "Enter") addBook();
-                        }}
-                      />
-                      <button 
-                        onClick={addBook} 
-                        className="bg-black border border-black text-white px-5 py-1 rounded-xl cursor-pointer hover:bg-gray-800 transition"
-                      >
-                      Add Book
-                      </button>
+                  <div className="py-4 flex gap-2">
 
+                    <input
+                    className="border-b-2 border-gray-200 px-1 w-full outline-none hover:border-gray-500 transition"
+                    placeholder="New Book Title"
+                    value={bookTitle}
+                    onChange={e => setBookTitle(e.target.value)}
+                    onKeyDown={(e) => {
+                        if (e.key === "Enter") addBook();
+                      }}
+                    />
+
+                    <button 
+                      onClick={addBook} 
+                      className="bg-gray-950 border border-black text-white px-5 py-2 whitespace-nowrap rounded-xl cursor-pointer hover:bg-gray-800 transition"
+                    >
+                    Add Book
+                    </button>
+
+                     {/* Conditional "Successfully Added" message */}
+                  <div className="absolute mt-9">
+                    {bookAdded && (
+                      <span className="mt-2 text-sm text-green-600 font-semibold animate-pulse">
+                        Book Successfully Added!
+                      </span>
+                    )}
+                  </div>
+                    
                   </div>
 
                     {/* SHOW BOOK LIST */}
                   {/* BOOK CARDS */}
+                  <h2 className="text-2xl font-semibold mb-2 text-gray-950">My Books</h2>
                   <div className="grid grid-cols-3 gap-4 mb-5 place-items-center">
                       {books.map(book => (
                       <div
@@ -452,7 +444,7 @@ export default function StoryOrganizer() {
                   </div>
                 
                   {/* Conditional "Changes Saved" message */}
-                  <div className="absolute mt-7">
+                  <div className="absolute mt-8">
                     {savedTitle && (
                       <span className="mt-2 text-sm text-green-600 font-semibold animate-pulse">
                         Changes Saved!
@@ -518,8 +510,8 @@ export default function StoryOrganizer() {
 
             {/* EDIT MODAL & Char update */}
             {showEditModal && editingCharacter && (
-                <div className="fixed inset-0 flex items-center justify-center bg-black/50 z-50" onClick={() => showModal(false)}>
-                  <div className="w-9/10 min-w-0 md:max-w-120 mx-auto bg-white dark:bg-gray-100 max-h-[90vh] overflow-y-auto p-6 rounded-xl shadow-lg" onClick={(e) => e.stopPropagation()}>
+                <div className="fixed inset-0 flex items-center bg-black/50 z-50 overflow-auto" onClick={() => showModal(false)}>
+                  <div className="w-9/10 min-w-0 md:max-w-120 mx-auto bg-white dark:bg-gray-100 max-h-screen overflow-y-auto p-6 rounded-xl shadow-lg" onClick={(e) => e.stopPropagation()}>
                     <h2 className="text-x1 font-bold mb-4">Edit Character</h2>
 
                     {/* Name */}
