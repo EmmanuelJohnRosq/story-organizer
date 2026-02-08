@@ -48,8 +48,9 @@ export default function StoryOrganizer() {
   // const fileInputRef = useRef<HTMLInputElement>(null);
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
 
-  // USER STATE STATUS
+  // USER DRAGGIN STATE
   const [setDrag, setIsDragOver] = useState(false);
+  const [isDraggingBook, setIsDraggingBook] = useState(false);
   
   const onDrop = useCallback((acceptedFiles: File[]) => {
     setSelectedFile(acceptedFiles[0]); // 🔥 THIS triggers re-render
@@ -134,6 +135,10 @@ export default function StoryOrganizer() {
     e.dataTransfer.setData("bookId", e.currentTarget.dataset.id!);
     e.dataTransfer.setData("bookTitle", e.currentTarget.dataset.title!);
 
+    e.dataTransfer.effectAllowed = "move";
+    
+    setIsDraggingBook(true);
+
     const bookId = e.dataTransfer.getData("bookId");
     setDraggingId(+bookId);
   };
@@ -153,6 +158,7 @@ export default function StoryOrganizer() {
 
     if (!confirm("Do you want to delete '" + bookTitle + "' book?")) {
       setIsDragOver(false);
+      setIsDraggingBook(false)
       return;
     }
  
@@ -160,6 +166,7 @@ export default function StoryOrganizer() {
       prevBooks.filter(book => book.id !== +bookId)
     );
     setIsDragOver(false);
+    setIsDraggingBook(false)
   }
 
   const handleDragLeave = () => {
@@ -292,9 +299,9 @@ export default function StoryOrganizer() {
   return (
     <div className="PARENT MAIN ROOT Component">
       
-      <div className={`${appliedTheme} relative min-h-[100dvh] w-full min-w-0 md:min-w-4xl mx-auto px-4 transition-colors duration-800 backdrop-blur-lg overflow-visible`}>
+      <div className={`${appliedTheme} relative min-h-[100dvh] w-full min-w-0 md:min-w-4xl mx-auto px-4 transition-colors duration-800 backdrop-blur-lg overflow-hidden`}>
         <div className="fixed inset-0 bg-cover bg-center opacity-50 -z-10 transition-opacity duration-800" style={{backgroundImage: `url(/textures/${theme}.png)`}}/>
-          <div className="w-full md:max-w-4xl mx-auto min-h-screen border-b border-transparent">
+          <div className="w-full md:max-w-4xl sm-w-full mx-auto min-h-screen border-b border-transparent">
 
             {/* STICK THE TRASHCAN TO THE BOTTOM OF THE PAGE FOR DELETION */}
             {/* <div className="text-3xl font-bold sticky z-50 bottom-0 right-0 left-0">
@@ -382,34 +389,12 @@ export default function StoryOrganizer() {
                       >
                       Add Book
                       </button>
-                      
-                        <div className={`relative group inline-block bg-red-200 px-2 py-2 border border-red-300 rounded-xl hover:bg-red-300 ${setDrag === true ? "scale-110 opacity-80" : ""}`}
-                          onDragOver={handleDragOver}
-                          onDrop={handleDrop}
-                          onDragLeave={handleDragLeave}
-                          >
-                            <FontAwesomeIcon className="opacity-0 group-hover:opacity-100 absolute" icon={faTrashCan} bounce size="2xl"/>
-                            <FontAwesomeIcon className="opacity-100 group-hover:opacity-0" icon={faTrashCan} size="2xl"/>
-
-                            {/* TOOLTIP */}
-                            <span
-                              className="
-                                absolute bottom-full left-1/2 -translate-x-1/2 mb-2
-                                hidden group-hover:inline
-                                pointer-events-none
-                                transition-opacity duration-200
-                                bg-black/80 text-white text-xs px-2 py-1 rounded-md
-                                whitespace-nowrap
-                              ">
-                              Drag Book cards here to remove.
-                            </span>
-                        </div>
 
                   </div>
 
                     {/* SHOW BOOK LIST */}
-                  {/* BOOK CARD */}
-                  <div className="grid grid-cols-3 gap-4 mb-5">
+                  {/* BOOK CARDS */}
+                  <div className="grid grid-cols-3 gap-4 mb-5 place-items-center">
                       {books.map(book => (
                       <div
                         key={book.id} 
@@ -417,27 +402,34 @@ export default function StoryOrganizer() {
                         onDragStart={handleDragStart}
                         data-id={book.id}
                         data-title={book.title}
-                        onDragEnd={() => setDraggingId(null)}
+                        onDragEnd={() => { setDraggingId(null); setIsDraggingBook(false);}}
                         onClick={() => selectBook(book.id)}
                         className={`
                           relative group cursor-pointer
                           w-55 h-70 rounded-tl-xl rounded-bl-xl
-                          bg-gradient-to-br from-blue-200 to-gray-200
+                          bg-gradient-to-br from-gray-100 to-gray-50
                           shadow-lg
                           hover:-translate-y-2 hover:shadow-2xl
                           transition-all duration-300
                           ${draggingId === book.id ? "opacity-0" : ""}
                           `}>
-                        {/* Spine */}
+                        {/* Spine and bottom pages design */}
                         <div
-                          className=" absolute -left-1 top-0 h-full w-4
-                            bg-gray-700
+                          className="absolute -bottom-0 w-full h-0.5
+                            bg-gray-400
                             rounded-tl-lg"/>
+                        <div
+                          className="absolute -left-1 top-0 h-full w-4
+                            bg-gray-400
+                            rounded-tl-lg"/>
+                        
 
                         {/* Title */}
                         <div className="p-4 pt-15 text-center font-semibold text-gray-800 line-clamp-5 max-h-45">
                           {book.title}
-                          <div className="absolute text-white -left-2 top-1/2 -translate-y-1/2 rotate-180 [writing-mode:vertical-rl] truncate line-clamp-1 max-h-50">
+
+                          {/* Vertical TITLE */}
+                          <div className="absolute text-white text-outline-2 -left-2 top-1/2 -translate-y-1/2 rotate-180 [writing-mode:vertical-rl] truncate line-clamp-1 max-h-50">
                             <span className="text-xs font-bold">{book.title}</span>
                           </div>
                         </div>
@@ -472,7 +464,7 @@ export default function StoryOrganizer() {
                     {/*CHANGEABLE CURRENT BOOK TITLE */}
                     <div className="flex-1">
                       <input 
-                        className="text-2xl w-full font-semibold border-none outline-none focus-ring-0 truncate" 
+                        className="text-2xl w-full font-semibold border-b-2 border-gray-100 hover:border-gray-600 outline-none focus-ring-0 truncate" 
                         value={titleDraft}
                         onChange={(e) => setTitleDraft(e.target.value)}
                         onBlur={saveBookTitle}
@@ -490,7 +482,7 @@ export default function StoryOrganizer() {
 
                   {/* Input Character Details */}
                   {showAddCharacter && (
-                      <div className="bg-white shadow rounded-2xl p-4 mb-6 flow-root">
+                      <div className="bg-white/30 shadow rounded-2xl p-4 mb-6 flow-root">
                         <input className="border p-2 w-full mb-2 rounded" placeholder="Name" value={name} onChange={e => setName(e.target.value)} />
                         <input className="border p-2 w-full mb-2 rounded" placeholder="Role / Affiliation" value={role} onChange={e => setRole(e.target.value)} />
                         <textarea className="border p-2 w-full mb-2 rounded" placeholder="Notes" value={notes} onChange={e => setNotes(e.target.value)} />
@@ -679,6 +671,58 @@ export default function StoryOrganizer() {
                   </div>
                 </div>
             )}
+
+            {/* TRASHCAN FEATURE/DELETION OF BOOK CARD ONDROP */}
+            {isDraggingBook && (
+              <div
+                className="
+                  fixed bottom-6 right-6 z-50
+                  transition-all duration-300
+                  scale-100 opacity-100
+                "
+              >
+                <div
+                  onDragOver={handleDragOver}
+                  onDrop={handleDrop}
+                  onDragLeave={handleDragLeave}
+                  className={`
+                    w-20 h-20
+                    group flex items-center justify-center
+                    rounded-full
+                    px-2 py-2 border border-red-300
+                    bg-red-300
+                    text-white
+                    shadow-xl
+                    hover:scale-110
+                    hover:bg-red-500
+                    transition-transform
+                    ${setDrag ? "scale-110 bg-red-500" : ""}
+                  `}
+                > 
+                <FontAwesomeIcon 
+                icon={faTrashCan} 
+                size="2xl"
+                bounce={isDraggingBook && !setDrag}
+                />
+                </div>
+
+                {/* TOOLTIP */}
+                <span
+                  className={`
+                    ${setDrag === true ? "hidden" : ""}
+                    absolute right-full bottom-6 mr-2
+                    pointer-events-none
+                    transition-opacity duration-200
+                    bg-black/80 text-white text-xs px-2 py-1 rounded-md
+                    whitespace-nowrap
+                  `}
+                  >
+                  DROP BOOKS HERE TO REMOVE.
+                </span>
+              </div>
+            )}
+
+            {/* CUSTOM MODAL FOR CONFIRM/CANCEL */}
 
     </div>
   );
