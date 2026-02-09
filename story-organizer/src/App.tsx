@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import { useDropzone } from "react-dropzone";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { faFileImport } from "@fortawesome/free-solid-svg-icons";
@@ -54,6 +54,10 @@ export default function StoryOrganizer() {
   // IMPORT Variables
   // const fileInputRef = useRef<HTMLInputElement>(null);
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
+  
+  // HEADER SCROLL VARIABLES
+  const [headerVisible, setHeaderVisible] = useState(true);
+  const lastScrollY = useRef(0);
 
   // USER DRAGGIN STATE
   const [setDrag, setIsDragOver] = useState(false);
@@ -250,10 +254,11 @@ export default function StoryOrganizer() {
     const confirmed = window.confirm("Remove this character? No takebacks.");
 
     if (!confirmed) return;
-      setBooks(
-          books.map(book => book.id === currentBookId ? {...book, characters: book.characters.filter(c => c.id !== characterId)} : book)
-      );
-    showModal(false);
+    
+    setBooks(
+        books.map(book => book.id === currentBookId ? {...book, characters: book.characters.filter(c => c.id !== characterId)} : book)
+    );
+    setSelectedCharacter(null);
   }
 
   // open edit Char Modal
@@ -277,8 +282,6 @@ export default function StoryOrganizer() {
         ...book, characters: book.characters.map(c => c.id === updatedCharacter.id ? updatedCharacter : c) 
       } : book )
     );
-
-    showModal(false);
   }
 
   // BOOK TITLE CHANGES - CHANGEABLE INPUT DATA
@@ -307,15 +310,41 @@ export default function StoryOrganizer() {
 
   const [char_image] = useState("/textures/char_images/default_char.jpg")
 
+  // HEADER COLLAPSE AND SHOWS WHEN SCROLLED
+  useEffect(() => {
+    const handleScroll = () => {
+      const currentScrollY = window.scrollY;
+
+      if (currentScrollY > lastScrollY.current && currentScrollY > 80) {
+        // scrolling down
+        setHeaderVisible(false);
+      } else {
+        // scrolling up
+        setHeaderVisible(true);
+      }
+
+      lastScrollY.current = currentScrollY;
+    };
+
+    window.addEventListener("scroll", handleScroll, { passive: true });
+    return () => window.removeEventListener("scroll", handleScroll);
+  }, []);
+
 
   // HTML/TAILWIND CSS | INDEX
   return (
     <div className="PARENT MAIN ROOT Component">
 
       {/* Title/Menu/HEADER */}
-      <header className="bg-gray-950">
+      <header 
+        className={`
+        fixed top-0 left-0 w-full z-50
+        bg-gray-950 backdrop-blur-md
+        transition-transform duration-300 ease-in-out
+        ${headerVisible ? "translate-y-0" : "-translate-y-full"}
+      `}>
         <div className="flex justify-between items-center p-2 w-full md:max-w-4xl sm-w-full mx-auto">
-          <h1 className="text-2xl text-white cursor-pointer" onClick={() => {setCurrentBookId(null); setSelectedCharacter(null); }}>📖STORY ORGANIZER</h1>
+          <h1 className="text-white cursor-pointer md:text-2xl sm:text-lg" onClick={() => {setCurrentBookId(null); setSelectedCharacter(null); }}>📖STORY ORGANIZER</h1>
 
           <div className="flex gap-2">
             
@@ -361,7 +390,7 @@ export default function StoryOrganizer() {
         {/* THEME BACKGROUND IMAGE STYLE */}
         <div className="fixed inset-0 bg-cover bg-center opacity-50 -z-10 transition-opacity duration-800" style={{backgroundImage: `url(/textures/bg_styles/${theme}.png)`}}/>      
           {/* MAIN PAGE */}
-          <div className="w-full max-w-4xl mx-auto min-h-screen">
+          <div className="w-full max-w-4xl mx-auto min-h-screen pt-12">
 
             {/* BOOK LIST / HOMEPAGE */}
             {currentBookId === null && (
@@ -401,8 +430,16 @@ export default function StoryOrganizer() {
                 {/* SHOW BOOK LIST */}
                 {/* BOOK CARDS */}
                 <h2 className="text-2xl font-semibold mb-2 text-gray-950">My Books</h2>
+
+                {books.length === 0 && (
+                  <div className="flex w-full p-28">
+                    <h1 className="text-3xl font-bold text-gray-400 text-center">
+                      PLEASE ADD BOOKS HERE. INSTEAD OF JUST LETTING THEM GATHER DUST IN YOUR INSANE MIND...
+                    </h1>
+                  </div>
+                )}
                 
-                <div className="grid grid-cols-2 pl-6 pr=6 sm:grid-cols-2 md:grid-cols-3 gap-4 pb-5 place-items-center">
+                <div className="grid grid-cols-2 px-6 sm:grid-cols-2 md:grid-cols-3 gap-4 pb-5 place-items-center">
                     {books.map(book => (
                     <div
                       key={book.id} 
@@ -499,10 +536,18 @@ export default function StoryOrganizer() {
                         <input className="border p-2 w-full mb-2 rounded" placeholder="Role / Affiliation" value={role} onChange={e => setRole(e.target.value)} />
                         <textarea className="border p-2 w-full mb-2 rounded" placeholder="Notes" value={notes} onChange={e => setNotes(e.target.value)} />
                         <input className="border p-2 w-full mb-2 rounded" placeholder="Abilities (comma separated)" value={abilities} onChange={e => setAbilities(e.target.value)} />
-                        <input type="number" className="border p-2 w-full mb-2 rounded" placeholder="Arc Stage" value={arcStage} onChange={e => setArcStage(e.target.value)} />
+                        <input type="number" className="border p-2 w-full mb-2 rounded" placeholder="Volume" value={arcStage} onChange={e => setArcStage(e.target.value)} />
                         <button onClick={addCharacter} className="float-right bg-black border border-black text-white px-4 py-2 rounded-xl cursor-pointer hover:bg-gray-800 transition">Confirm</button>
                       </div>
                   )}
+
+                  {currentBook.characters.length === 0 && (
+                  <div className="flex w-full p-28">
+                    <h1 className="text-3xl font-bold text-gray-400 text-center">
+                      PLEASE ADD SOME CHARACTERS. IT GETS LONELY SOMETIMES HERE...
+                    </h1>
+                  </div>
+                )}
 
                   {/* Display Character Card Block */}
                   <div className="grid gap-4 pb-4 sm:grid-cols-2 md:grid-cols-4 items-stretch place-items-center">
@@ -535,7 +580,7 @@ export default function StoryOrganizer() {
                           <div className="flex-1 p-2 text-center">
                               <a href="#">
                                   <h3 className="text-xl font-semibold tracking-tight line-clamp-1">{char.name}</h3>
-                                  <p className="text-sm text-gray-500 mb-2 line-clamp-1">{char.role}</p>
+                                  <p className="text-sm text-gray-500 mb-2 line-clamp-1">{char.role || "Character Role"}</p>
                                   <p className="text-sm text-gray-500 mb-2 line-clamp-1">*First Chapter Appearance</p>
                               </a>
                           </div>
@@ -561,7 +606,7 @@ export default function StoryOrganizer() {
 
                   <div className="space-x-2">
                     <button 
-                      onClick={() => {deleteCharacter(editingCharacter.id); setSelectedCharacter(null); }}
+                      onClick={() => deleteCharacter(editingCharacter.id) }
                       > <FontAwesomeIcon className="cursor-pointer text-gray-950 hover:text-red-500 transition hover:scale-105" icon={faTrashCan} size="xl"/>
                     </button>
 
@@ -601,6 +646,7 @@ export default function StoryOrganizer() {
                       <div className="">
                         <label className="text-sm font-medium text-gray-500">Role</label>
                         <input 
+                          placeholder="Add Character Role"
                           className="w-full pl-3 outline-none focus:border-b"
                           value={editingCharacter.role} 
                           onChange={e => setEditingCharacter({ ...editingCharacter, role: e.target.value })} 
@@ -610,8 +656,9 @@ export default function StoryOrganizer() {
                       <div>
                         <label className="text-sm font-medium text-gray-500">Description</label>
                         <textarea 
+                        placeholder="Character Appearance/Personality"
                         rows={3} 
-                        value={"He is a little boy with a ugliness inside and out. He is super ugly that an image of him will shatter any eyes and mirrors there is. Be careful of this boy..."}
+                        value={"He is a little boy with an ugliness inside and out. He is super ugly that an image of him will shatter any eyes and mirrors there is. Be careful of this boy..."}
                         className="w-full resize-none pl-3 rounded outline-width-1" />
                       </div>
                     </div>
@@ -627,7 +674,7 @@ export default function StoryOrganizer() {
                       <textarea 
                       rows={5} 
                       className="w-full rounded-xl border-gray-300 pl-3"
-                      placeholder="Notes"
+                      placeholder="Add Notes"
                       value={editingCharacter.notes} 
                       onChange={e => setEditingCharacter({ ...editingCharacter, notes: e.target.value })} />
                     </div>
@@ -642,7 +689,7 @@ export default function StoryOrganizer() {
                         value={editingCharacter.abilitiesText} 
                         onChange={(e) => setEditingCharacter({ ...editingCharacter, abilitiesText: e.target.value })
                         }
-                        placeholder="Abilities" />
+                        placeholder="Add Abilities" />
                     </div>
 
                     {/* CHAPTER APPEARANCES */}
@@ -651,6 +698,7 @@ export default function StoryOrganizer() {
                         <span className="text-indigo-500">📖</span> Chapter Appearances
                       </div>
                       <input 
+                      placeholder="Chapter Appearances"
                       className="w-full outline-none focus:border-b pl-3"
                       value={"2, 3"} />
                     </div>   
