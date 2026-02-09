@@ -3,6 +3,9 @@ import { useDropzone } from "react-dropzone";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { faFileImport } from "@fortawesome/free-solid-svg-icons";
 import { faTrashCan } from "@fortawesome/free-solid-svg-icons";
+import { faCheck } from "@fortawesome/free-solid-svg-icons";
+import { faArrowLeftLong } from "@fortawesome/free-solid-svg-icons";
+
 
 type Character = {
   id: number;
@@ -33,8 +36,11 @@ export default function StoryOrganizer() {
   // Constant Variables
   const [currentBookId, setCurrentBookId] = useState<number | null>(null);
   const [showAddCharacter, setShowAddCharacter] = useState(false);
-  const [editingCharacter, setEditingCharacter] = useState<EditableCharacter | null>(null);
   const [draggingId, setDraggingId] = useState<number | null>(null);
+
+  // CHARACTER DATA
+  const [selectedCharacter, setSelectedCharacter] = useState<number | null>(null);
+  const [editingCharacter, setEditingCharacter] = useState<EditableCharacter | null>(null);
 
   // EDITING OF BOOK TITLE
   const [titleDraft, setTitleDraft] = useState("");
@@ -115,6 +121,8 @@ export default function StoryOrganizer() {
 
     reader.readAsText(file);
     showModalFile(false);
+    setCurrentBookId(null);
+    setSelectedCharacter(null);
   }
 
   // Background styles for themes
@@ -252,7 +260,8 @@ export default function StoryOrganizer() {
   function openEditCharacter(character: Character) {
     setEditingCharacter({ ...character, abilitiesText: character.abilities.join(", ")
   } as Character & { abilitiesText : string });
-    showModal(true);
+    // showModal(true);
+    setSelectedCharacter(character.id);
   }
 
   // update/edit Char details
@@ -296,6 +305,8 @@ export default function StoryOrganizer() {
     setTimeout(() => setSavedTitle(false), 2000);
   }
 
+  const [char_image] = useState("/textures/char_images/default_char.jpg")
+
 
   // HTML/TAILWIND CSS | INDEX
   return (
@@ -304,7 +315,7 @@ export default function StoryOrganizer() {
       {/* Title/Menu/HEADER */}
       <header className="bg-gray-950">
         <div className="flex justify-between items-center p-2 w-full md:max-w-4xl sm-w-full mx-auto">
-          <h1 className="text-2xl text-white">📖Story Organizer</h1>
+          <h1 className="text-2xl text-white cursor-pointer" onClick={() => {setCurrentBookId(null); setSelectedCharacter(null); }}>📖STORY ORGANIZER</h1>
 
           <div className="flex gap-2">
             
@@ -341,106 +352,114 @@ export default function StoryOrganizer() {
             </div>
 
           </div>  
-
+ 
         </div>
       </header>
       
-      <div className={`${appliedTheme} relative min-h-[100dvh] w-full min-w-0 md:min-w-4xl mx-auto px-4 transition-colors duration-800 backdrop-blur-lg overflow-hidden`}>
-        <div className="fixed inset-0 bg-cover bg-center opacity-50 -z-10 transition-opacity duration-800" style={{backgroundImage: `url(/textures/${theme}.png)`}}/>      
-          <div className="w-full md:max-w-4xl sm-w-full mx-auto min-h-screen border-b border-transparent">
+      {/* THEME BACKGROUND */}
+      <div className={`${appliedTheme} relative min-h-screen w-full min-w-0 mx-auto px-4 transition-colors duration-800 backdrop-blur-lg overflow-x-hidden`}>
+        {/* THEME BACKGROUND IMAGE STYLE */}
+        <div className="fixed inset-0 bg-cover bg-center opacity-50 -z-10 transition-opacity duration-800" style={{backgroundImage: `url(/textures/bg_styles/${theme}.png)`}}/>      
+          {/* MAIN PAGE */}
+          <div className="w-full max-w-4xl mx-auto min-h-screen">
 
             {/* BOOK LIST / HOMEPAGE */}
             {currentBookId === null && (
-                <div>
-                  
-                  <div className="py-4 flex gap-2">
+              // BOOK LIST PAGE
+              <div className="">
+                
+                <div className="py-4 flex gap-2">
 
-                    <input
-                    className="border-b-2 border-gray-200 px-1 w-full outline-none hover:border-gray-500 transition"
-                    placeholder="New Book Title"
-                    value={bookTitle}
-                    onChange={e => setBookTitle(e.target.value)}
-                    onKeyDown={(e) => {
-                        if (e.key === "Enter") addBook();
-                      }}
-                    />
+                  <input
+                  className="border-b-2 border-gray-200 px-1 w-full outline-none hover:border-gray-500 transition"
+                  placeholder="New Book Title"
+                  value={bookTitle}
+                  onChange={e => setBookTitle(e.target.value)}
+                  onKeyDown={(e) => {
+                      if (e.key === "Enter") addBook();
+                    }}
+                  />
 
-                    <button 
-                      onClick={addBook} 
-                      className="bg-gray-950 border border-black text-white px-5 py-2 whitespace-nowrap rounded-xl cursor-pointer hover:bg-gray-800 transition"
-                    >
-                    Add Book
-                    </button>
+                  <button 
+                    onClick={addBook} 
+                    className="bg-gray-950 border border-black text-white px-5 py-2 whitespace-nowrap rounded-xl cursor-pointer hover:bg-gray-800 transition"
+                  >
+                  Add Book
+                  </button>
 
-                     {/* Conditional "Successfully Added" message */}
-                  <div className="absolute mt-9">
-                    {bookAdded && (
-                      <span className="mt-2 text-sm text-green-600 font-semibold animate-pulse">
-                        Book Successfully Added!
-                      </span>
-                    )}
-                  </div>
-                    
-                  </div>
-
-                    {/* SHOW BOOK LIST */}
-                  {/* BOOK CARDS */}
-                  <h2 className="text-2xl font-semibold mb-2 text-gray-950">My Books</h2>
-                  <div className="grid grid-cols-3 gap-4 mb-5 place-items-center">
-                      {books.map(book => (
-                      <div
-                        key={book.id} 
-                        draggable
-                        onDragStart={handleDragStart}
-                        data-id={book.id}
-                        data-title={book.title}
-                        onDragEnd={() => { setDraggingId(null); setIsDraggingBook(false);}}
-                        onClick={() => selectBook(book.id)}
-                        className={`
-                          relative group cursor-pointer
-                          w-55 h-70 rounded-tl-xl rounded-bl-xl
-                          bg-gradient-to-br from-gray-100 to-gray-50
-                          shadow-lg
-                          hover:-translate-y-2 hover:shadow-2xl
-                          transition-all duration-300
-                          ${draggingId === book.id ? "opacity-0" : ""}
-                          `}>
-                        {/* Spine and bottom pages design */}
-                        <div
-                          className="absolute -bottom-0 w-full h-0.5
-                            bg-gray-400
-                            rounded-tl-lg"/>
-                        <div
-                          className="absolute -left-1 top-0 h-full w-4
-                            bg-gray-400
-                            rounded-tl-lg"/>
-                        
-
-                        {/* Title */}
-                        <div className="p-4 pt-15 text-center font-semibold text-gray-800 line-clamp-5 max-h-45">
-                          {book.title}
-
-                          {/* Vertical TITLE */}
-                          <div className="absolute text-white text-outline-2 -left-2 top-1/2 -translate-y-1/2 rotate-180 [writing-mode:vertical-rl] truncate line-clamp-1 max-h-50">
-                            <span className="text-xs font-bold">{book.title}</span>
-                          </div>
-                        </div>
-                        <p className="text-center text-gray-500">{book.characters.length} Characters</p>
-                        
-                      </div>
-                      ))}
-                  </div>
-                  
-
-
+                    {/* Conditional "Successfully Added" message */}
+                <div className="absolute mt-9">
+                  {bookAdded && (
+                    <span className="mt-2 text-sm text-green-600 font-semibold animate-pulse">
+                      Book Successfully Added!
+                    </span>
+                  )}
                 </div>
+                  
+                </div>
+
+                {/* SHOW BOOK LIST */}
+                {/* BOOK CARDS */}
+                <h2 className="text-2xl font-semibold mb-2 text-gray-950">My Books</h2>
+                
+                <div className="grid grid-cols-2 pl-6 pr=6 sm:grid-cols-2 md:grid-cols-3 gap-4 pb-5 place-items-center">
+                    {books.map(book => (
+                    <div
+                      key={book.id} 
+                      draggable
+                      onDragStart={handleDragStart}
+                      data-id={book.id}
+                      data-title={book.title}
+                      onDragEnd={() => { setDraggingId(null); setIsDraggingBook(false);}}
+                      onClick={() => selectBook(book.id)}
+                      className={`
+                        relative group cursor-pointer
+                        w-55 h-70 rounded-tl-xl rounded-bl-xl
+                        bg-gradient-to-br from-gray-100 to-gray-50
+                        shadow-lg
+                        hover:-translate-y-2 hover:shadow-2xl
+                        transition-all duration-300
+                        ${draggingId === book.id ? "opacity-0" : ""}
+                        `}>
+                      {/* Spine and bottom pages design */}
+                      <div
+                        className="absolute -bottom-0 w-full h-0.5
+                          bg-gray-400
+                          rounded-tl-lg"/>
+                      <div
+                        className="absolute -left-1 top-0 h-full w-4
+                          bg-gray-400
+                          rounded-tl-lg"/>
+                      
+
+                      {/* Title */}
+                      <div className="p-4 pt-15 text-center font-semibold text-gray-800 line-clamp-5 max-h-45">
+                        {book.title}
+
+                        {/* Vertical TITLE */}
+                        <div className="absolute text-white text-outline-2 -left-2 top-1/2 -translate-y-1/2 rotate-180 [writing-mode:vertical-rl] truncate line-clamp-1 max-h-50">
+                          <span className="text-xs font-bold">{book.title}</span>
+                        </div>
+                      </div>
+                      <p className="text-center text-gray-500">{book.characters.length} Characters</p>
+                      
+                    </div>
+                    ))}
+                </div>
+                
+
+
+              </div>
             )}
 
             {/* DETAILS / CHARACTERS */}
-            {currentBookId !== null && currentBook && (
+            {currentBookId !== null && currentBook && selectedCharacter === null && (
                 <div>
-                  <div>
-                    <button onClick={() => setCurrentBookId(null)} className="text-blue-500 mb-4 cursor-pointer hover:scale-103 hover:underline">← Back to Books</button>
+                  <div className="pt-3 pb-3">
+                    <button 
+                      onClick={() => setCurrentBookId(null)} 
+                    > <FontAwesomeIcon className="cursor-pointer text-gray-950 hover:text-blue-500 transition hover:scale-105" icon={faArrowLeftLong} size="xl"/>
+                    </button>
                   </div>
                 
                   {/* Conditional "Changes Saved" message */}
@@ -456,6 +475,7 @@ export default function StoryOrganizer() {
                     {/*CHANGEABLE CURRENT BOOK TITLE */}
                     <div className="flex-1">
                       <input 
+                        title="Click to edit book title..."
                         className="text-2xl w-full font-semibold border-b-2 border-gray-100 hover:border-gray-600 outline-none focus-ring-0 truncate" 
                         value={titleDraft}
                         onChange={(e) => setTitleDraft(e.target.value)}
@@ -485,38 +505,182 @@ export default function StoryOrganizer() {
                   )}
 
                   {/* Display Character Card Block */}
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+                  <div className="grid gap-4 pb-4 sm:grid-cols-2 md:grid-cols-4 items-stretch place-items-center">
                       {currentBook.characters.map(char => (
 
-                      // Main Char Box
-                      <div key={char.id} 
-                      className="cursor-pointer bg-white shadow rounded-2xl p-4 
-                      character-card hover:scale-105 transition"
+                      // CHARACTER CARDS w/ image... //
+                      <div 
+                      key={char.id} 
+                      title="Click to open character sheet."
+                      className="
+                        h-[300px] w-full max-w-sm
+                        cursor-pointer bg-white shadow-lg rounded-2xl
+                        transition-all duration-300
+                        hover:-translate-y-2 hover:shadow-2xl
+                        group
+                        flex flex-col"
+                      // onClick={() => openEditCharacter(char)}
                       onClick={() => openEditCharacter(char)}>
 
-                          <h3 className="text-xl font-bold">{char.name}</h3>
-                          <p className="text-sm text-gray-500 mb-2">{char.role}</p>
-                          <p className="whitespace-pre-wrap mb-2">{char.notes}</p>
-                          <p className="text-sm mb-1">Abilities: {char.abilities.join(", ")}</p>
-                          <p className="text-sm mb-1">Volume: {char.arcStage}</p>
+                          {/* IMAGE */}
+                          <div className="h-60 w-full overflow-hidden rounded-t-xl">
+                            <a href="#">
+                                <img 
+                                className="h-full w-full object-cover group-hover:scale-105 transition" 
+                                src={char_image}
+                                alt="Default Character Image" />
+                            </a>
+                          </div>
+
+                          <div className="flex-1 p-2 text-center">
+                              <a href="#">
+                                  <h3 className="text-xl font-semibold tracking-tight line-clamp-1">{char.name}</h3>
+                                  <p className="text-sm text-gray-500 mb-2 line-clamp-1">{char.role}</p>
+                                  <p className="text-sm text-gray-500 mb-2 line-clamp-1">*First Chapter Appearance</p>
+                              </a>
+                          </div>
                       </div>
                       ))}
                   </div>
+
+
                 </div>
             )}
 
+            {/* CHARACTER DATA PAGE / EDIT CHAR DETAILS */}
+            {selectedCharacter !== null && editingCharacter && (
+              <div>
+
+                {/* Buttons */}
+                <div className="flex justify-between pt-4 pb-4">
+
+                  <button 
+                    onClick={() => setSelectedCharacter(null)} 
+                    > <FontAwesomeIcon className="cursor-pointer text-gray-950 hover:text-blue-500 transition hover:scale-105" icon={faArrowLeftLong} size="xl"/>
+                  </button>
+
+                  <div className="space-x-2">
+                    <button 
+                      onClick={() => {deleteCharacter(editingCharacter.id); setSelectedCharacter(null); }}
+                      > <FontAwesomeIcon className="cursor-pointer text-gray-950 hover:text-red-500 transition hover:scale-105" icon={faTrashCan} size="xl"/>
+                    </button>
+
+                    <button
+                      onClick={updateCharacter}
+                    > <FontAwesomeIcon className="cursor-pointer text-gray-950 hover:text-emerald-500 transition hover:scale-105" icon={faCheck} size="xl" />
+                    </button>
+                  </div>
+
+                </div>
+
+                {/* CHARACTER CARD AND IMAGE FORMAT */}
+                <div className="rounded-2xl shadow-lg space-y-2">
+
+                  {/* IMAGE + BASIC INFO */}
+                  <div className="grid grid-cols-1 sm:grid-cols-[160px_1fr] rounded-lg bg-sky-100 border-b border-gray-300">
+                    
+                    <div className="w-full h-50 sm:h-50 rounded-xl overflow-hidden bg-sky-100 p-1">
+                      <img
+                        src={char_image}
+                        alt="Character Image"
+                        className="w-full h-full object-cover rounded"
+                      />
+                    </div>
+
+                    <div className="flex flex-col p-1">
+                      <div className="">
+                        <input 
+                          className="w-full text-xl font-semibold outline-none focus:border-b"
+                          value={editingCharacter.name} 
+                          onChange={e => setEditingCharacter({ ...editingCharacter, name: e.target.value })
+                          }
+                          placeholder="Character Name"
+                        />
+                      </div>
+
+                      <div className="">
+                        <label className="text-sm font-medium text-gray-500">Role</label>
+                        <input 
+                          className="w-full pl-3 outline-none focus:border-b"
+                          value={editingCharacter.role} 
+                          onChange={e => setEditingCharacter({ ...editingCharacter, role: e.target.value })} 
+                        />
+                      </div>
+
+                      <div>
+                        <label className="text-sm font-medium text-gray-500">Description</label>
+                        <textarea 
+                        rows={3} 
+                        value={"He is a little boy with a ugliness inside and out. He is super ugly that an image of him will shatter any eyes and mirrors there is. Be careful of this boy..."}
+                        className="w-full resize-none pl-3 rounded outline-width-1" />
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* CONTENT BELOW THE IMAGE CARD */}
+                  <div className="pr-2 pl-2 pb-3 space-y-3"> 
+                    {/* NOTES */}
+                    <div className="space-y-1">
+                      <div className="flex items-center gap-2 text-sm font-semibold text-gray-700">
+                        <span className="text-indigo-500">📝</span> Character Notes
+                      </div>
+                      <textarea 
+                      rows={5} 
+                      className="w-full rounded-xl border-gray-300 pl-3"
+                      placeholder="Notes"
+                      value={editingCharacter.notes} 
+                      onChange={e => setEditingCharacter({ ...editingCharacter, notes: e.target.value })} />
+                    </div>
+
+                    {/* ABILITIES */}
+                    <div className="space-y-1">
+                      <div className="flex items-center gap-2 text-sm font-semibold text-gray-700">
+                        <span className="text-indigo-500">✨</span> Abilities
+                      </div>
+                      <input 
+                        className="w-full outline-none focus:border-b pl-3"
+                        value={editingCharacter.abilitiesText} 
+                        onChange={(e) => setEditingCharacter({ ...editingCharacter, abilitiesText: e.target.value })
+                        }
+                        placeholder="Abilities" />
+                    </div>
+
+                    {/* CHAPTER APPEARANCES */}
+                    <div className="space-y-1">
+                      <div className="flex items-center gap-2 text-sm font-semibold text-gray-700">
+                        <span className="text-indigo-500">📖</span> Chapter Appearances
+                      </div>
+                      <input 
+                      className="w-full outline-none focus:border-b pl-3"
+                      value={"2, 3"} />
+                    </div>   
+
+                  </div>
+                
+                </div>
+
+              </div>
+            )}
+
           </div>
+
       </div>
 
             {/* EDIT MODAL & Char update */}
             {showEditModal && editingCharacter && (
-                <div className="fixed inset-0 flex items-center bg-black/50 z-50 overflow-auto" onClick={() => showModal(false)}>
-                  <div className="w-9/10 min-w-0 md:max-w-120 mx-auto bg-white dark:bg-gray-100 max-h-screen overflow-y-auto p-6 rounded-xl shadow-lg" onClick={(e) => e.stopPropagation()}>
+                <div className="fixed inset-0 flex items-center bg-black/50 z-50 overflow-auto" 
+                  onMouseDown={(e) => {
+                    if (e.target === e.currentTarget) {
+                      showModal(false);
+                    }
+                  }}
+                >
+                  <div className="w-9/10 min-w-0 md:max-w-120 mx-auto bg-white dark:bg-gray-100 max-h-screen overflow-y-auto p-6 rounded-xl shadow-lg" onMouseDown={(e) => e.stopPropagation()}>
                     <h2 className="text-x1 font-bold mb-4">Edit Character</h2>
 
                     {/* Name */}
                     <input 
-                      className="w-full border p-2 rounded mb-3" 
+                      className="w-full border p-2 rounded mb-3"
                       value={editingCharacter.name} 
                       onChange={e => setEditingCharacter({ ...editingCharacter, name: e.target.value })
                       }
@@ -591,8 +755,14 @@ export default function StoryOrganizer() {
 
             {/* EXPORT/IMPORT MODAL */}
             {showFileModal && (
-                <div className="fixed inset-0 flex items-center justify-center bg-black/50 z-50" onClick={() => showModalFile(false)}>
-                  <div className="w-9/10 min-w-0 md:max-w-120 mx-auto bg-white dark:bg-gray-100 max-h-[90vh] overflow-y-auto p-6 rounded-xl shadow-lg" onClick={(e) => e.stopPropagation()}>
+                <div 
+                className="fixed inset-0 flex items-center justify-center bg-black/50 z-50" 
+                onMouseDown={(e) => {
+                    if (e.target === e.currentTarget) {
+                      showModalFile(false);
+                    }
+                  }}>
+                  <div className="w-9/10 min-w-0 md:max-w-120 mx-auto bg-white dark:bg-gray-100 max-h-[90vh] overflow-y-auto p-6 rounded-xl shadow-lg" onMouseDown={(e) => e.stopPropagation()}>
                     
                     {/* DOWNLOAD YOUR DATA as JSON */}
                     <div className="flex justify-between">
