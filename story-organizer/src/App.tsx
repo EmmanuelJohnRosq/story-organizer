@@ -9,12 +9,20 @@ import { faArrowLeftLong } from "@fortawesome/free-solid-svg-icons";
 
 type Character = {
   id: number;
-  name: string;
-  role: string;
-  notes: string;
-  abilities: string[];
-  arcStage: string;
-  relationships: { name: string; type: string }[];
+  name: string; //char name
+  role: string; //char role in the book
+  notes: string; //additional notes
+  abilities: string[]; //abilities/skills of the char if ever any
+  arcStage: string; // current volume/progress of the book
+  relationships: { name: string; type: string }[]; // Char connnections... family, friends, enemies, etc.
+  // chapterAppearances: string[]; //
+  // charComments: string[]; // comments or notes that are for the future or for just reference.
+  // imageId: number;
+};
+
+type CharImages = {
+  id: number;
+  imageBlob: string;
 };
 
 type EditableCharacter = Character & {
@@ -24,14 +32,24 @@ type EditableCharacter = Character & {
 type Book = {
   id: number;
   title: string;
+  // bookComment: string[];
   characters: Character[];
+  charImages: CharImages[];
 };
 
 export default function StoryOrganizer() {
+ 
   const [books, setBooks] = useState<Book[]>(() => {
     const saved = localStorage.getItem("books");
     return saved ? JSON.parse(saved) : [];
   });
+
+
+  const [images, setImages] = useState<CharImages[]>(() => {
+    const savedImages = '[{"id":1770270755723, "imageBlob":"/textures/char_images/default-male_char.jpg"} , {"id":1770359633524, "imageBlob":"/textures/char_images/default-male_char.jpg"} ]';
+    return savedImages ? JSON.parse(savedImages) : [];
+  });
+
 
   // Constant Variables
   const [currentBookId, setCurrentBookId] = useState<number | null>(null);
@@ -78,6 +96,7 @@ export default function StoryOrganizer() {
   const [notes, setNotes] = useState("");
   const [abilities, setAbilities] = useState("");
   const [arcStage, setArcStage] = useState("");
+  const [imageBlob, setimageBlob] = useState("");
 
   const [theme, setTheme] = useState<'default'|'fantasy'|'scifi'|'horror'|'romance'|'xianxia'>('default');
 
@@ -198,6 +217,7 @@ export default function StoryOrganizer() {
       id: Date.now(),
       title: bookTitle,
       characters: [],
+      charImages: [],
     };
     setBooks([...books, newBook]);
     setBookTitle("");
@@ -233,6 +253,21 @@ export default function StoryOrganizer() {
     setArcStage("");
     setShowAddCharacter(false);
   }
+
+  // CREATE A CHARACTER IMAGE BASED ON THE APPEARANCE INPUTTED
+  function addCharImage() {
+    if (selectedCharacter === null) return;
+
+    const newCharImage: CharImages = {
+      id: selectedCharacter,
+      imageBlob,
+    };
+
+    setImages(images.map(image => image));
+  }
+  
+  console.log(images.map(image => image));
+  console.log(books.map(book => book));
 
   // Show Edit Modal
   function showModal(state: boolean) {
@@ -330,6 +365,8 @@ export default function StoryOrganizer() {
     return () => window.removeEventListener("scroll", handleScroll);
   }, []);
 
+  const [openSearch, setOpenSearch] = useState(false);
+
 
   // HTML/TAILWIND CSS | INDEX
   return (
@@ -343,11 +380,110 @@ export default function StoryOrganizer() {
         transition-transform duration-300 ease-in-out
         ${headerVisible ? "translate-y-0" : "-translate-y-full"}
       `}>
-        <div className="flex justify-between items-center p-2 w-full md:max-w-4xl sm-w-full mx-auto">
-          <h1 className="text-white cursor-pointer md:text-2xl sm:text-lg" onClick={() => {setCurrentBookId(null); setSelectedCharacter(null); }}>📖STORY ORGANIZER</h1>
+        <div className="flex justify-between place-items-center py-2 px-1 md:py-2 md:px-5 w-full sm:w-full mx-auto">
+          <h1 
+            className="text-white cursor-pointer hidden md:flex md:text-2xl sm:text-lg" 
+            onClick={() => {setCurrentBookId(null); setSelectedCharacter(null); }}
+            >📖STORY ORGANIZER
+          </h1>
+
+          <p className="md:hidden flex items-center justify-center text-2xl">📖</p>
 
           <div className="flex gap-2">
             
+            {/* SEARCH INPUT FIELD... IN PROGRESS */}
+            <div className="hidden md:flex text-white bg-gray-950">   
+                <label className="block text-sm font-medium text-heading sr-only ">Search</label>
+                <div className="relative">
+                    <div className="absolute inset-y-0 start-0 flex items-center ps-3 pointer-events-none">
+                        <svg 
+                          className="w-4 h-4 text-gray-200"
+                          fill="none" 
+                          viewBox="0 0 24 24"
+                          strokeWidth={2}
+                          stroke="currentColor">
+                            <path 
+                            stroke="currentColor" 
+                            d="m21 21-4.35-4.35M10.5 18a7.5 7.5 0 1 1 0-15 7.5 7.5 0 0 1 0 15Z"
+                            />
+                        </svg>
+                    </div>
+                    <input 
+                    className="w-full px-0 mt-1 py-1 ps-9 border-b 
+                      outline-none text-heading text-sm shadow-xs 
+                      focus:border-gray-200
+                      placeholder:text-body" 
+                      placeholder="Search" 
+                      required />
+                </div>
+            </div>
+
+            {/* MOBILE ICON BUTTON */}
+            <button
+              onClick={() => setOpenSearch(true)}
+              className="
+                md:hidden
+                flex items-center justify-center
+                w-10 h-9 group
+                border rounded
+                text-white bg-gray-950 
+                hover:bg-gray-200
+                transition cursor-pointer
+              "
+            >
+              <svg 
+                  className="w-4 h-4 text-gray-200 group-hover:text-gray-950"
+                  fill="none" 
+                  viewBox="0 0 24 24"
+                  strokeWidth={3}
+                  stroke="currentColor">
+                    <path 
+                    stroke="currentColor"
+                    d="m21 21-4.35-4.35M10.5 18a7.5 7.5 0 1 1 0-15 7.5 7.5 0 0 1 0 15Z"
+                    />
+                </svg>
+            </button>
+
+            {/* MOBILE OVERLAY SEARCH */}
+            {openSearch && (
+              <div className="fixed top-0 left-0 w-full h-13 z-[60] bg-gray-950 px-4 flex items-center gap-3">
+                <svg 
+                  className="w-4 h-4 text-gray-200"
+                  fill="none" 
+                  viewBox="0 0 24 24"
+                  strokeWidth={2}
+                  stroke="currentColor">
+                    <path 
+                    stroke="currentColor" 
+                    d="m21 21-4.35-4.35M10.5 18a7.5 7.5 0 1 1 0-15 7.5 7.5 0 0 1 0 15Z"
+                    />
+                </svg>
+
+                <input
+                  autoFocus
+                  type="text"
+                  placeholder="Search"
+                  required
+                  className="
+                    flex-1 bg-transparent
+                    border-0 border-b border-gray-600
+                    px-0 py-1
+                    text-sm text-gray-100
+                    placeholder-gray-500
+                    focus:outline-none focus:ring-0
+                    focus:border-indigo-400
+                  "
+                />
+
+                <button
+                  onClick={() => setOpenSearch(false)}
+                  className="text-gray-400 hover:text-gray-200 transition cursor-pointer"
+                >
+                  ✕
+                </button>
+              </div>
+            )}
+
             <select value={theme} onChange={e => setTheme(e.target.value as any)} className="cursor-pointer border font-bold rounded px-2 py-1 text-white bg-gray-950 hover:bg-gray-200 hover:text-gray-950 transition">
                 <option value="default">Default</option>
                 <option value="fantasy">Fantasy</option>
@@ -407,6 +543,7 @@ export default function StoryOrganizer() {
                   onKeyDown={(e) => {
                       if (e.key === "Enter") addBook();
                     }}
+                  required
                   />
 
                   <button 
@@ -439,7 +576,7 @@ export default function StoryOrganizer() {
                   </div>
                 )}
                 
-                <div className="grid grid-cols-2 px-6 sm:grid-cols-2 md:grid-cols-3 gap-4 pb-5 place-items-center">
+                <div className="grid grid-cols-2 px-15 sm:grid-cols-2 md:grid-cols-3 gap-4 pb-5 place-items-center">
                     {books.map(book => (
                     <div
                       key={book.id} 
@@ -854,7 +991,7 @@ export default function StoryOrganizer() {
                                 </span>
                             ) : (
                               <div className="flex flex-col items-center justify-center text-body pt-5 pb-6">
-                                  <svg className="w-8 h-8 mb-4" aria-hidden="true" xmlns="http://www.w3.org/2000/svg" width="24" height="24" fill="none" viewBox="0 0 24 24"><path stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 17h3a3 3 0 0 0 0-6h-.025a5.56 5.56 0 0 0 .025-.5A5.5 5.5 0 0 0 7.207 9.021C7.137 9.017 7.071 9 7 9a4 4 0 1 0 0 8h2.167M12 19v-9m0 0-2 2m2-2 2 2"/></svg>
+                                  <svg className="w-8 h-8 mb-4" aria-hidden="true" xmlns="http://www.w3.org/2000/svg" width="24" height="24" fill="none" viewBox="0 0 24 24"><path stroke="currentColor" d="M15 17h3a3 3 0 0 0 0-6h-.025a5.56 5.56 0 0 0 .025-.5A5.5 5.5 0 0 0 7.207 9.021C7.137 9.017 7.071 9 7 9a4 4 0 1 0 0 8h2.167M12 19v-9m0 0-2 2m2-2 2 2"/></svg>
                                   <p className="mb-2 text-sm"><span className="font-semibold">Click to upload</span></p>
                                   <p className="text-xs">Exported file only, Json file.</p>
                               </div>
