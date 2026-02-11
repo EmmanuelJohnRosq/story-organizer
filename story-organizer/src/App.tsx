@@ -1,4 +1,6 @@
 import { useState, useEffect, useCallback, useRef } from "react";
+import { db, type Book, type Character, type EditableCharacter } from "./db";
+
 import { useDropzone } from "react-dropzone";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { faFileImport } from "@fortawesome/free-solid-svg-icons";
@@ -6,55 +8,14 @@ import { faTrashCan } from "@fortawesome/free-solid-svg-icons";
 import { faCheck } from "@fortawesome/free-solid-svg-icons";
 import { faArrowLeftLong } from "@fortawesome/free-solid-svg-icons";
 
-
-type Character = {
-  id: number;
-  name: string; //char name
-  role: string; //char role in the book
-  notes: string; //additional notes
-  abilities: string[]; //abilities/skills of the char if ever any
-  arcStage: string; // current volume/progress of the book
-  relationships: { name: string; type: string }[]; // Char connnections... family, friends, enemies, etc.
-  // chapterAppearances: string[]; //
-  // charComments: string[]; // comments or notes that are for the future or for just reference.
-  // imageId: number;
-};
-
-type CharImages = {
-  id: number;
-  imageBlob: string;
-};
-
-type EditableCharacter = Character & {
-  abilitiesText: string;
-};
-
-type Book = {
-  id: number;
-  title: string;
-  // bookComment: string[];
-  characters: Character[];
-  charImages: CharImages[];
-};
-
 export default function StoryOrganizer() {
- 
-  const [books, setBooks] = useState<Book[]>(() => {
-    const saved = localStorage.getItem("books");
-    return saved ? JSON.parse(saved) : [];
-  });
 
-
-  const [images, setImages] = useState<CharImages[]>(() => {
-    const savedImages = '[{"id":1770270755723, "imageBlob":"/textures/char_images/default-male_char.jpg"} , {"id":1770359633524, "imageBlob":"/textures/char_images/default-male_char.jpg"} ]';
-    return savedImages ? JSON.parse(savedImages) : [];
-  });
-
+  const [books, setBooks] = useState<Book[]>([]);
 
   // Constant Variables
-  const [currentBookId, setCurrentBookId] = useState<number | null>(null);
+  const [currentBookId, setCurrentBookId] = useState<string | null>(null);
   const [showAddCharacter, setShowAddCharacter] = useState(false);
-  const [draggingId, setDraggingId] = useState<number | null>(null);
+  const [draggingId, setDraggingId] = useState<string | null>(null);
 
   // CHARACTER DATA
   const [selectedCharacter, setSelectedCharacter] = useState<number | null>(null);
@@ -96,11 +57,20 @@ export default function StoryOrganizer() {
   const [notes, setNotes] = useState("");
   const [abilities, setAbilities] = useState("");
   const [arcStage, setArcStage] = useState("");
-  const [imageBlob, setimageBlob] = useState("");
 
   const [theme, setTheme] = useState<'default'|'fantasy'|'scifi'|'horror'|'romance'|'xianxia'>('default');
 
   const currentBook = books.find(book => book.id === currentBookId);
+
+  // UseEFFECT FUNCTIONS
+  useEffect(() => {
+    const loadBooks = async () => {
+      const allBooks = await db.books.toArray();
+      setBooks(allBooks);
+    };
+
+    loadBooks();
+  }, []);
 
   // EXPORT DATA/SAVE TO Json FILE
   const exportData = () => {
@@ -171,13 +141,25 @@ export default function StoryOrganizer() {
     setIsDraggingBook(true);
 
     const bookId = e.dataTransfer.getData("bookId");
-    setDraggingId(+bookId);
+    setDraggingId(bookId);
   };
 
   const handleDragOver = (e: React.DragEvent<HTMLDivElement>) => {
     e.preventDefault(); // Prevent default to allow drop
     setIsDragOver(true);
   };
+
+  async function deleteBook(id: string) {
+    if(!id) return;
+    
+    await db.books.delete(id);
+    console.log(db.books);
+
+    setBooks(prev => prev.filter(book => book.id !== id));
+    
+    setIsDragOver(false);
+    setIsDraggingBook(false);
+  }
 
   const handleDrop = (e: React.DragEvent<HTMLDivElement>) => {
     e.preventDefault(); 
@@ -192,46 +174,44 @@ export default function StoryOrganizer() {
       setIsDraggingBook(false)
       return;
     }
- 
-    setBooks(prevBooks =>
-      prevBooks.filter(book => book.id !== +bookId)
-    );
-    setIsDragOver(false);
-    setIsDraggingBook(false)
+
+    deleteBook(bookId);
   }
 
   const handleDragLeave = () => {
     setIsDragOver(false);
   };
 
-  useEffect(() => {
-    localStorage.setItem("books", JSON.stringify(books));
-  }, [books]);
-
-  // FEATURE FUNCTIONS
-
-  // create new book
-  function addBook() {
+  // CREATE NEW BOOK/ ASYNC WITH DEXIEDB
+  async function addBook() {
     if (!bookTitle) return;
-    const newBook: Book = {
-      id: Date.now(),
+
+    const newBook = {
+      id: crypto.randomUUID(),
       title: bookTitle,
       characters: [],
-      charImages: [],
     };
-    setBooks([...books, newBook]);
+
+    // Save to IndexedDB
+    const id = await db.books.add(newBook);
+
+    // Update React state
+    setBooks(prev => [...prev, { ...newBook, id }]);
+
+    // UI stuff (keep these)
     setBookTitle("");
     setBookAdded(true);
     setTimeout(() => setBookAdded(false), 2000);
   }
+
   // select book element
-  function selectBook(id: number) {
+  function selectBook(id: string) {
     setCurrentBookId(id);
     setShowAddCharacter(false);
   }
 
-  // create new character block
-  function addCharacter() {
+  // create new character block Dexie
+  async function addCharacter() {
     if (!name || currentBookId === null) return;
 
     const newCharacter: Character = {
@@ -244,7 +224,16 @@ export default function StoryOrganizer() {
       relationships: [],
     };
 
-    setBooks(books.map(book => book.id === currentBookId ? {...book, characters: [...book.characters, newCharacter]} : book));
+    const book = books.find(b => b.id === currentBookId);
+    if (!book) return;
+
+    const updatedCharacter = {
+      ...book, characters: [...book.characters, newCharacter]
+    };
+
+    await db.books.put(updatedCharacter)
+
+    setBooks(prev => prev.map(b => b.id === currentBookId ? updatedCharacter : b));
 
     setName("");
     setRole("");
@@ -253,21 +242,6 @@ export default function StoryOrganizer() {
     setArcStage("");
     setShowAddCharacter(false);
   }
-
-  // CREATE A CHARACTER IMAGE BASED ON THE APPEARANCE INPUTTED
-  function addCharImage() {
-    if (selectedCharacter === null) return;
-
-    const newCharImage: CharImages = {
-      id: selectedCharacter,
-      imageBlob,
-    };
-
-    setImages(images.map(image => image));
-  }
-  
-  console.log(images.map(image => image));
-  console.log(books.map(book => book));
 
   // Show Edit Modal
   function showModal(state: boolean) {
@@ -283,16 +257,24 @@ export default function StoryOrganizer() {
   } 
 
   // delete character block
-  function deleteCharacter(characterId: number) {
+  async function deleteCharacter(characterId: number) {
     if (currentBookId === null) return;
 
     const confirmed = window.confirm("Remove this character? No takebacks.");
 
     if (!confirmed) return;
-    
-    setBooks(
-        books.map(book => book.id === currentBookId ? {...book, characters: book.characters.filter(c => c.id !== characterId)} : book)
-    );
+
+    const book = books.find(book => book.id === currentBookId);
+    if (!book) return;
+
+    const updatedBook = {
+      ...book, characters: book.characters.filter(c => c.id !== characterId)
+    };
+
+    await db.books.put(updatedBook);
+
+    setBooks(prev => prev.map(b => b.id === currentBookId ? updatedBook : b));
+
     setSelectedCharacter(null);
   }
 
@@ -304,7 +286,7 @@ export default function StoryOrganizer() {
     setSelectedCharacter(character.id);
   }
 
-  // update/edit Char details
+  // update/edit Char details ? CHANGE THIS TO INSTANT CHANGE LIKE THE TITLE
   function updateCharacter() {
     if (!editingCharacter || currentBookId === null || !editingCharacter.name.trim()) return;
 
@@ -585,7 +567,7 @@ export default function StoryOrganizer() {
                       data-id={book.id}
                       data-title={book.title}
                       onDragEnd={() => { setDraggingId(null); setIsDraggingBook(false);}}
-                      onClick={() => selectBook(book.id)}
+                      onClick={() => selectBook(book.id!)}
                       className={`
                         relative group cursor-pointer
                         w-55 h-70 rounded-tl-xl rounded-bl-xl
