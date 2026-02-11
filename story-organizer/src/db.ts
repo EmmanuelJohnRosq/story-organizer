@@ -14,6 +14,7 @@ export type Book = {
   id: string; // make optional for auto-increment
   title: string;
   characters: Character[];
+  createdAt: number;
 };
 
 export type Images = {

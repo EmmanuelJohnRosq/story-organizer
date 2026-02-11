@@ -7,6 +7,8 @@ import { faFileImport } from "@fortawesome/free-solid-svg-icons";
 import { faTrashCan } from "@fortawesome/free-solid-svg-icons";
 import { faCheck } from "@fortawesome/free-solid-svg-icons";
 import { faArrowLeftLong } from "@fortawesome/free-solid-svg-icons";
+import { faSpinner } from "@fortawesome/free-solid-svg-icons";
+
 
 export default function StoryOrganizer() {
 
@@ -20,6 +22,7 @@ export default function StoryOrganizer() {
   // CHARACTER DATA
   const [selectedCharacter, setSelectedCharacter] = useState<number | null>(null);
   const [editingCharacter, setEditingCharacter] = useState<EditableCharacter | null>(null);
+  const [charEditing, setcharEditing] = useState(false);
 
   // EDITING OF BOOK TITLE
   const [titleDraft, setTitleDraft] = useState("");
@@ -66,11 +69,32 @@ export default function StoryOrganizer() {
   useEffect(() => {
     const loadBooks = async () => {
       const allBooks = await db.books.toArray();
+      allBooks.sort((a, b) => a.createdAt - b.createdAt);
       setBooks(allBooks);
     };
 
     loadBooks();
   }, []);
+
+  function normalizeWhitespace(text: string) {
+    return text
+      .trim()                // remove start/end spaces
+      .replace(/\s+/g, " "); // collapse multiple spaces into one
+  }
+
+  function sanitizeCharacter(char: EditableCharacter): Character {
+  return {
+    ...char,
+    name: normalizeWhitespace(char.name),
+    role: normalizeWhitespace(char.role),
+    notes: char.notes.trim().replace(/[^\S\r\n]+/g, " "),
+    arcStage: normalizeWhitespace(char.arcStage),
+    abilities: char.abilitiesText
+      .split(",")
+      .map(a => normalizeWhitespace(a),)
+      .filter(a => a.length > 0) // removes empty ones
+  };
+}
 
   // EXPORT DATA/SAVE TO Json FILE
   const exportData = () => {
@@ -188,8 +212,9 @@ export default function StoryOrganizer() {
 
     const newBook = {
       id: crypto.randomUUID(),
-      title: bookTitle,
+      title: normalizeWhitespace(bookTitle),
       characters: [],
+      createdAt: Date.now(),
     };
 
     // Save to IndexedDB
@@ -216,11 +241,11 @@ export default function StoryOrganizer() {
 
     const newCharacter: Character = {
       id: Date.now(),
-      name,
-      role,
-      notes,
-      abilities: abilities.split(",").map(a => a.trim()),
-      arcStage,
+      name: normalizeWhitespace(name),
+      role: normalizeWhitespace(role),
+      notes: notes.trim().replace(/[^\S\r\n]+/g, " "),
+      abilities: abilities.split(",").map(a => normalizeWhitespace(a)),
+      arcStage: normalizeWhitespace(arcStage),
       relationships: [],
     };
 
@@ -278,28 +303,58 @@ export default function StoryOrganizer() {
     setSelectedCharacter(null);
   }
 
+
+  const [originalCharacter, setOriginalCharacter] = useState<Character | null>(null);
+  const [onChange, setonChange ] = useState(false);
+
   // open edit Char Modal
   function openEditCharacter(character: Character) {
-    setEditingCharacter({ ...character, abilitiesText: character.abilities.join(", ")
-  } as Character & { abilitiesText : string });
-    // showModal(true);
+
+    const selectedCharacter = { ...character, abilitiesText: character.abilities.join(", ")
+    } as Character & { abilitiesText : string };
+    
+    setEditingCharacter({ ...selectedCharacter });
+
+    setOriginalCharacter({ ...selectedCharacter });
+
     setSelectedCharacter(character.id);
   }
 
   // update/edit Char details ? CHANGE THIS TO INSTANT CHANGE LIKE THE TITLE
-  function updateCharacter() {
-    if (!editingCharacter || currentBookId === null || !editingCharacter.name.trim()) return;
+  async function updateCharacter() {
+    if (!editingCharacter || currentBookId === null || !editingCharacter.name.trim() || !originalCharacter) return;
 
-    const updatedCharacter: Character = { ...editingCharacter, 
-      abilities: editingCharacter.abilitiesText.split(", ").map(a=> a.trim()).filter(Boolean)
+    // if (JSON.stringify(editingCharacter) === JSON.stringify(originalCharacter)) {
+    //   return;
+    // }
+
+    if (!onChange) return;
+
+    setcharEditing(false)
+
+    const cleanedCharacter = sanitizeCharacter(editingCharacter);
+
+    const updatedCharacter: Character = { ...cleanedCharacter, 
+      abilities: cleanedCharacter.abilities
     };
 
-    setBooks(
-      books.map(book => book.id === currentBookId ? {
-        ...book, characters: book.characters.map(c => c.id === updatedCharacter.id ? updatedCharacter : c) 
-      } : book )
-    );
+    const book = books.find(b => b.id === currentBookId);
+    if (!book) return;
+
+    const updatedBook = {
+    ...book,
+    characters: book.characters.map(c =>
+      c.id === cleanedCharacter.id ? updatedCharacter : c
+    )
+  };
+
+    await db.books.put(updatedBook);
+
+    setBooks(prev => prev.map(b => b.id === currentBookId ? updatedBook : b));
+
+    setOriginalCharacter({...cleanedCharacter});
   }
+
 
   // BOOK TITLE CHANGES - CHANGEABLE INPUT DATA
   useEffect(() => {
@@ -308,18 +363,18 @@ export default function StoryOrganizer() {
     }
   }, [currentBook]);
 
-  function saveBookTitle() {
+  async function saveBookTitle() {
     if (!titleDraft.trim() || titleDraft.trim() === currentBook?.title) {
       setTitleDraft(currentBook!.title); //Revert to previous title'
       setSavedTitle(false);
       return;
     }
 
-    setBooks(
-      books.map(book => book.id === currentBookId ? {
-        ...book, title: titleDraft.trim() 
-      } : book )
-    );
+    const titleUpdate = { title: normalizeWhitespace(titleDraft)};
+
+    await db.books.update(currentBookId, titleUpdate);
+
+    setBooks(prev => prev.map(book => book.id === currentBookId ? {...book, title: titleDraft.trim()} : book));
 
     setSavedTitle(true);
     setTimeout(() => setSavedTitle(false), 2000);
@@ -729,16 +784,24 @@ export default function StoryOrganizer() {
                       > <FontAwesomeIcon className="cursor-pointer text-gray-950 hover:text-red-500 transition hover:scale-105" icon={faTrashCan} size="xl"/>
                     </button>
 
-                    <button
+                    {/* <button
                       onClick={updateCharacter}
                     > <FontAwesomeIcon className="cursor-pointer text-gray-950 hover:text-emerald-500 transition hover:scale-105" icon={faCheck} size="xl" />
-                    </button>
+                    </button> */}
+
+                      {charEditing && <FontAwesomeIcon icon={faSpinner} size="xl" spin />}
+                      {!charEditing && <FontAwesomeIcon className="text-emerald-500" icon={faCheck} size="xl" />}
                   </div>
 
                 </div>
 
                 {/* CHARACTER CARD AND IMAGE FORMAT */}
-                <div className="rounded-2xl shadow-lg space-y-2">
+                <div 
+                className="rounded-2xl shadow-lg space-y-2 bg-green-400"
+                onFocus={() => setcharEditing(true)}
+                onChange={() => setonChange(true)}
+                onBlur={updateCharacter}
+                >
 
                   {/* IMAGE + BASIC INFO */}
                   <div className="grid grid-cols-1 sm:grid-cols-[160px_1fr] rounded-lg bg-sky-100 border-b border-gray-300">
@@ -777,6 +840,7 @@ export default function StoryOrganizer() {
                         <textarea 
                         placeholder="Character Appearance/Personality"
                         rows={3} 
+                        readOnly
                         value={"He is a little boy with an ugliness inside and out. He is super ugly that an image of him will shatter any eyes and mirrors there is. Be careful of this boy..."}
                         className="w-full resize-none pl-3 rounded outline-width-1" />
                       </div>
@@ -818,6 +882,7 @@ export default function StoryOrganizer() {
                       </div>
                       <input 
                       placeholder="Chapter Appearances"
+                      readOnly
                       className="w-full outline-none focus:border-b pl-3"
                       value={"2, 3"} />
                     </div>   
