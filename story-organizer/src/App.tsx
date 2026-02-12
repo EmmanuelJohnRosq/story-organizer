@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback, useRef } from "react";
-import { db, type Book, type Character, type EditableCharacter } from "./db";
+import { db, type Book, type Character, type EditableCharacter, type Images } from "./db";
 
 import { useDropzone } from "react-dropzone";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
@@ -13,6 +13,7 @@ import { faSpinner } from "@fortawesome/free-solid-svg-icons";
 export default function StoryOrganizer() {
 
   const [books, setBooks] = useState<Book[]>([]);
+  const [images, setImages] = useState<Images[]>([]);
 
   // Constant Variables
   const [currentBookId, setCurrentBookId] = useState<string | null>(null);
@@ -23,6 +24,8 @@ export default function StoryOrganizer() {
   const [selectedCharacter, setSelectedCharacter] = useState<number | null>(null);
   const [editingCharacter, setEditingCharacter] = useState<EditableCharacter | null>(null);
   const [charEditing, setcharEditing] = useState(false);
+  const [originalCharacter, setOriginalCharacter] = useState<Character | null>(null);
+  const [onChange, setonChange ] = useState(false);
 
   // EDITING OF BOOK TITLE
   const [titleDraft, setTitleDraft] = useState("");
@@ -103,9 +106,10 @@ export default function StoryOrganizer() {
 
     const data = {
       app: "story-organizer",
-      version: "1.0",
+      version: "2.0",
       exportedAt: new Date().toISOString(),
       books,
+      images,
     }; 
 
     const blob = new Blob(
@@ -124,19 +128,21 @@ export default function StoryOrganizer() {
   };
 
   // IMPORT DATA/SAVE File
-  const importData = (file: File) => {
-    const reader = new FileReader();
+  const importData = async (file: File) => {
+    try {
+    const text = await file.text();
+    const parsed = JSON.parse(text);
 
-    reader.onload = () => {
-      try {
-        const parsed = JSON.parse(reader.result as string);
-        setBooks(parsed.books);
-      } catch {
-        alert("Invalid file format");
-      }
-    };
+    await db.books.clear();
+    await db.books.bulkAdd(parsed.books);
 
-    reader.readAsText(file);
+    setBooks(parsed.books);
+
+    alert("Import successful!");
+  } catch {
+    alert("Invalid file format");
+  };
+
     showModalFile(false);
     setCurrentBookId(null);
     setSelectedCharacter(null);
@@ -177,7 +183,6 @@ export default function StoryOrganizer() {
     if(!id) return;
     
     await db.books.delete(id);
-    console.log(db.books);
 
     setBooks(prev => prev.filter(book => book.id !== id));
     
@@ -303,36 +308,33 @@ export default function StoryOrganizer() {
     setSelectedCharacter(null);
   }
 
-
-  const [originalCharacter, setOriginalCharacter] = useState<Character | null>(null);
-  const [onChange, setonChange ] = useState(false);
-
   // open edit Char Modal
-  function openEditCharacter(character: Character) {
+  function openEditCharacter(characters: Character) {
 
-    const selectedCharacter = { ...character, abilitiesText: character.abilities.join(", ")
+    const selectedCharacter = { ...characters, abilitiesText: characters.abilities.join(", ")
     } as Character & { abilitiesText : string };
     
     setEditingCharacter({ ...selectedCharacter });
 
     setOriginalCharacter({ ...selectedCharacter });
 
-    setSelectedCharacter(character.id);
+    setSelectedCharacter(characters.id);
   }
 
   // update/edit Char details ? CHANGE THIS TO INSTANT CHANGE LIKE THE TITLE
   async function updateCharacter() {
     if (!editingCharacter || currentBookId === null || !editingCharacter.name.trim() || !originalCharacter) return;
 
-    // if (JSON.stringify(editingCharacter) === JSON.stringify(originalCharacter)) {
-    //   return;
-    // }
-
     if (!onChange) return;
 
     setcharEditing(false)
 
     const cleanedCharacter = sanitizeCharacter(editingCharacter);
+
+    const editableVersion: EditableCharacter = {
+    ...cleanedCharacter,
+    abilitiesText: cleanedCharacter.abilities.join(", ")
+  };
 
     const updatedCharacter: Character = { ...cleanedCharacter, 
       abilities: cleanedCharacter.abilities
@@ -351,8 +353,10 @@ export default function StoryOrganizer() {
     await db.books.put(updatedBook);
 
     setBooks(prev => prev.map(b => b.id === currentBookId ? updatedBook : b));
-
+    setonChange(false);
+    
     setOriginalCharacter({...cleanedCharacter});
+    setEditingCharacter({ ...editableVersion });
   }
 
 
@@ -374,9 +378,10 @@ export default function StoryOrganizer() {
 
     await db.books.update(currentBookId, titleUpdate);
 
-    setBooks(prev => prev.map(book => book.id === currentBookId ? {...book, title: titleDraft.trim()} : book));
+    setBooks(prev => prev.map(book => book.id === currentBookId ? {...book, title: titleDraft.trim().replace(/\s+/g, " ")} : book));
 
     setSavedTitle(true);
+    // setTitleDraft(normalizeWhitespace(titleDraft));
     setTimeout(() => setSavedTitle(false), 2000);
   }
 
@@ -774,7 +779,7 @@ export default function StoryOrganizer() {
                 <div className="flex justify-between pt-4 pb-4">
 
                   <button 
-                    onClick={() => setSelectedCharacter(null)} 
+                    onClick={() => {setSelectedCharacter(null), setcharEditing(true)}} 
                     > <FontAwesomeIcon className="cursor-pointer text-gray-950 hover:text-blue-500 transition hover:scale-105" icon={faArrowLeftLong} size="xl"/>
                   </button>
 
