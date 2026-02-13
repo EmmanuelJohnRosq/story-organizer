@@ -371,6 +371,7 @@ export default function StoryOrganizer() {
     if (!titleDraft.trim() || titleDraft.trim() === currentBook?.title) {
       setTitleDraft(currentBook!.title); //Revert to previous title'
       setSavedTitle(false);
+      settitleEditing(false);
       return;
     }
 
@@ -381,8 +382,9 @@ export default function StoryOrganizer() {
     setBooks(prev => prev.map(book => book.id === currentBookId ? {...book, title: titleDraft.trim().replace(/\s+/g, " ")} : book));
 
     setSavedTitle(true);
+    settitleEditing(true);
     // setTitleDraft(normalizeWhitespace(titleDraft));
-    setTimeout(() => setSavedTitle(false), 2000);
+    setTimeout(() => {setSavedTitle(false), settitleEditing(false)}, 2000);
   }
 
   const [char_image] = useState("/textures/char_images/default_char.jpg")
@@ -408,6 +410,7 @@ export default function StoryOrganizer() {
   }, []);
 
   const [openSearch, setOpenSearch] = useState(false);
+  const [titleEditing, settitleEditing] = useState(false);
 
 
   // HTML/TAILWIND CSS | INDEX
@@ -573,7 +576,7 @@ export default function StoryOrganizer() {
             {/* BOOK LIST / HOMEPAGE */}
             {currentBookId === null && (
               // BOOK LIST PAGE
-              <div className="">
+              <div className="p-3 my-3 rounded-2xl shadow-lg">
                 
                 <div className="py-4 flex gap-2">
 
@@ -590,9 +593,9 @@ export default function StoryOrganizer() {
 
                   <button 
                     onClick={addBook} 
-                    className="bg-gray-950 border border-black text-white px-5 py-2 whitespace-nowrap rounded-xl cursor-pointer hover:bg-gray-800 transition"
+                    className="bg-gray-950 border border-black text-white text-xs md:text-base px-5 py-2 whitespace-nowrap rounded-xl cursor-pointer hover:bg-gray-800 transition"
                   >
-                  Add Book
+                    Add Book
                   </button>
 
                     {/* Conditional "Successfully Added" message */}
@@ -608,17 +611,17 @@ export default function StoryOrganizer() {
 
                 {/* SHOW BOOK LIST */}
                 {/* BOOK CARDS */}
-                <h2 className="text-2xl font-semibold mb-2 text-gray-950">My Books</h2>
+                <h2 className="text-2xl font-semibold pb-2 text-gray-950">My Books</h2>
 
-                {books.length === 0 && (
-                  <div className="flex w-full p-28">
+                {!books.length && (
+                  <div className="w-full flex justify-center items-center py-20 px-10"> 
                     <h1 className="text-3xl font-bold text-gray-400 text-center">
                       PLEASE ADD BOOKS HERE. INSTEAD OF JUST LETTING THEM GATHER DUST IN YOUR INSANE MIND...
                     </h1>
                   </div>
                 )}
                 
-                <div className="grid grid-cols-2 px-15 sm:grid-cols-2 md:grid-cols-3 gap-4 pb-5 place-items-center">
+                <div className="grid grid-cols-2 px-15 sm:grid-cols-2 md:grid-cols-3 gap-1 md:gap-4 pb-1 place-items-center">
                     {books.map(book => (
                     <div
                       key={book.id} 
@@ -670,8 +673,8 @@ export default function StoryOrganizer() {
 
             {/* DETAILS / CHARACTERS */}
             {currentBookId !== null && currentBook && selectedCharacter === null && (
-                <div>
-                  <div className="pt-3 pb-3">
+                <div className="px-3 pt-3 my-3 rounded-2xl shadow-lg">
+                  <div className="">
                     <button 
                       onClick={() => setCurrentBookId(null)} 
                     > <FontAwesomeIcon className="cursor-pointer text-gray-950 hover:text-blue-500 transition hover:scale-105" icon={faArrowLeftLong} size="xl"/>
@@ -700,10 +703,10 @@ export default function StoryOrganizer() {
                           if (e.key === "Enter") saveBookTitle();
                         }}
                       />
-
+                      
                     </div>
 
-                    <button onClick={() => setShowAddCharacter(!showAddCharacter)} className="bg-black border border-black text-white px-5 py-2 rounded-xl cursor-pointer hover:bg-gray-800 transition">
+                    <button onClick={() => setShowAddCharacter(!showAddCharacter)} className="bg-black border border-black text-white text-xs md:text-base px-5 py-2 rounded-xl cursor-pointer hover:bg-gray-800 transition">
                         {showAddCharacter ? 'Cancel' : 'Add Character'}
                     </button>
                   </div>
@@ -721,12 +724,12 @@ export default function StoryOrganizer() {
                   )}
 
                   {currentBook.characters.length === 0 && (
-                  <div className="flex w-full p-28">
-                    <h1 className="text-3xl font-bold text-gray-400 text-center">
-                      PLEASE ADD SOME CHARACTERS. IT GETS LONELY SOMETIMES HERE...
-                    </h1>
+                  <div className="w-full flex justify-center items-center py-20"> 
+                    <h1 className="text-3xl font-bold text-gray-400 text-center"> 
+                      PLEASE ADD SOME CHARACTERS. IT GETS LONELY SOMETIMES HERE... 
+                    </h1> 
                   </div>
-                )}
+                  )}
 
                   {/* Display Character Card Block */}
                   <div className="grid gap-4 pb-4 sm:grid-cols-2 md:grid-cols-4 items-stretch place-items-center">
@@ -773,13 +776,13 @@ export default function StoryOrganizer() {
 
             {/* CHARACTER DATA PAGE / EDIT CHAR DETAILS */}
             {selectedCharacter !== null && editingCharacter && (
-              <div>
+              <div className="rounded-2xl shadow-lg pt-3 my-3">
 
                 {/* Buttons */}
-                <div className="flex justify-between pt-4 pb-4">
+                <div className="flex justify-between pb-3 px-3">
 
                   <button 
-                    onClick={() => {setSelectedCharacter(null), setcharEditing(true)}} 
+                    onClick={() => {setSelectedCharacter(null), setcharEditing(false)}} 
                     > <FontAwesomeIcon className="cursor-pointer text-gray-950 hover:text-blue-500 transition hover:scale-105" icon={faArrowLeftLong} size="xl"/>
                   </button>
 
@@ -801,17 +804,23 @@ export default function StoryOrganizer() {
                 </div>
 
                 {/* CHARACTER CARD AND IMAGE FORMAT */}
-                <div 
-                className="rounded-2xl shadow-lg space-y-2 bg-green-400"
+                <div  
+                className="space-y-2"
                 onFocus={() => setcharEditing(true)}
                 onChange={() => setonChange(true)}
                 onBlur={updateCharacter}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter") {
+                    e.preventDefault();
+                    (e.target as HTMLElement).blur();
+                  }
+                }}
                 >
 
                   {/* IMAGE + BASIC INFO */}
-                  <div className="grid grid-cols-1 sm:grid-cols-[160px_1fr] rounded-lg bg-sky-100 border-b border-gray-300">
+                  <div className="grid grid-cols-1 sm:grid-cols-[160px_1fr] rounded-t-lg bg-sky-50">
                     
-                    <div className="w-full h-50 sm:h-50 rounded-xl overflow-hidden bg-sky-100 p-1">
+                    <div className="w-full h-50 sm:h-50 rounded-t-lg overflow-hidden bg-sky-50 p-1">
                       <img
                         src={char_image}
                         alt="Character Image"
