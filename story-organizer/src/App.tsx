@@ -103,17 +103,55 @@ export default function StoryOrganizer() {
   };
 }
 
+// Conver blob to base64 for image
+const blobToBase64 = (blob: Blob): Promise<string> => {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onloadend = () => resolve(reader.result as string);
+    reader.onerror = reject;
+    reader.readAsDataURL(blob);
+  });
+};
+
+
+// Convert base64 to blob
+const base64ToBlob = (base64: string) => {
+  const arr = base64.split(",");
+  const mime = arr[0].match(/:(.*?);/)![1];
+  const bstr = atob(arr[1]);
+  let n = bstr.length;
+  const u8arr = new Uint8Array(n);
+
+  while (n--) {
+    u8arr[n] = bstr.charCodeAt(n);
+  }
+
+  return new Blob([u8arr], { type: mime });
+};
+
   // EXPORT DATA/SAVE TO Json FILE
-  const exportData = () => {
-    const name = prompt("Enter file name", "story-organizer");
-    if (!name) return;
+const exportData = async () => {
+  const name = prompt("Enter file name", "story-organizer");
+  if (!name) return;
+
+  const imageRecords = await db.images.toArray();
+
+  // Convert blobs to base64
+  const imagesWithBase64 = await Promise.all(
+    imageRecords.map(async (img) => ({
+      imageId: img.imageId,
+      charId: img.charId,
+      createdAt: img.createdAt,
+      base64: await blobToBase64(img.imageBlob),
+    }))
+  );
 
     const data = {
       app: "story-organizer",
       version: "2.0",
       exportedAt: new Date().toISOString(),
       books,
-      images,
+      images: imagesWithBase64,
     }; 
 
     const blob = new Blob(
@@ -133,24 +171,41 @@ export default function StoryOrganizer() {
 
   // IMPORT DATA/SAVE File
   const importData = async (file: File) => {
-    try {
+  try {
     const text = await file.text();
     const parsed = JSON.parse(text);
 
+    // Clear old data
     await db.books.clear();
+    await db.images.clear();
+
+    // Restore books
     await db.books.bulkAdd(parsed.books);
+
+    // Restore images (if they exist)
+    if (parsed.images && parsed.images.length > 0) {
+      const restoredImages = parsed.images.map((img: any) => ({
+        imageId: img.imageId,
+        charId: img.charId,
+        createdAt: img.createdAt,
+        imageBlob: base64ToBlob(img.base64),
+      }));
+
+      await db.images.bulkAdd(restoredImages);
+    }
 
     setBooks(parsed.books);
 
     alert("Import successful!");
-  } catch {
+  } catch (err) {
+    console.error(err);
     alert("Invalid file format");
-  };
-
-    showModalFile(false);
-    setCurrentBookId(null);
-    setSelectedCharacter(null);
   }
+
+  showModalFile(false);
+  setCurrentBookId(null);
+  setSelectedCharacter(null);
+};
 
   // Background styles for themes
   // const themeBackgrounds: Record<string, string> = {
@@ -443,70 +498,154 @@ export default function StoryOrganizer() {
     }
 
     localStorage.setItem("theme", darktheme);
-    console.log(darktheme);
   }, [darktheme]);
 
   const toggleTheme = () => {
     setDarkTheme(prev => (prev === "dark" ? "light" : "dark"));
   };
 
-  // THIS IS THE IMAGE GENERATION PART
+  // THIS IS THE IMAGE GENERATION PART - GEMINI
+  // const genAI = new GoogleGenAI({
+  //   apiKey: import.meta.env.VITE_GEMINI_API_KEY,
+  // });
 
-  const genAI = new GoogleGenAI({
-    apiKey: import.meta.env.VITE_GEMINI_API_KEY,
-  });
-
-  const [charprompt, setPrompt] = useState("");
+  const [charprompt, setcharPrompt] = useState("");
   const [imageUrl, setImageUrl] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
 
-  const generateCharacter = async () => {
-    if (!charprompt.trim()) return;
+  // const generateCharacter = async () => {
+  //   if (!charprompt.trim()) return;
 
-    // const models = await genAI.models.list();
-    // console.log(models);
+  //   setLoading(true);
+  //   setError("");
+  //   setImageUrl(null);
 
+  //   try {
+  //     const enhancedPrompt = `
+  //     close portrait shot, shoulder up,
+  //     ${charprompt},
+  //     looking at camera,
+  //     anime art style, 
+  //     solid color background, centered composition.
+  //     soft lighting
+  //     `;
+
+  //     //PROMPT: A young man, 18 years old. Black and white hair, sharp golden eyes, chiseled face. quite cold and handsome.
+
+  //     const response = await genAI.models.generateContent({
+  //       model: "gemini-2.5-flash-image",
+  //       contents: enhancedPrompt,
+  //       config: {
+  //         responseModalities: ["Text","Image"],
+  //       },
+  //     });
+
+  //     const imagePart = response.candidates?.[0]?.content?.parts?.find(
+  //       (part: any) => part.inlineData
+  //     );
+
+  //     if (imagePart?.inlineData?.data) {
+  //       const base64 = imagePart.inlineData.data;
+  //       setImageUrl(`data:image/png;base64,${base64}`);
+  //     } else {
+  //       setError("No image returned.");
+  //     }
+  //   } catch (err) {
+  //     console.error(err);
+  //     setError("Failed to generate image.");
+  //   } finally {
+  //     setLoading(false);
+  //   }
+  // };
+
+  const [imageSaved, setImageSaved] = useState<string | null>(null);
+
+  //IMAGE GENERATION - PUTER.JS
+  const generateImage = async () => {
     setLoading(true);
     setError("");
-    setImageUrl(null);
-
     try {
       const enhancedPrompt = `
-      portrait shot, shoulder up,
+      close portrait shot, shoulder up,
       ${charprompt},
       looking at camera,
-      fantasy art, 
-      solid color background, high resolution, centered composition.
-      soft lighting,
-      character concept art
+      fantasy art style, 
+      solid color background, centered composition.
+      soft lighting
       `;
 
-      const response = await genAI.models.generateContent({
-        model: "gemini-2.5-flash-image",
-        contents: enhancedPrompt,
-        config: {
-          responseModalities: ["Text","Image"],
-        },
-      });
-
-      const imagePart = response.candidates?.[0]?.content?.parts?.find(
-        (part: any) => part.inlineData
-      );
-
-      if (imagePart?.inlineData?.data) {
-        const base64 = imagePart.inlineData.data;
-        setImageUrl(`data:image/png;base64,${base64}`);
-      } else {
-        setError("No image returned.");
-      }
+      // Use the puter.ai.txt2img function to generate an image
+      const image = await puter.ai.txt2img(enhancedPrompt , {
+            model: "gpt-image-1.5",
+            quality: "low"
+          });
+      setImageUrl(image.src); // Puter returns an HTMLImageElement
+      setImageSaved(image.src);
     } catch (err) {
+      setError('Failed to generate image. Please try again.');
       console.error(err);
-      setError("Failed to generate image.");
     } finally {
       setLoading(false);
     }
   };
+
+  async function saveImage() {
+    if (!imageSaved) return;
+
+     // 1️⃣ Convert image URL to Blob
+    const response = await fetch(imageSaved);
+    const blob = await response.blob();
+
+    // 2️⃣ Save Blob to IndexedDB
+    await db.images.add({
+      imageId: crypto.randomUUID(),
+      charId: selectedCharacter!,
+      imageBlob: blob,
+      createdAt: Date.now()
+    });
+
+    const newUrl = URL.createObjectURL(blob);
+
+    setImageMap(prev => ({
+      ...prev,
+      [selectedCharacter!]: newUrl
+    }));
+
+    setShowGenImage(false);
+    setImageUrl(null);
+    setcharPrompt("");
+
+    // 3️⃣ Optional: Display preview
+    // setImageUrl(URL.createObjectURL(blob));
+    //PROMPT: A young man, 18 years old. Black and white hair, sharp golden eyes, chiseled face. quite cold and handsome.
+
+  }
+
+  const [imageMap, setImageMap] = useState<Record<string, string>>({});
+
+  useEffect(() => {
+  const loadImages = async () => {
+    if (!currentBook?.characters?.length) return;
+
+    const charIds = currentBook.characters.map(c => c.id);
+
+    const images = await db.images
+      .where("charId")
+      .anyOf(charIds)
+      .toArray();
+
+    const newMap: Record<string, string> = {};
+
+    images.forEach(img => {
+      newMap[img.charId] = URL.createObjectURL(img.imageBlob);
+    });
+
+    setImageMap(newMap);
+  };
+
+  loadImages();
+}, [currentBook]);
 
 
   // HTML/TAILWIND CSS | INDEX
@@ -676,7 +815,7 @@ export default function StoryOrganizer() {
             {/* BOOK LIST / HOMEPAGE */}
             {currentBookId === null && (
               // BOOK LIST PAGE
-              <div className="p-3 my-3 rounded-2xl shadow-lg dark:bg-gray-900">
+              <div className="p-3 my-3 rounded-2xl shadow-lg bg-gray-100 dark:bg-gray-900">
                 
                 <div className="py-4 flex gap-2">
 
@@ -774,7 +913,7 @@ export default function StoryOrganizer() {
 
             {/* DETAILS / CHARACTERS */}
             {currentBookId !== null && currentBook && selectedCharacter === null && (
-                <div className="px-3 pt-3 my-3 rounded-2xl shadow-lg dark:bg-gray-900">
+                <div className="px-3 pt-3 my-3 rounded-2xl shadow-lg bg-gray-100 dark:bg-gray-900">
                   <div className="">
                     <button 
                       onClick={() => setCurrentBookId(null)} 
@@ -856,7 +995,7 @@ export default function StoryOrganizer() {
                             <a href="#">
                                 <img 
                                 className="h-full w-full object-cover group-hover:scale-105 transition" 
-                                src={char_image}
+                                src={imageMap[char.id] || char_image}
                                 alt="Default Character Image" />
                             </a>
                           </div>
@@ -878,7 +1017,7 @@ export default function StoryOrganizer() {
 
             {/* CHARACTER DATA PAGE / EDIT CHAR DETAILS */}
             {selectedCharacter !== null && editingCharacter && (
-              <div className="rounded-2xl shadow-lg pt-3 my-3 dark:bg-gray-950">
+              <div className="rounded-2xl shadow-lg pt-3 my-3 bg-gray-100 dark:bg-gray-900">
 
                 {/* Buttons */}
                 <div className="flex justify-between pb-3 px-3">
@@ -922,11 +1061,11 @@ export default function StoryOrganizer() {
                 >
 
                   {/* IMAGE + BASIC INFO */}
-                  <div className="grid grid-cols-1 sm:grid-cols-[160px_1fr] rounded-t-lg bg-sky-50 dark:bg-gray-900">
+                  <div className="grid grid-cols-1 sm:grid-cols-[160px_1fr] rounded-t-lg bg-gray-50 dark:bg-gray-950">
                     
                     <div className="w-full h-50 sm:h-50 rounded-t-lg overflow-hidden p-1">
                       <img
-                        src={char_image}
+                        src={imageMap[selectedCharacter] || char_image}
                         alt="Character Image"
                         className="w-full h-full object-cover rounded"
                       />
@@ -1013,21 +1152,21 @@ export default function StoryOrganizer() {
             )}
 
           </div>
-
       </div>
 
             {/* GENERATE CHARACTER IMAGE BOOM */}
-            {showGenImage &&  (
+            {showGenImage && selectedCharacter && (
                 <div className="fixed inset-0 flex items-center bg-black/50 z-50 overflow-auto" 
                   onMouseDown={(e) => {
                     if (e.target === e.currentTarget) {
                       showModal(false);
+                      setImageUrl(null);
                     }
                   }}
                 >
                   <div className="w-9/10 min-w-0 md:max-w-120 mx-auto bg-white dark:bg-gray-100 max-h-screen overflow-y-auto p-6 rounded-xl shadow-lg" onMouseDown={(e) => e.stopPropagation()}>
                     
-                      <h2 className="text-2xl font-bold text-gray-800">
+                      <h2 className="text-2xl font-bold text-gray-800 pb-2">
                         Character Image Generator
                       </h2>
 
@@ -1036,13 +1175,13 @@ export default function StoryOrganizer() {
                         <input
                           type="text"
                           value={charprompt}
-                          onChange={(e) => setPrompt(e.target.value)}
+                          onChange={(e) => setcharPrompt(e.target.value)}
                           placeholder="e.g. A space pirate with a mechanical eye"
                           className="flex-1 px-4 py-3 border rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500"
                         />
 
                         <button
-                          onClick={generateCharacter}
+                          onClick={generateImage}
                           disabled={loading}
                           className="px-6 py-3 bg-indigo-600 text-white rounded-xl hover:bg-indigo-700 transition disabled:opacity-50"
                         >
@@ -1059,10 +1198,10 @@ export default function StoryOrganizer() {
 
                       {/* Image Preview */}
                       <div className="w-full flex justify-center">
-                        <div className="w-72 h-96 bg-gray-100 rounded-xl overflow-hidden shadow-inner flex items-center justify-center">
+                        <div className="w-72 h-96 bg-gray-200 rounded-xl overflow-hidden shadow-inner flex items-center justify-center">
                           {loading && (
                             <div className="animate-pulse text-gray-400">
-                              Generating image...
+                              Generating image...Please wait
                             </div>
                           )}
 
@@ -1080,6 +1219,14 @@ export default function StoryOrganizer() {
                             </div>
                           )}
                         </div>
+                      </div>
+
+                      <div className="flex justify-center pt-3">
+                        <button 
+                        className="py-2 px-6 rounded-xl bg-indigo-200 hover:bg-indigo-300 text-center cursor-pointer"
+                        onClick={saveImage}>
+                          Save
+                        </button>
                       </div>
 
                   </div>

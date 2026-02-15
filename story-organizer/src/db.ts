@@ -18,7 +18,9 @@ export type Book = {
 };
 
 export type Images = {
-    imageId: string;
+    imageId: string; //
+    charId: number;
+    createdAt: number;
     imageBlob: Blob;
 }
 
@@ -28,13 +30,14 @@ export type EditableCharacter = Character & {
 
 class StoryDB extends Dexie {
   books!: Table<Book>;
+  images!: Table<Images>;
 
   constructor() {
     super("StoryDB");
 
-    this.version(2).stores({
+    this.version(4).stores({
       books: "id, title", 
-      images: "imageId, imageBlob",
+      images: "imageId, charId, imageBlob",
       // ++id = auto increment
       // title = indexed (useful later for search)
     });
