@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback, useRef } from "react";
 import { db, type Book, type Character, type EditableCharacter, type Images } from "./db";
 
+
 import { useDropzone } from "react-dropzone";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { faFileImport } from "@fortawesome/free-solid-svg-icons";
@@ -8,6 +9,9 @@ import { faTrashCan } from "@fortawesome/free-solid-svg-icons";
 import { faCheck } from "@fortawesome/free-solid-svg-icons";
 import { faArrowLeftLong } from "@fortawesome/free-solid-svg-icons";
 import { faSpinner } from "@fortawesome/free-solid-svg-icons";
+import { faPlus } from "@fortawesome/free-solid-svg-icons";
+
+import { GoogleGenAI } from "@google/genai";
 
 
 export default function StoryOrganizer() {
@@ -33,7 +37,7 @@ export default function StoryOrganizer() {
   const [bookAdded, setBookAdded] = useState(false);
 
   // MODALS
-  const [showEditModal, setShowEditModal] = useState(false);
+  const [showGenImage, setShowGenImage] = useState(false);
   const [showFileModal, setShowFileModal] = useState(false);
 
   // IMPORT Variables
@@ -64,7 +68,7 @@ export default function StoryOrganizer() {
   const [abilities, setAbilities] = useState("");
   const [arcStage, setArcStage] = useState("");
 
-  const [theme, setTheme] = useState<'default'|'fantasy'|'scifi'|'horror'|'romance'|'xianxia'>('default');
+  // const [theme, setTheme] = useState<'default'|'fantasy'|'scifi'|'horror'|'romance'|'xianxia'>('default');
 
   const currentBook = books.find(book => book.id === currentBookId);
 
@@ -149,16 +153,16 @@ export default function StoryOrganizer() {
   }
 
   // Background styles for themes
-  const themeBackgrounds: Record<string, string> = {
-      default: 'bg-gradient-to-b from-white-100 to-white-50',
-      fantasy: 'bg-gradient-to-b from-green-200 to-yellow-50',
-      scifi: 'bg-gradient-to-b from-zinc-100 to-zinc-800',
-      horror: 'bg-gradient-to-b from-red-500 to-gray-900',
-      romance: 'bg-gradient-to-b from-pink-400 to-pink-200',
-      xianxia: 'bg-gradient-to-b from-blue-300 to-green-100',
-  };
+  // const themeBackgrounds: Record<string, string> = {
+  //     default: 'bg-gradient-to-b from-white-100 to-white-50',
+  //     fantasy: 'bg-gradient-to-b from-green-200 to-yellow-50',
+  //     scifi: 'bg-gradient-to-b from-zinc-100 to-zinc-800',
+  //     horror: 'bg-gradient-to-b from-red-500 to-gray-900',
+  //     romance: 'bg-gradient-to-b from-pink-400 to-pink-200',
+  //     xianxia: 'bg-gradient-to-b from-blue-300 to-green-100',
+  // };
 
-  const appliedTheme = themeBackgrounds[theme] || themeBackgrounds.fantasy;
+  // const appliedTheme = themeBackgrounds[theme] || themeBackgrounds.fantasy;
 
   
   // DRAG AND DROP TO DELETE BOOK CARDS
@@ -213,11 +217,24 @@ export default function StoryOrganizer() {
 
   // CREATE NEW BOOK/ ASYNC WITH DEXIEDB
   async function addBook() {
-    if (!bookTitle) return;
+    const normalizedTitle = normalizeWhitespace(bookTitle);
+
+    if (!normalizedTitle) return;
+
+    const existing = await db.books
+      .where("title")
+      .equalsIgnoreCase(normalizedTitle)
+      .first();
+
+    if (existing) {
+      alert("Book with this name already exists.");
+      setBookTitle("");
+      return;
+    }
 
     const newBook = {
       id: crypto.randomUUID(),
-      title: normalizeWhitespace(bookTitle),
+      title: normalizedTitle,
       characters: [],
       createdAt: Date.now(),
     };
@@ -275,7 +292,7 @@ export default function StoryOrganizer() {
 
   // Show Edit Modal
   function showModal(state: boolean) {
-    setShowEditModal(state);
+    setShowGenImage(state);
     document.body.classList.toggle('overflow-hidden', state);
   }
 
@@ -412,6 +429,85 @@ export default function StoryOrganizer() {
   const [openSearch, setOpenSearch] = useState(false);
   const [titleEditing, settitleEditing] = useState(false);
 
+  const [darktheme, setDarkTheme] = useState(
+    localStorage.getItem("theme") || "light"
+  );
+
+  useEffect(() => {
+    const html = document.documentElement;
+
+    if (darktheme === "dark") {
+      html.classList.add("dark");
+    } else {
+      html.classList.remove("dark");
+    }
+
+    localStorage.setItem("theme", darktheme);
+    console.log(darktheme);
+  }, [darktheme]);
+
+  const toggleTheme = () => {
+    setDarkTheme(prev => (prev === "dark" ? "light" : "dark"));
+  };
+
+  // THIS IS THE IMAGE GENERATION PART
+
+  const genAI = new GoogleGenAI({
+    apiKey: import.meta.env.VITE_GEMINI_API_KEY,
+  });
+
+  const [charprompt, setPrompt] = useState("");
+  const [imageUrl, setImageUrl] = useState<string | null>(null);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState("");
+
+  const generateCharacter = async () => {
+    if (!charprompt.trim()) return;
+
+    // const models = await genAI.models.list();
+    // console.log(models);
+
+    setLoading(true);
+    setError("");
+    setImageUrl(null);
+
+    try {
+      const enhancedPrompt = `
+      portrait shot, shoulder up,
+      ${charprompt},
+      looking at camera,
+      fantasy art, 
+      solid color background, high resolution, centered composition.
+      soft lighting,
+      character concept art
+      `;
+
+      const response = await genAI.models.generateContent({
+        model: "gemini-2.5-flash-image",
+        contents: enhancedPrompt,
+        config: {
+          responseModalities: ["Text","Image"],
+        },
+      });
+
+      const imagePart = response.candidates?.[0]?.content?.parts?.find(
+        (part: any) => part.inlineData
+      );
+
+      if (imagePart?.inlineData?.data) {
+        const base64 = imagePart.inlineData.data;
+        setImageUrl(`data:image/png;base64,${base64}`);
+      } else {
+        setError("No image returned.");
+      }
+    } catch (err) {
+      console.error(err);
+      setError("Failed to generate image.");
+    } finally {
+      setLoading(false);
+    }
+  };
+
 
   // HTML/TAILWIND CSS | INDEX
   return (
@@ -529,20 +625,24 @@ export default function StoryOrganizer() {
               </div>
             )}
 
-            <select value={theme} onChange={e => setTheme(e.target.value as any)} className="cursor-pointer border font-bold rounded px-2 py-1 text-white bg-gray-950 hover:bg-gray-200 hover:text-gray-950 transition">
-                <option value="default">Default</option>
-                <option value="fantasy">Fantasy</option>
-                <option value="scifi">Sci-Fi</option>
-                <option value="horror">Horror</option>
-                <option value="romance">Romance</option>
-                <option value="xianxia">Xianxia</option>
-            </select>
+            <div onClick={toggleTheme} className="border border-white text-gray-200 rounded hover:bg-gray-300 hover:text-gray-950 transition">
+              <button className="hidden dark:block cursor-pointer">
+              <span className="group inline-flex shrink-0 justify-center items-center size-8 stroke-2">
+                <svg className="shrink-0 size-5" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M12 3a6 6 0 0 0 9 9 9 9 0 1 1-9-9Z"/></svg>
+              </span>
+            </button>
+            <button className="block dark:hidden cursor-pointer">
+              <span className="group inline-flex shrink-0 justify-center items-center size-8 stroke-2">
+                <svg className="shrink-0 size-5" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor"><circle cx="12" cy="12" r="4"/><path d="M12 2v2"/><path d="M12 20v2"/><path d="m4.93 4.93 1.41 1.41"/><path d="m17.66 17.66 1.41 1.41"/><path d="M2 12h2"/><path d="M20 12h2"/><path d="m6.34 17.66-1.41 1.41"/><path d="m19.07 4.93-1.41 1.41"/></svg>
+              </span>
+            </button>
+            </div>
 
             {/* EXPORT/IMPORT BUTTON */}
             <div className="relative group inline-block group">
               <button 
                 title="IMPORT/EXPORT FILE"
-                className="cursor-pointer p-1 transition border border-white text-gray-200 rounded hover:bg-gray-200 hover:text-gray-950 transition" 
+                className="cursor-pointer p-1 transition border border-white text-gray-200 rounded hover:bg-gray-300 hover:text-gray-950 transition" 
                 onClick={() => showModalFile(true)} > 
                 <FontAwesomeIcon icon={faFileImport} size="xl" />
               </button>
@@ -567,35 +667,36 @@ export default function StoryOrganizer() {
       </header>
       
       {/* THEME BACKGROUND */}
-      <div className={`${appliedTheme} relative min-h-screen w-full min-w-0 mx-auto px-4 transition-colors duration-800 backdrop-blur-lg overflow-x-hidden`}>
+      <div className={`relative min-h-screen w-full min-w-0 mx-auto px-4 transition-colors transition duration-500 bg-white text-black dark:bg-gray-800 dark:text-white backdrop-blur-lg overflow-x-hidden`}>
         {/* THEME BACKGROUND IMAGE STYLE */}
-        <div className="fixed inset-0 bg-cover bg-center opacity-50 -z-10 transition-opacity duration-800" style={{backgroundImage: `url(/textures/bg_styles/${theme}.png)`}}/>      
+        <div className="fixed inset-0 bg-cover bg-center opacity-50 -z-10 transition-opacity duration-800"/>      
           {/* MAIN PAGE */}
           <div className="w-full max-w-4xl mx-auto min-h-screen pt-12">
 
             {/* BOOK LIST / HOMEPAGE */}
             {currentBookId === null && (
               // BOOK LIST PAGE
-              <div className="p-3 my-3 rounded-2xl shadow-lg">
+              <div className="p-3 my-3 rounded-2xl shadow-lg dark:bg-gray-900">
                 
                 <div className="py-4 flex gap-2">
 
                   <input
-                  className="border-b-2 border-gray-200 px-1 w-full outline-none hover:border-gray-500 transition"
+                  className="border-b-1 border-gray-200 px-1 w-full outline-none hover:border-gray-500 transition text-gray-500 dark:text-white placeholder-gray-400 dark:placeholder-gray-600"
                   placeholder="New Book Title"
                   value={bookTitle}
                   onChange={e => setBookTitle(e.target.value)}
                   onKeyDown={(e) => {
                       if (e.key === "Enter") addBook();
                     }}
-                  required
+                  title="Add new book"
                   />
 
                   <button 
                     onClick={addBook} 
-                    className="bg-gray-950 border border-black text-white text-xs md:text-base px-5 py-2 whitespace-nowrap rounded-xl cursor-pointer hover:bg-gray-800 transition"
+                    title="Add book title"
+                    className="cursor-pointer border-gray-200 border-1 text-black rounded hover:bg-gray-300 hover:text-gray-950 p-1 transition dark:border-white dark:text-white"
                   >
-                    Add Book
+                    <FontAwesomeIcon icon={faPlus} size="lg"/>
                   </button>
 
                     {/* Conditional "Successfully Added" message */}
@@ -611,7 +712,7 @@ export default function StoryOrganizer() {
 
                 {/* SHOW BOOK LIST */}
                 {/* BOOK CARDS */}
-                <h2 className="text-2xl font-semibold pb-2 text-gray-950">My Books</h2>
+                <h2 className="text-2xl font-semibold pb-2 text-gray-950 dark:text-white">My Books</h2>
 
                 {!books.length && (
                   <div className="w-full flex justify-center items-center py-20 px-10"> 
@@ -673,11 +774,11 @@ export default function StoryOrganizer() {
 
             {/* DETAILS / CHARACTERS */}
             {currentBookId !== null && currentBook && selectedCharacter === null && (
-                <div className="px-3 pt-3 my-3 rounded-2xl shadow-lg">
+                <div className="px-3 pt-3 my-3 rounded-2xl shadow-lg dark:bg-gray-900">
                   <div className="">
                     <button 
                       onClick={() => setCurrentBookId(null)} 
-                    > <FontAwesomeIcon className="cursor-pointer text-gray-950 hover:text-blue-500 transition hover:scale-105" icon={faArrowLeftLong} size="xl"/>
+                    > <FontAwesomeIcon className="cursor-pointer hover:text-blue-500 transition hover:scale-105" icon={faArrowLeftLong} size="xl"/>
                     </button>
                   </div>
                 
@@ -694,8 +795,8 @@ export default function StoryOrganizer() {
                     {/*CHANGEABLE CURRENT BOOK TITLE */}
                     <div className="flex-1">
                       <input 
-                        title="Click to edit book title..."
-                        className="text-2xl w-full font-semibold border-b-2 border-gray-100 hover:border-gray-600 outline-none focus-ring-0 truncate" 
+                        title="Edit book title..."
+                        className="text-2xl w-full font-semibold border-b-1 border-gray-200 hover:border-gray-500 outline-none focus-ring-0 truncate" 
                         value={titleDraft}
                         onChange={(e) => setTitleDraft(e.target.value)}
                         onBlur={saveBookTitle}
@@ -738,14 +839,15 @@ export default function StoryOrganizer() {
                       // CHARACTER CARDS w/ image... //
                       <div 
                       key={char.id} 
-                      title="Click to open character sheet."
+                      title="Open character sheet."
                       className="
                         h-[300px] w-full max-w-sm
                         cursor-pointer bg-white shadow-lg rounded-2xl
                         transition-all duration-300
                         hover:-translate-y-2 hover:shadow-2xl
                         group
-                        flex flex-col"
+                        flex flex-col
+                        dark:bg-gray-950"
                       // onClick={() => openEditCharacter(char)}
                       onClick={() => openEditCharacter(char)}>
 
@@ -762,8 +864,8 @@ export default function StoryOrganizer() {
                           <div className="flex-1 p-2 text-center">
                               <a href="#">
                                   <h3 className="text-xl font-semibold tracking-tight line-clamp-1">{char.name}</h3>
-                                  <p className="text-sm text-gray-500 mb-2 line-clamp-1">{char.role || "Character Role"}</p>
-                                  <p className="text-sm text-gray-500 mb-2 line-clamp-1">*First Chapter Appearance</p>
+                                  <p className="text-sm text-gray-400 mb-2 line-clamp-1">{char.role || "Character Role"}</p>
+                                  <p className="text-sm text-gray-400 mb-2 line-clamp-1">*First Chapter Appearance</p>
                               </a>
                           </div>
                       </div>
@@ -776,26 +878,28 @@ export default function StoryOrganizer() {
 
             {/* CHARACTER DATA PAGE / EDIT CHAR DETAILS */}
             {selectedCharacter !== null && editingCharacter && (
-              <div className="rounded-2xl shadow-lg pt-3 my-3">
+              <div className="rounded-2xl shadow-lg pt-3 my-3 dark:bg-gray-950">
 
                 {/* Buttons */}
                 <div className="flex justify-between pb-3 px-3">
 
                   <button 
                     onClick={() => {setSelectedCharacter(null), setcharEditing(false)}} 
-                    > <FontAwesomeIcon className="cursor-pointer text-gray-950 hover:text-blue-500 transition hover:scale-105" icon={faArrowLeftLong} size="xl"/>
+                    > <FontAwesomeIcon className="cursor-pointer hover:text-blue-500 transition hover:scale-105" icon={faArrowLeftLong} size="xl"/>
                   </button>
 
                   <div className="space-x-2">
                     <button 
-                      onClick={() => deleteCharacter(editingCharacter.id) }
-                      > <FontAwesomeIcon className="cursor-pointer text-gray-950 hover:text-red-500 transition hover:scale-105" icon={faTrashCan} size="xl"/>
+                      onClick={() => setShowGenImage(true)}
+                      className="cursor-pointer border-gray-200 border-1 text-black rounded hover:bg-gray-300 hover:text-gray-950 p-1 transition dark:border-white dark:text-white"
+                    >
+                      <FontAwesomeIcon icon={faPlus} size="lg"/>
                     </button>
 
-                    {/* <button
-                      onClick={updateCharacter}
-                    > <FontAwesomeIcon className="cursor-pointer text-gray-950 hover:text-emerald-500 transition hover:scale-105" icon={faCheck} size="xl" />
-                    </button> */}
+                    <button 
+                      onClick={() => deleteCharacter(editingCharacter.id) }
+                      > <FontAwesomeIcon className="cursor-pointer hover:text-red-500 transition hover:scale-105" icon={faTrashCan} size="xl"/>
+                    </button>
 
                       {charEditing && <FontAwesomeIcon icon={faSpinner} size="xl" spin />}
                       {!charEditing && <FontAwesomeIcon className="text-emerald-500" icon={faCheck} size="xl" />}
@@ -818,9 +922,9 @@ export default function StoryOrganizer() {
                 >
 
                   {/* IMAGE + BASIC INFO */}
-                  <div className="grid grid-cols-1 sm:grid-cols-[160px_1fr] rounded-t-lg bg-sky-50">
+                  <div className="grid grid-cols-1 sm:grid-cols-[160px_1fr] rounded-t-lg bg-sky-50 dark:bg-gray-900">
                     
-                    <div className="w-full h-50 sm:h-50 rounded-t-lg overflow-hidden bg-sky-50 p-1">
+                    <div className="w-full h-50 sm:h-50 rounded-t-lg overflow-hidden p-1">
                       <img
                         src={char_image}
                         alt="Character Image"
@@ -831,7 +935,7 @@ export default function StoryOrganizer() {
                     <div className="flex flex-col p-1">
                       <div className="">
                         <input 
-                          className="w-full text-xl font-semibold outline-none focus:border-b"
+                          className="w-full text-xl font-semibold outline-none focus:border-b hover:border-b"
                           value={editingCharacter.name} 
                           onChange={e => setEditingCharacter({ ...editingCharacter, name: e.target.value })
                           }
@@ -840,23 +944,23 @@ export default function StoryOrganizer() {
                       </div>
 
                       <div className="">
-                        <label className="text-sm font-medium text-gray-500">Role</label>
+                        <label className="text-sm font-medium text-gray-500 dark:text-gray-400">Role</label>
                         <input 
                           placeholder="Add Character Role"
-                          className="w-full pl-3 outline-none focus:border-b"
+                          className="w-full pl-3 outline-none focus:border-b hover:border-b"
                           value={editingCharacter.role} 
                           onChange={e => setEditingCharacter({ ...editingCharacter, role: e.target.value })} 
                         />
                       </div>
 
                       <div>
-                        <label className="text-sm font-medium text-gray-500">Description</label>
+                        <label className="text-sm font-medium text-gray-500 dark:text-gray-400">Description</label>
                         <textarea 
                         placeholder="Character Appearance/Personality"
                         rows={3} 
                         readOnly
                         value={"He is a little boy with an ugliness inside and out. He is super ugly that an image of him will shatter any eyes and mirrors there is. Be careful of this boy..."}
-                        className="w-full resize-none pl-3 rounded outline-width-1" />
+                        className="w-full resize-none pl-3 rounded-xl outline-width-1 hover:border" />
                       </div>
                     </div>
                   </div>
@@ -865,12 +969,12 @@ export default function StoryOrganizer() {
                   <div className="pr-2 pl-2 pb-3 space-y-3"> 
                     {/* NOTES */}
                     <div className="space-y-1">
-                      <div className="flex items-center gap-2 text-sm font-semibold text-gray-700">
-                        <span className="text-indigo-500">📝</span> Character Notes
+                      <div className="flex items-center gap-2 text-sm font-semibold text-gray-700 dark:text-gray-500">
+                        <label><span>📝</span> Character Notes</label>
                       </div>
                       <textarea 
                       rows={5} 
-                      className="w-full rounded-xl border-gray-300 pl-3"
+                      className="w-full rounded-xl pl-3 hover:border"
                       placeholder="Add Notes"
                       value={editingCharacter.notes} 
                       onChange={e => setEditingCharacter({ ...editingCharacter, notes: e.target.value })} />
@@ -878,11 +982,11 @@ export default function StoryOrganizer() {
 
                     {/* ABILITIES */}
                     <div className="space-y-1">
-                      <div className="flex items-center gap-2 text-sm font-semibold text-gray-700">
+                      <div className="flex items-center gap-2 text-sm font-semibold text-gray-700 dark:text-gray-500">
                         <span className="text-indigo-500">✨</span> Abilities
                       </div>
                       <input 
-                        className="w-full outline-none focus:border-b pl-3"
+                        className="w-full outline-none focus:border-b pl-3 hover:border-b"
                         value={editingCharacter.abilitiesText} 
                         onChange={(e) => setEditingCharacter({ ...editingCharacter, abilitiesText: e.target.value })
                         }
@@ -891,13 +995,13 @@ export default function StoryOrganizer() {
 
                     {/* CHAPTER APPEARANCES */}
                     <div className="space-y-1">
-                      <div className="flex items-center gap-2 text-sm font-semibold text-gray-700">
+                      <div className="flex items-center gap-2 text-sm font-semibold text-gray-700 dark:text-gray-500">
                         <span className="text-indigo-500">📖</span> Chapter Appearances
                       </div>
                       <input 
                       placeholder="Chapter Appearances"
                       readOnly
-                      className="w-full outline-none focus:border-b pl-3"
+                      className="w-full outline-none focus:border-b pl-3 hover:border-b"
                       value={"2, 3"} />
                     </div>   
 
@@ -912,8 +1016,8 @@ export default function StoryOrganizer() {
 
       </div>
 
-            {/* EDIT MODAL & Char update */}
-            {showEditModal && editingCharacter && (
+            {/* GENERATE CHARACTER IMAGE BOOM */}
+            {showGenImage &&  (
                 <div className="fixed inset-0 flex items-center bg-black/50 z-50 overflow-auto" 
                   onMouseDown={(e) => {
                     if (e.target === e.currentTarget) {
@@ -922,78 +1026,61 @@ export default function StoryOrganizer() {
                   }}
                 >
                   <div className="w-9/10 min-w-0 md:max-w-120 mx-auto bg-white dark:bg-gray-100 max-h-screen overflow-y-auto p-6 rounded-xl shadow-lg" onMouseDown={(e) => e.stopPropagation()}>
-                    <h2 className="text-x1 font-bold mb-4">Edit Character</h2>
+                    
+                      <h2 className="text-2xl font-bold text-gray-800">
+                        Character Image Generator
+                      </h2>
 
-                    {/* Name */}
-                    <input 
-                      className="w-full border p-2 rounded mb-3"
-                      value={editingCharacter.name} 
-                      onChange={e => setEditingCharacter({ ...editingCharacter, name: e.target.value })
-                      }
-                      placeholder="Character Name" 
-                    />
+                      {/* Prompt Input */}
+                      <div className="flex flex-col sm:flex-row gap-3 mb-3">
+                        <input
+                          type="text"
+                          value={charprompt}
+                          onChange={(e) => setPrompt(e.target.value)}
+                          placeholder="e.g. A space pirate with a mechanical eye"
+                          className="flex-1 px-4 py-3 border rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                        />
 
-                    {/* Role */}
-                    <input 
-                      className="w-full border p-2 rounded mb-3" 
-                      value={editingCharacter.role} 
-                      onChange={e => setEditingCharacter({ ...editingCharacter, role: e.target.value })
-                      }
-                      placeholder="Role" 
-                    />
-
-                    {/* Description */}
-                    <textarea
-                      className="w-full min-h-25 border p-2 rounded mb-3"
-                      value={editingCharacter.notes}
-                      onChange={e => setEditingCharacter({ ...editingCharacter, notes: e.target.value })
-                      }
-                      placeholder="Notes"
-                    />
-
-                    {/* Abilities */}
-                    <input 
-                      className="w-full border p-2 rounded mb-3" 
-                      value={editingCharacter.abilitiesText} 
-                      onChange={(e) => setEditingCharacter({ ...editingCharacter, abilitiesText: e.target.value })
-                      }
-                      placeholder="Abilities"
-                    />
-
-                    {/* Volume */}
-                    <input 
-                      type="number"
-                      className="w-full border p-2 rounded mb-3" 
-                      value={editingCharacter.arcStage} 
-                      onChange={e => setEditingCharacter({ ...editingCharacter, arcStage: e.target.value })
-                      }
-                      placeholder="Volume" 
-                    />
-
-                    {/* Buttons */}
-                    <div className="flex justify-between mt-4">
-
-                      <div className="hover:transition flex group">
-                        <button onClick={() => deleteCharacter(editingCharacter.id)}>
-                          <FontAwesomeIcon className="opacity-0 cursor-pointer group-hover:opacity-100 absolute text-red-500" icon={faTrashCan} bounce size="xl"/>
-                          <FontAwesomeIcon className="opacity-100 cursor-pointer group-hover:opacity-0" icon={faTrashCan} size="xl"/>
+                        <button
+                          onClick={generateCharacter}
+                          disabled={loading}
+                          className="px-6 py-3 bg-indigo-600 text-white rounded-xl hover:bg-indigo-700 transition disabled:opacity-50"
+                        >
+                          {loading ? "Generating..." : "Generate"}
                         </button>
                       </div>
 
-                      <div className="space-x-2">
-                        <button
-                          onClick={() => showModal(false)}
-                          className="px-4 py-1 border rounded-lg hover:bg-red-300/50 cursor-pointer"
-                        > Cancel
-                        </button>
+                      {/* Error */}
+                      {error && (
+                        <div className="text-red-500 text-sm">
+                          {error}
+                        </div>
+                      )}
 
-                        <button
-                          onClick={updateCharacter}
-                          className="px-4 py-1 bg-blue-500 text-white border border-black rounded-lg hover:bg-blue-600 cursor-pointer"
-                        > Save
-                        </button>
+                      {/* Image Preview */}
+                      <div className="w-full flex justify-center">
+                        <div className="w-72 h-96 bg-gray-100 rounded-xl overflow-hidden shadow-inner flex items-center justify-center">
+                          {loading && (
+                            <div className="animate-pulse text-gray-400">
+                              Generating image...
+                            </div>
+                          )}
+
+                          {!loading && imageUrl && (
+                            <img
+                              src={imageUrl}
+                              alt="Generated character"
+                              className="w-full h-full object-cover"
+                            />
+                          )}
+
+                          {!loading && !imageUrl && (
+                            <div className="text-gray-400 text-sm">
+                              Image will appear here
+                            </div>
+                          )}
+                        </div>
                       </div>
-                    </div>
 
                   </div>
                 </div>
