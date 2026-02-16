@@ -175,6 +175,7 @@ const exportData = async () => {
       exportedAt: new Date().toISOString(),
       books,
       images: imagesWithBase64,
+      userNotes,
     }; 
 
     const blob = new Blob(
@@ -201,9 +202,11 @@ const exportData = async () => {
     // Clear old data
     await db.books.clear();
     await db.images.clear();
+    await db.notes.clear();
 
     // Restore books
     await db.books.bulkAdd(parsed.books);
+    await db.notes.bulkAdd(parsed.userNotes);
 
     // Restore images (if they exist)
     if (parsed.images && parsed.images.length > 0) {
@@ -218,6 +221,7 @@ const exportData = async () => {
     }
 
     setBooks(parsed.books);
+    setUserNotes(parsed.userNotes);
 
     alert("Import successful!");
   } catch (err) {
