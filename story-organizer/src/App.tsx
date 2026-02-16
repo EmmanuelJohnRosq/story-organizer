@@ -9,9 +9,7 @@ import { faTrashCan } from "@fortawesome/free-solid-svg-icons";
 import { faCheck } from "@fortawesome/free-solid-svg-icons";
 import { faArrowLeftLong } from "@fortawesome/free-solid-svg-icons";
 import { faSpinner } from "@fortawesome/free-solid-svg-icons";
-import { faPlus } from "@fortawesome/free-solid-svg-icons";
-
-import { GoogleGenAI } from "@google/genai";
+import { faPlus, faMinus } from "@fortawesome/free-solid-svg-icons";
 
 
 export default function StoryOrganizer() {
@@ -595,18 +593,39 @@ const exportData = async () => {
   loadImages();
 }, [currentBook]);
 
+
+// NOTES CONNECT DB VARIABLES
 const [notesSubject, setNotesSubject] = useState("");
 const [notesContent, setNotesContent] = useState("");
 
+const stickyColors = [
+  "yellow",
+  "pink",
+  "green",
+  "sky",
+  "purple",
+  "gray",
+];
+
+const colorMap: Record<string, string> = {
+  yellow: "bg-yellow-200 dark:bg-yellow-800",
+  pink: "bg-pink-200 dark:bg-pink-800",
+  green: "bg-green-200 dark:bg-green-800",
+  sky: "bg-sky-200 dark:bg-sky-800",
+  purple: "bg-purple-200 dark:bg-purple-800",
+  gray: "bg-gray-200 dark:bg-gray-900"
+};
+
 async function addNotes() {
-  setNotesSubject("");
-  setNotesContent("");
+  const randomColor =
+    stickyColors[Math.floor(Math.random() * stickyColors.length)];
 
   const newNotes = {
       notesId: crypto.randomUUID(),
       subject: notesSubject,
       content: notesContent,
       createdAt: Date.now(),
+      color: randomColor,
     };
 
     // Save to IndexedDB
@@ -617,6 +636,28 @@ async function addNotes() {
 }
 
 
+const [Addnewbooks, setAddnewBooks] = useState(false);
+
+// SHOW/HIDE CREATE NEW BOOK FORM
+const addBooksState = () => {
+    setAddnewBooks(!Addnewbooks);
+};
+
+// DELETE NOTES
+async function deleteNotes(id: number) {
+  if(!id) return;
+  
+  await db.notes.delete(id);
+
+  setUserNotes(prev => prev.filter(notes => notes.id !== id));
+}
+
+// UPDATING NOTES CONTENT
+async function updateNotes(id: number, content: string) {
+  await db.notes.update(id, {
+    content: normalizeWhitespace(content),
+  });
+}
 
   // HTML/TAILWIND CSS | INDEX
   return (
@@ -675,7 +716,7 @@ async function addNotes() {
                 md:hidden
                 flex items-center justify-center
                 w-10 h-9 group
-                border rounded
+                border rounded-md
                 text-white bg-gray-950 
                 hover:bg-gray-200
                 transition cursor-pointer
@@ -734,7 +775,7 @@ async function addNotes() {
               </div>
             )}
 
-            <div onClick={toggleTheme} className="border border-white text-gray-200 rounded hover:bg-gray-300 hover:text-gray-950 transition">
+            <div onClick={toggleTheme} className="border border-white text-gray-200 rounded-md hover:bg-gray-300 hover:text-gray-950 transition">
               <button className="hidden dark:block cursor-pointer">
               <span className="group inline-flex shrink-0 justify-center items-center size-8 stroke-2">
                 <svg className="shrink-0 size-5" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M12 3a6 6 0 0 0 9 9 9 9 0 1 1-9-9Z"/></svg>
@@ -751,7 +792,7 @@ async function addNotes() {
             <div className="relative group inline-block group">
               <button 
                 title="IMPORT/EXPORT FILE"
-                className="cursor-pointer p-1 transition border border-white text-gray-200 rounded hover:bg-gray-300 hover:text-gray-950 transition" 
+                className="cursor-pointer p-1 transition border border-white text-gray-200 rounded-md hover:bg-gray-300 hover:text-gray-950 transition" 
                 onClick={() => showModalFile(true)} > 
                 <FontAwesomeIcon icon={faFileImport} size="xl" />
               </button>
@@ -776,20 +817,38 @@ async function addNotes() {
       </header>
       
       {/* THEME BACKGROUND */}
-      <div className={`relative min-h-screen w-full min-w-0 mx-auto px-3 transition-colors transition duration-500 bg-white text-black dark:bg-gray-800 dark:text-white backdrop-blur-lg overflow-x-hidden`}>    
+      <div className={`relative min-h-screen w-full min-w-0 mx-auto px-3 transition-colors transition duration-300 bg-white text-black dark:bg-gray-800 dark:text-white backdrop-blur-lg overflow-x-hidden`}>    
         
         {/* MAIN PAGE */}
         <div className="w-full mx-auto min-h-screen flex justify-center pt-15 gap-2">
           
           {/* LEFT SIDE ELEMENT */}
-          <div className="hidden rounded xs:block flex-1">
+          <div className="hidden xs:block flex-1">
 
             {/* ADD BOOK FORM SUBMIT */}
             {currentBookId === null && (
-              <div className="flex-1 rounded-2xl shadow-lg p-3 bg-gray-100 dark:bg-gray-900">
-                <h2 className="text-2xl font-semibold">Add Book</h2>
+              <div className="">
 
-                <form className="space-y-2 pt-3">
+                <div className="flex-1 rounded-md shadow-lg bg-gray-100 dark:bg-gray-900 mb-2 p-3 flex justify-between transition duration-300">
+
+                  <h3 className="text-2xl font-semibold">Create New Book</h3>
+
+                  <div className="flex justify-center">
+                    <button 
+                      value={bookTitle}
+                      className="cursor-pointer border-gray-500 border-1 text-black rounded hover:bg-gray-300 hover:text-gray-950 px-2 dark:border-white dark:text-white"
+                      onClick={addBooksState}>
+                        {Addnewbooks ? <FontAwesomeIcon icon={faPlus} size="xs" className="transition duration-500"/> : <FontAwesomeIcon icon={faMinus} size="xs"/>}
+                    </button>
+                  </div>
+
+                </div>
+
+                {/* CREATE NEW BOOK FORM */}
+                {(!Addnewbooks && 
+                
+                <div className="flex-1 rounded-md shadow-lg p-3 bg-gray-100 dark:bg-gray-900 transition duration-300">
+                  <form className="space-y-2">
                   
                   {/* Title */}
                   <div>
@@ -797,7 +856,7 @@ async function addNotes() {
                       Title
                     </label>
                     <input
-                      className="w-full border rounded-xl px-4 py-2 focus:outline-none focus:ring-2 focus:ring-blue-400 placeholder-gray-400 dark:placeholder-gray-600"
+                      className="w-full border rounded-md px-4 py-2 focus:outline-none focus:ring-2 focus:ring-blue-400 placeholder-gray-400 dark:placeholder-gray-600"
                       value={bookTitle}
                       onChange={e => setBookTitle(e.target.value)}
                       onKeyDown={(e) => {
@@ -815,7 +874,7 @@ async function addNotes() {
                     </label>
                     <textarea
                       rows={4}
-                      className="w-full border rounded-xl px-4 py-2 focus:outline-none focus:ring-2 focus:ring-blue-400 placeholder-gray-400 dark:placeholder-gray-600"
+                      className="w-full border rounded-md px-4 py-2 focus:outline-none focus:ring-2 focus:ring-blue-400 placeholder-gray-400 dark:placeholder-gray-600"
                       placeholder="Enter book summary"
                       value={bookSummary}
                       onChange={e => setBookSummary(e.target.value)}
@@ -829,7 +888,7 @@ async function addNotes() {
                     </label>
                     <input
                       type="number"
-                      className="w-full border rounded-xl px-4 py-2 focus:outline-none focus:ring-2 focus:ring-blue-400 placeholder-gray-400 dark:placeholder-gray-600"
+                      className="w-full border rounded-md px-4 py-2 focus:outline-none focus:ring-2 focus:ring-blue-400 placeholder-gray-400 dark:placeholder-gray-600"
                       placeholder="0"
                       onChange={e => setBookVolume(Number(e.target.value))}
                     />
@@ -837,12 +896,15 @@ async function addNotes() {
 
                   <button
                     type="button"
-                    className="w-full bg-blue-500 text-white py-2 rounded-xl hover:bg-blue-600 transition cursor-pointer"
+                    className="w-full bg-blue-500 text-white py-2 rounded-md hover:bg-blue-600 transition cursor-pointer"
                     onClick={addBook}
                   >
                     SAVE
                   </button>
-                </form>
+                  </form>
+                </div>)}
+                
+                
               </div>
             )}
 
@@ -854,7 +916,7 @@ async function addNotes() {
             {/* BOOK LIST / HOMEPAGE */}
             {currentBookId === null && (
               // BOOK LIST PAGE
-              <div className="p-3 mb-3 rounded-2xl shadow-lg bg-gray-100 dark:bg-gray-900">
+              <div className="p-3 mb-3 rounded-md shadow-lg bg-gray-100 dark:bg-gray-900">
                 
                 <div className="py-4 gap-2 flex xs:hidden">
 
@@ -953,11 +1015,11 @@ async function addNotes() {
 
             {/* DETAILS / CHARACTERS */}
             {currentBookId !== null && currentBook && selectedCharacter === null && (
-                <div className="px-3 pt-3 mb-3 rounded-2xl shadow-lg bg-gray-100 dark:bg-gray-900">
+                <div className="px-3 pt-3 mb-3 rounded-md shadow-lg bg-gray-100 dark:bg-gray-900">
                   <div className="">
                     <button 
                       onClick={() => setCurrentBookId(null)} 
-                    > <FontAwesomeIcon className="cursor-pointer hover:text-blue-500 transition hover:scale-105" icon={faArrowLeftLong} size="xl"/>
+                    > <FontAwesomeIcon className="cursor-pointer hover:text-blue-500 transition duration-300 hover:scale-105" icon={faArrowLeftLong} size="xl"/>
                     </button>
                   </div>
                 
@@ -986,20 +1048,20 @@ async function addNotes() {
                       
                     </div>
 
-                    <button onClick={() => setShowAddCharacter(!showAddCharacter)} className="bg-black border border-black text-white text-xs md:text-base px-5 py-2 rounded-xl cursor-pointer hover:bg-gray-800 transition">
+                    <button onClick={() => setShowAddCharacter(!showAddCharacter)} className="bg-black border border-black text-white text-xs md:text-base px-5 py-2 rounded-md cursor-pointer hover:bg-gray-800 transition">
                         {showAddCharacter ? 'Cancel' : 'Add Character'}
                     </button>
                   </div>
 
                   {/* Input Character Details */}
                   {showAddCharacter && (
-                      <div className="bg-white/30 shadow rounded-2xl p-4 mb-6 flow-root">
+                      <div className="bg-white/30 shadow rounded-md p-4 mb-6 flow-root">
                         <input className="border p-2 w-full mb-2 rounded" placeholder="Name" value={name} onChange={e => setName(e.target.value)} />
                         <input className="border p-2 w-full mb-2 rounded" placeholder="Role / Affiliation" value={role} onChange={e => setRole(e.target.value)} />
                         <textarea className="border p-2 w-full mb-2 rounded" placeholder="Notes" value={notes} onChange={e => setNotes(e.target.value)} />
                         <input className="border p-2 w-full mb-2 rounded" placeholder="Abilities (comma separated)" value={abilities} onChange={e => setAbilities(e.target.value)} />
                         <input type="number" className="border p-2 w-full mb-2 rounded" placeholder="Volume" value={arcStage} onChange={e => setArcStage(e.target.value)} />
-                        <button onClick={addCharacter} className="float-right bg-black border border-black text-white px-4 py-2 rounded-xl cursor-pointer hover:bg-gray-800 transition">Confirm</button>
+                        <button onClick={addCharacter} className="float-right bg-black border border-black text-white px-4 py-2 rounded-md cursor-pointer hover:bg-gray-800 transition">Confirm</button>
                       </div>
                   )}
 
@@ -1021,7 +1083,7 @@ async function addNotes() {
                       title="Open character sheet."
                       className="
                         h-[300px] w-full max-w-sm
-                        cursor-pointer bg-white shadow-lg rounded-2xl
+                        cursor-pointer bg-white shadow-lg rounded-md
                         transition-all duration-300
                         hover:-translate-y-2 hover:shadow-2xl
                         group
@@ -1057,7 +1119,7 @@ async function addNotes() {
 
             {/* CHARACTER DATA PAGE / EDIT CHAR DETAILS */}
             {selectedCharacter !== null && editingCharacter && (
-              <div className="rounded-2xl shadow-lg pt-3 mb-3 bg-gray-100 dark:bg-gray-900">
+              <div className="rounded-md shadow-lg pt-3 mb-3 bg-gray-100 dark:bg-gray-900">
 
                 {/* Buttons */}
                 <div className="flex justify-between pb-3 px-3">
@@ -1139,7 +1201,7 @@ async function addNotes() {
                         rows={3} 
                         readOnly
                         value={"He is a little boy with an ugliness inside and out. He is super ugly that an image of him will shatter any eyes and mirrors there is. Be careful of this boy..."}
-                        className="w-full resize-none pl-3 rounded-xl outline-width-1 hover:border" />
+                        className="w-full resize-none pl-3 rounded-md outline-width-1 hover:border" />
                       </div>
                     </div>
                   </div>
@@ -1153,7 +1215,7 @@ async function addNotes() {
                       </div>
                       <textarea 
                       rows={5} 
-                      className="w-full rounded-xl pl-3 hover:border"
+                      className="w-full rounded-md pl-3 hover:border"
                       placeholder="Add Notes"
                       value={editingCharacter.notes} 
                       onChange={e => setEditingCharacter({ ...editingCharacter, notes: e.target.value })} />
@@ -1194,13 +1256,13 @@ async function addNotes() {
           </div>
 
           {/* RIGHT SIDE ELEMENT */}
-          <div className="hidden rounded xs:block flex-1">
+          <div className="hidden xs:block flex-1">
             
             {/* NOTES FOR THE USER */}
             {currentBookId === null && (
               
               <div>
-                <div className="flex-1 rounded-2xl shadow-lg p-3 bg-gray-100 dark:bg-gray-900 mb-2 flex justify-between">
+                <div className="flex-1 rounded-md shadow-lg p-3 bg-gray-100 dark:bg-gray-900 mb-2 flex justify-between">
 
                   <h3 className="text-2xl font-semibold">Notes</h3>
 
@@ -1216,49 +1278,74 @@ async function addNotes() {
 
                 </div>
 
-                  {/* <div className="bg-yellow-200 dark:bg-yellow-800 p-4 rounded-xl shadow-md mb-2">
-                    <p className="text-sm">
-                      💡 Remember to check duplicate book titles.
-                    </p>
-                  </div>
-
-                  <div className="bg-pink-200 dark:bg-pink-900 p-4 rounded-xl shadow-md mb-2">
-                    <p className="text-sm">
-                      📌 Add cover image upload soon.
-                    </p>
-                  </div>
-    
-                  <div className="bg-green-200 dark:bg-green-900 p-4 rounded-xl shadow-md mb-2">
-                    <p className="text-sm">
-                      🚀 Future: connect to IndexedDB.
-                    </p>
-                  </div> */}
-
                   <div>
                     {userNotes.map(notes => (
                       <div 
-                        draggable
-                        className={`p-2 rounded-xl shadow-md mb-2 bg-gray-100 dark:bg-gray-900 cursor-pointer`}
+                        className={`${colorMap[notes.color]} p-1 rounded-md shadow-md mb-2 bg-gray-100 dark:bg-gray-900 cursor-pointer hover:scale-101`}
                         key={notes.id}
                         data-id={notes.id}
                       >
-                        
-                        <span className="text-xs text-gray-800 dark:text-gray-400">
-                          {new Date(notes.createdAt).toLocaleString("en-US", {
-                            month: "short",
-                            day: "numeric",
-                            year: "numeric",
-                            hour: "2-digit",
-                            minute: "2-digit",
-                          })}
-                        </span>
 
+                        <div className="flex justify-between pb-1"> 
+                          
+                          <span className="text-xs text-gray-800 dark:text-gray-400">
+                            {new Date(notes.createdAt).toLocaleString("en-US", {
+                              month: "short",
+                              day: "numeric",
+                              year: "numeric",
+                              hour: "2-digit",
+                              minute: "2-digit",
+                            })}
+                          </span>
+
+                          <button className="cursor-pointer">
+                            <svg
+                              xmlns="http://www.w3.org/2000/svg"
+                              className="h-5 w-5 text-gray-700 hover:text-white"
+                              fill="none"
+                              viewBox="0 0 24 24"
+                              stroke="currentColor"
+                              strokeWidth={2}
+                              onClick={() => deleteNotes(notes.id!)}
+                            >
+                              <path strokeLinecap="round" strokeLinejoin="round" d="M6 6l12 12M6 18L18 6" />
+                            </svg>
+                          </button>
+
+                        </div>
+                        
                         <textarea
-                          className="w-full border rounded-xl px-4 py-2 focus:outline-none focus:ring-2 focus:ring-blue-400 placeholder-gray-400 dark:placeholder-gray-400"
+                          className="
+                          w-full text-base 
+                          border rounded-md 
+                          px-4 py-2 
+                          focus:outline-none focus:ring-2 focus:ring-blue-400 
+                          placeholder-gray-400 dark:placeholder-gray-400 
+                          resize-none
+                          overflow-hidden
+                          transition-all duration-200
+                          focus:min-h-[150px]
+                          min-h-[60px]"
                           placeholder="Enter Notes"
                           rows={3}
-                        >{notes.content}
-                        </textarea>
+                          value={notes.content}
+                          onChange={(e) =>
+                            setUserNotes(prev =>
+                              prev.map(note =>
+                                note.id === notes.id
+                                  ? { ...note, content: e.target.value }
+                                  : note
+                              )
+                            )
+                          }
+                          onKeyDown={(e) => {
+                            if (e.key === "Enter" && !e.shiftKey) {
+                              e.preventDefault();
+                              updateNotes(notes.id!, notes.content);
+                            }
+                          }}
+                          onBlur={() => updateNotes(notes.id!, notes.content)}
+                        />
                       </div>
                   ))}
                   </div>
@@ -1285,7 +1372,7 @@ async function addNotes() {
                 }
               }}
             >
-              <div className="w-9/10 min-w-0 md:max-w-120 mx-auto bg-white dark:bg-gray-100 max-h-screen overflow-y-auto p-6 rounded-xl shadow-lg" onMouseDown={(e) => e.stopPropagation()}>
+              <div className="w-9/10 min-w-0 md:max-w-120 mx-auto bg-white dark:bg-gray-100 max-h-screen overflow-y-auto p-6 rounded-md shadow-lg" onMouseDown={(e) => e.stopPropagation()}>
                 
                   <h2 className="text-2xl font-bold text-gray-800 pb-2">
                     Character Image Generator
@@ -1298,13 +1385,13 @@ async function addNotes() {
                       value={charprompt}
                       onChange={(e) => setcharPrompt(e.target.value)}
                       placeholder="e.g. A space pirate with a mechanical eye"
-                      className="flex-1 px-4 py-3 border rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                      className="flex-1 px-4 py-3 border rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500"
                     />
 
                     <button
                       onClick={generateImage}
                       disabled={loading}
-                      className="px-6 py-3 bg-indigo-600 text-white rounded-xl hover:bg-indigo-700 transition disabled:opacity-50"
+                      className="px-6 py-3 bg-indigo-600 text-white rounded-md hover:bg-indigo-700 transition disabled:opacity-50"
                     >
                       {loading ? "Generating..." : "Generate"}
                     </button>
@@ -1319,7 +1406,7 @@ async function addNotes() {
 
                   {/* Image Preview */}
                   <div className="w-full flex justify-center">
-                    <div className="w-72 h-96 bg-gray-200 rounded-xl overflow-hidden shadow-inner flex items-center justify-center">
+                    <div className="w-72 h-96 bg-gray-200 rounded-md overflow-hidden shadow-inner flex items-center justify-center">
                       {loading && (
                         <div className="animate-pulse text-gray-400">
                           Generating image...Please wait
@@ -1344,7 +1431,7 @@ async function addNotes() {
 
                   <div className="flex justify-center pt-3">
                     <button 
-                    className="py-2 px-6 rounded-xl bg-indigo-200 hover:bg-indigo-300 text-center cursor-pointer"
+                    className="py-2 px-6 rounded-md bg-indigo-200 hover:bg-indigo-300 text-center cursor-pointer"
                     onClick={saveImage}>
                       Save
                     </button>
@@ -1363,7 +1450,7 @@ async function addNotes() {
                   showModalFile(false);
                 }
               }}>
-              <div className="w-9/10 min-w-0 md:max-w-120 mx-auto bg-white dark:bg-gray-100 max-h-[90vh] overflow-y-auto p-6 rounded-xl shadow-lg" onMouseDown={(e) => e.stopPropagation()}>
+              <div className="w-9/10 min-w-0 md:max-w-120 mx-auto bg-white dark:bg-gray-100 max-h-[90vh] overflow-y-auto p-6 rounded-md shadow-lg" onMouseDown={(e) => e.stopPropagation()}>
                 
                 {/* DOWNLOAD YOUR DATA as JSON */}
                 <div className="flex justify-between">
@@ -1374,7 +1461,7 @@ async function addNotes() {
                   <div className="px-2">
                     <button
                       onClick={exportData}
-                      className="border bg-blue-500 px-4 py-2 text-white rounded-xl cursor-pointer hover:border hover:border-blue-900"> 
+                      className="border bg-blue-500 px-4 py-2 text-white rounded-md cursor-pointer hover:border hover:border-blue-900"> 
                       Export Books
                     </button>
                   </div>
@@ -1425,7 +1512,7 @@ async function addNotes() {
                       <button
                         disabled={!selectedFile}
                         onClick={() => importData(selectedFile!)}
-                        className="border bg-blue-500 px-4 py-2 text-white rounded-xl cursor-pointer hover:border hover:border-blue-900 disabled:opacity-40 disabled:cursor-not-allowed
+                        className="border bg-blue-500 px-4 py-2 text-white rounded-md cursor-pointer hover:border hover:border-blue-900 disabled:opacity-40 disabled:cursor-not-allowed
                         text-white"> 
                         Import Books
                       </button>

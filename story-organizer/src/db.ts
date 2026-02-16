@@ -36,6 +36,7 @@ export type Notes = {
   id?: number;
   subject: string;
   content: string;
+  color: string;
 }
 
 class StoryDB extends Dexie {
