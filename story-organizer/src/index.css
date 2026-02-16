@@ -1,6 +1,12 @@
 @import "tailwindcss";
 @custom-variant dark (&:where(.dark, .dark *));
 
+@theme {
+  --breakpoint-xs: 75rem;
+  --breakpoint-2xl: 100rem;
+  --breakpoint-3xl: 120rem;
+}
+
 
 /* THIS code outlines all the elements in the page. */
 /* * { outline: 1px solid blue; } */

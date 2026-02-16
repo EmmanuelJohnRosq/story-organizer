@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback, useRef } from "react";
-import { db, type Book, type Character, type EditableCharacter, type Images } from "./db";
+import { db, type Book, type Character, type EditableCharacter, type Images, type Notes } from "./db";
 
 
 import { useDropzone } from "react-dropzone";
@@ -18,6 +18,7 @@ export default function StoryOrganizer() {
 
   const [books, setBooks] = useState<Book[]>([]);
   const [images, setImages] = useState<Images[]>([]);
+  const [userNotes, setUserNotes] = useState<Notes[]>([]);
 
   // Constant Variables
   const [currentBookId, setCurrentBookId] = useState<string | null>(null);
@@ -30,6 +31,14 @@ export default function StoryOrganizer() {
   const [charEditing, setcharEditing] = useState(false);
   const [originalCharacter, setOriginalCharacter] = useState<Character | null>(null);
   const [onChange, setonChange ] = useState(false);
+
+  // CHARACTER IMAGE GENERATION w/ PUTER.js
+  const [charprompt, setcharPrompt] = useState("");
+  const [imageUrl, setImageUrl] = useState<string | null>(null);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState("");
+  const [imageSaved, setImageSaved] = useState<string | null>(null);
+  const [imageMap, setImageMap] = useState<Record<string, string>>({});
 
   // EDITING OF BOOK TITLE
   const [titleDraft, setTitleDraft] = useState("");
@@ -52,6 +61,13 @@ export default function StoryOrganizer() {
   const [setDrag, setIsDragOver] = useState(false);
   const [isDraggingBook, setIsDraggingBook] = useState(false);
   
+  const [openSearch, setOpenSearch] = useState(false);
+  const [titleEditing, settitleEditing] = useState(false);
+
+  const [darktheme, setDarkTheme] = useState(
+    localStorage.getItem("theme") || "light"
+  );
+  
   const onDrop = useCallback((acceptedFiles: File[]) => {
     setSelectedFile(acceptedFiles[0]); // 🔥 THIS triggers re-render
   }, []);
@@ -62,6 +78,8 @@ export default function StoryOrganizer() {
   });
 
   const [bookTitle, setBookTitle] = useState("");
+  const [bookSummary, setBookSummary] = useState("");
+  const [bookVolume, setBookVolume] = useState<number>(0);
   const [name, setName] = useState("");
   const [role, setRole] = useState("");
   const [notes, setNotes] = useState("");
@@ -80,7 +98,14 @@ export default function StoryOrganizer() {
       setBooks(allBooks);
     };
 
+    const loadNotes = async () => {
+      const allNotes = await db.notes.toArray();
+      allNotes.sort((a , b) => a.createdAt - b.createdAt);
+      setUserNotes(allNotes);
+    }
+
     loadBooks();
+    loadNotes();
   }, []);
 
   function normalizeWhitespace(text: string) {
@@ -103,7 +128,7 @@ export default function StoryOrganizer() {
   };
 }
 
-// Conver blob to base64 for image
+// Convert blob to base64 for image
 const blobToBase64 = (blob: Blob): Promise<string> => {
   return new Promise((resolve, reject) => {
     const reader = new FileReader();
@@ -207,19 +232,6 @@ const exportData = async () => {
   setSelectedCharacter(null);
 };
 
-  // Background styles for themes
-  // const themeBackgrounds: Record<string, string> = {
-  //     default: 'bg-gradient-to-b from-white-100 to-white-50',
-  //     fantasy: 'bg-gradient-to-b from-green-200 to-yellow-50',
-  //     scifi: 'bg-gradient-to-b from-zinc-100 to-zinc-800',
-  //     horror: 'bg-gradient-to-b from-red-500 to-gray-900',
-  //     romance: 'bg-gradient-to-b from-pink-400 to-pink-200',
-  //     xianxia: 'bg-gradient-to-b from-blue-300 to-green-100',
-  // };
-
-  // const appliedTheme = themeBackgrounds[theme] || themeBackgrounds.fantasy;
-
-  
   // DRAG AND DROP TO DELETE BOOK CARDS
   const handleDragStart = (e: React.DragEvent<HTMLDivElement>) => {
     e.dataTransfer.setData("bookId", e.currentTarget.dataset.id!);
@@ -290,6 +302,8 @@ const exportData = async () => {
     const newBook = {
       id: crypto.randomUUID(),
       title: normalizedTitle,
+      summary: bookSummary,
+      volume: bookVolume,
       characters: [],
       createdAt: Date.now(),
     };
@@ -300,8 +314,10 @@ const exportData = async () => {
     // Update React state
     setBooks(prev => [...prev, { ...newBook, id }]);
 
-    // UI stuff (keep these)
+    // UI stuff
     setBookTitle("");
+    setBookVolume(0);
+    setBookSummary("");
     setBookAdded(true);
     setTimeout(() => setBookAdded(false), 2000);
   }
@@ -455,7 +471,6 @@ const exportData = async () => {
 
     setSavedTitle(true);
     settitleEditing(true);
-    // setTitleDraft(normalizeWhitespace(titleDraft));
     setTimeout(() => {setSavedTitle(false), settitleEditing(false)}, 2000);
   }
 
@@ -480,14 +495,8 @@ const exportData = async () => {
     window.addEventListener("scroll", handleScroll, { passive: true });
     return () => window.removeEventListener("scroll", handleScroll);
   }, []);
-
-  const [openSearch, setOpenSearch] = useState(false);
-  const [titleEditing, settitleEditing] = useState(false);
-
-  const [darktheme, setDarkTheme] = useState(
-    localStorage.getItem("theme") || "light"
-  );
-
+  
+  // DARK MODE USE EFFECT
   useEffect(() => {
     const html = document.documentElement;
 
@@ -504,64 +513,7 @@ const exportData = async () => {
     setDarkTheme(prev => (prev === "dark" ? "light" : "dark"));
   };
 
-  // THIS IS THE IMAGE GENERATION PART - GEMINI
-  // const genAI = new GoogleGenAI({
-  //   apiKey: import.meta.env.VITE_GEMINI_API_KEY,
-  // });
-
-  const [charprompt, setcharPrompt] = useState("");
-  const [imageUrl, setImageUrl] = useState<string | null>(null);
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState("");
-
-  // const generateCharacter = async () => {
-  //   if (!charprompt.trim()) return;
-
-  //   setLoading(true);
-  //   setError("");
-  //   setImageUrl(null);
-
-  //   try {
-  //     const enhancedPrompt = `
-  //     close portrait shot, shoulder up,
-  //     ${charprompt},
-  //     looking at camera,
-  //     anime art style, 
-  //     solid color background, centered composition.
-  //     soft lighting
-  //     `;
-
-  //     //PROMPT: A young man, 18 years old. Black and white hair, sharp golden eyes, chiseled face. quite cold and handsome.
-
-  //     const response = await genAI.models.generateContent({
-  //       model: "gemini-2.5-flash-image",
-  //       contents: enhancedPrompt,
-  //       config: {
-  //         responseModalities: ["Text","Image"],
-  //       },
-  //     });
-
-  //     const imagePart = response.candidates?.[0]?.content?.parts?.find(
-  //       (part: any) => part.inlineData
-  //     );
-
-  //     if (imagePart?.inlineData?.data) {
-  //       const base64 = imagePart.inlineData.data;
-  //       setImageUrl(`data:image/png;base64,${base64}`);
-  //     } else {
-  //       setError("No image returned.");
-  //     }
-  //   } catch (err) {
-  //     console.error(err);
-  //     setError("Failed to generate image.");
-  //   } finally {
-  //     setLoading(false);
-  //   }
-  // };
-
-  const [imageSaved, setImageSaved] = useState<string | null>(null);
-
-  //IMAGE GENERATION - PUTER.JS
+  // IMAGE GENERATION - PUTER.JS
   const generateImage = async () => {
     setLoading(true);
     setError("");
@@ -616,13 +568,9 @@ const exportData = async () => {
     setImageUrl(null);
     setcharPrompt("");
 
-    // 3️⃣ Optional: Display preview
-    // setImageUrl(URL.createObjectURL(blob));
     //PROMPT: A young man, 18 years old. Black and white hair, sharp golden eyes, chiseled face. quite cold and handsome.
 
   }
-
-  const [imageMap, setImageMap] = useState<Record<string, string>>({});
 
   useEffect(() => {
   const loadImages = async () => {
@@ -646,6 +594,28 @@ const exportData = async () => {
 
   loadImages();
 }, [currentBook]);
+
+const [notesSubject, setNotesSubject] = useState("");
+const [notesContent, setNotesContent] = useState("");
+
+async function addNotes() {
+  setNotesSubject("");
+  setNotesContent("");
+
+  const newNotes = {
+      notesId: crypto.randomUUID(),
+      subject: notesSubject,
+      content: notesContent,
+      createdAt: Date.now(),
+    };
+
+    // Save to IndexedDB
+    const id = await db.notes.add(newNotes);
+
+    // Update React state
+    setUserNotes(prev => [...prev, { ...newNotes, id }]);
+}
+
 
 
   // HTML/TAILWIND CSS | INDEX
@@ -694,7 +664,7 @@ const exportData = async () => {
                       focus:border-gray-200
                       placeholder:text-body" 
                       placeholder="Search" 
-                      required />
+                      title="Currently in development..." />
                 </div>
             </div>
 
@@ -806,18 +776,87 @@ const exportData = async () => {
       </header>
       
       {/* THEME BACKGROUND */}
-      <div className={`relative min-h-screen w-full min-w-0 mx-auto px-4 transition-colors transition duration-500 bg-white text-black dark:bg-gray-800 dark:text-white backdrop-blur-lg overflow-x-hidden`}>
-        {/* THEME BACKGROUND IMAGE STYLE */}
-        <div className="fixed inset-0 bg-cover bg-center opacity-50 -z-10 transition-opacity duration-800"/>      
-          {/* MAIN PAGE */}
-          <div className="w-full max-w-4xl mx-auto min-h-screen pt-12">
+      <div className={`relative min-h-screen w-full min-w-0 mx-auto px-3 transition-colors transition duration-500 bg-white text-black dark:bg-gray-800 dark:text-white backdrop-blur-lg overflow-x-hidden`}>    
+        
+        {/* MAIN PAGE */}
+        <div className="w-full mx-auto min-h-screen flex justify-center pt-15 gap-2">
+          
+          {/* LEFT SIDE ELEMENT */}
+          <div className="hidden rounded xs:block flex-1">
+
+            {/* ADD BOOK FORM SUBMIT */}
+            {currentBookId === null && (
+              <div className="flex-1 rounded-2xl shadow-lg p-3 bg-gray-100 dark:bg-gray-900">
+                <h2 className="text-2xl font-semibold">Add Book</h2>
+
+                <form className="space-y-2 pt-3">
+                  
+                  {/* Title */}
+                  <div>
+                    <label className="block text-sm font-medium mb-1">
+                      Title
+                    </label>
+                    <input
+                      className="w-full border rounded-xl px-4 py-2 focus:outline-none focus:ring-2 focus:ring-blue-400 placeholder-gray-400 dark:placeholder-gray-600"
+                      value={bookTitle}
+                      onChange={e => setBookTitle(e.target.value)}
+                      onKeyDown={(e) => {
+                          if (e.key === "Enter") addBook();
+                        }}
+                      title="Add new book"
+                      placeholder="Enter book title"
+                    />
+                  </div>
+
+                  {/* Summary */}
+                  <div>
+                    <label className="block text-sm font-medium mb-1">
+                      Summary
+                    </label>
+                    <textarea
+                      rows={4}
+                      className="w-full border rounded-xl px-4 py-2 focus:outline-none focus:ring-2 focus:ring-blue-400 placeholder-gray-400 dark:placeholder-gray-600"
+                      placeholder="Enter book summary"
+                      value={bookSummary}
+                      onChange={e => setBookSummary(e.target.value)}
+                    />
+                  </div>
+
+                  {/* Current Volume */}
+                  <div>
+                    <label className="block text-sm font-medium mb-1">
+                      Current Volume
+                    </label>
+                    <input
+                      type="number"
+                      className="w-full border rounded-xl px-4 py-2 focus:outline-none focus:ring-2 focus:ring-blue-400 placeholder-gray-400 dark:placeholder-gray-600"
+                      placeholder="0"
+                      onChange={e => setBookVolume(Number(e.target.value))}
+                    />
+                  </div>
+
+                  <button
+                    type="button"
+                    className="w-full bg-blue-500 text-white py-2 rounded-xl hover:bg-blue-600 transition cursor-pointer"
+                    onClick={addBook}
+                  >
+                    SAVE
+                  </button>
+                </form>
+              </div>
+            )}
+
+          </div>
+          
+          {/* CENTER ELEMENT */}
+          <div className="w-full max-w-3xl min-h-screen mx-auto">
 
             {/* BOOK LIST / HOMEPAGE */}
             {currentBookId === null && (
               // BOOK LIST PAGE
-              <div className="p-3 my-3 rounded-2xl shadow-lg bg-gray-100 dark:bg-gray-900">
+              <div className="p-3 mb-3 rounded-2xl shadow-lg bg-gray-100 dark:bg-gray-900">
                 
-                <div className="py-4 flex gap-2">
+                <div className="py-4 gap-2 flex xs:hidden">
 
                   <input
                   className="border-b-1 border-gray-200 px-1 w-full outline-none hover:border-gray-500 transition text-gray-500 dark:text-white placeholder-gray-400 dark:placeholder-gray-600"
@@ -838,20 +877,20 @@ const exportData = async () => {
                     <FontAwesomeIcon icon={faPlus} size="lg"/>
                   </button>
 
-                    {/* Conditional "Successfully Added" message */}
-                <div className="absolute mt-9">
-                  {bookAdded && (
-                    <span className="mt-2 text-sm text-green-600 font-semibold animate-pulse">
-                      Book Successfully Added!
-                    </span>
-                  )}
-                </div>
+                  {/* Conditional "Successfully Added" message */}
+                  <div className="absolute mt-9">
+                    {bookAdded && (
+                      <span className="mt-2 text-sm text-green-600 font-semibold animate-pulse">
+                        Book Successfully Added!
+                      </span>
+                    )}
+                  </div>
                   
                 </div>
 
                 {/* SHOW BOOK LIST */}
                 {/* BOOK CARDS */}
-                <h2 className="text-2xl font-semibold pb-2 text-gray-950 dark:text-white">My Books</h2>
+                <h2 className="text-2xl font-semibold pb-2">My Books</h2>
 
                 {!books.length && (
                   <div className="w-full flex justify-center items-center py-20 px-10"> 
@@ -861,7 +900,7 @@ const exportData = async () => {
                   </div>
                 )}
                 
-                <div className="grid grid-cols-2 px-15 sm:grid-cols-2 md:grid-cols-3 gap-1 md:gap-4 pb-1 place-items-center">
+                <div className="grid grid-cols-2 px-15 sm:grid-cols-2 md:grid-cols-3 gap-2 md:gap-x-20 md:gap-y-5 pb-1 place-items-center">
                     {books.map(book => (
                     <div
                       key={book.id} 
@@ -875,6 +914,7 @@ const exportData = async () => {
                         relative group cursor-pointer
                         w-55 h-70 rounded-tl-xl rounded-bl-xl
                         bg-gradient-to-br from-gray-100 to-gray-50
+                        dark:bg-gradient-to-br dark:from-gray-600 dark:to-gray-500
                         shadow-lg
                         hover:-translate-y-2 hover:shadow-2xl
                         transition-all duration-300
@@ -892,7 +932,7 @@ const exportData = async () => {
                       
 
                       {/* Title */}
-                      <div className="p-4 pt-15 text-center font-semibold text-gray-800 line-clamp-5 max-h-45">
+                      <div className="p-4 pt-15 text-center font-semibold line-clamp-5 max-h-45">
                         {book.title}
 
                         {/* Vertical TITLE */}
@@ -900,7 +940,7 @@ const exportData = async () => {
                           <span className="text-xs font-bold">{book.title}</span>
                         </div>
                       </div>
-                      <p className="text-center text-gray-500">{book.characters.length} Characters</p>
+                      <p className="text-center">{book.characters.length} Characters</p>
                       
                     </div>
                     ))}
@@ -913,7 +953,7 @@ const exportData = async () => {
 
             {/* DETAILS / CHARACTERS */}
             {currentBookId !== null && currentBook && selectedCharacter === null && (
-                <div className="px-3 pt-3 my-3 rounded-2xl shadow-lg bg-gray-100 dark:bg-gray-900">
+                <div className="px-3 pt-3 mb-3 rounded-2xl shadow-lg bg-gray-100 dark:bg-gray-900">
                   <div className="">
                     <button 
                       onClick={() => setCurrentBookId(null)} 
@@ -972,7 +1012,7 @@ const exportData = async () => {
                   )}
 
                   {/* Display Character Card Block */}
-                  <div className="grid gap-4 pb-4 sm:grid-cols-2 md:grid-cols-4 items-stretch place-items-center">
+                  <div className="grid gap-4 pb-4 sm:grid-cols-2 md:grid-cols-3 items-stretch place-items-center">
                       {currentBook.characters.map(char => (
 
                       // CHARACTER CARDS w/ image... //
@@ -1017,7 +1057,7 @@ const exportData = async () => {
 
             {/* CHARACTER DATA PAGE / EDIT CHAR DETAILS */}
             {selectedCharacter !== null && editingCharacter && (
-              <div className="rounded-2xl shadow-lg pt-3 my-3 bg-gray-100 dark:bg-gray-900">
+              <div className="rounded-2xl shadow-lg pt-3 mb-3 bg-gray-100 dark:bg-gray-900">
 
                 {/* Buttons */}
                 <div className="flex justify-between pb-3 px-3">
@@ -1152,219 +1192,300 @@ const exportData = async () => {
             )}
 
           </div>
+
+          {/* RIGHT SIDE ELEMENT */}
+          <div className="hidden rounded xs:block flex-1">
+            
+            {/* NOTES FOR THE USER */}
+            {currentBookId === null && (
+              
+              <div>
+                <div className="flex-1 rounded-2xl shadow-lg p-3 bg-gray-100 dark:bg-gray-900 mb-2 flex justify-between">
+
+                  <h3 className="text-2xl font-semibold">Notes</h3>
+
+                  <div className="flex justify-center">
+                    <button 
+                      value={bookTitle}
+                      // onChange={e => setBookTitle(e.target.value)}
+                      className="cursor-pointer border-gray-500 border-1 text-black rounded hover:bg-gray-300 hover:text-gray-950 px-2 transition dark:border-white dark:text-white"
+                      onClick={addNotes}>
+                        <FontAwesomeIcon icon={faPlus} size="xs"/>
+                    </button>
+                  </div>
+
+                </div>
+
+                  {/* <div className="bg-yellow-200 dark:bg-yellow-800 p-4 rounded-xl shadow-md mb-2">
+                    <p className="text-sm">
+                      💡 Remember to check duplicate book titles.
+                    </p>
+                  </div>
+
+                  <div className="bg-pink-200 dark:bg-pink-900 p-4 rounded-xl shadow-md mb-2">
+                    <p className="text-sm">
+                      📌 Add cover image upload soon.
+                    </p>
+                  </div>
+    
+                  <div className="bg-green-200 dark:bg-green-900 p-4 rounded-xl shadow-md mb-2">
+                    <p className="text-sm">
+                      🚀 Future: connect to IndexedDB.
+                    </p>
+                  </div> */}
+
+                  <div>
+                    {userNotes.map(notes => (
+                      <div 
+                        draggable
+                        className={`p-2 rounded-xl shadow-md mb-2 bg-gray-100 dark:bg-gray-900 cursor-pointer`}
+                        key={notes.id}
+                        data-id={notes.id}
+                      >
+                        
+                        <span className="text-xs text-gray-800 dark:text-gray-400">
+                          {new Date(notes.createdAt).toLocaleString("en-US", {
+                            month: "short",
+                            day: "numeric",
+                            year: "numeric",
+                            hour: "2-digit",
+                            minute: "2-digit",
+                          })}
+                        </span>
+
+                        <textarea
+                          className="w-full border rounded-xl px-4 py-2 focus:outline-none focus:ring-2 focus:ring-blue-400 placeholder-gray-400 dark:placeholder-gray-400"
+                          placeholder="Enter Notes"
+                          rows={3}
+                        >{notes.content}
+                        </textarea>
+                      </div>
+                  ))}
+                  </div>
+
+              </div>
+                
+            )}
+    
+          </div>
+
+        </div>
+      
       </div>
 
-            {/* GENERATE CHARACTER IMAGE BOOM */}
-            {showGenImage && selectedCharacter && (
-                <div className="fixed inset-0 flex items-center bg-black/50 z-50 overflow-auto" 
-                  onMouseDown={(e) => {
-                    if (e.target === e.currentTarget) {
-                      showModal(false);
-                      setImageUrl(null);
-                    }
-                  }}
-                >
-                  <div className="w-9/10 min-w-0 md:max-w-120 mx-auto bg-white dark:bg-gray-100 max-h-screen overflow-y-auto p-6 rounded-xl shadow-lg" onMouseDown={(e) => e.stopPropagation()}>
-                    
-                      <h2 className="text-2xl font-bold text-gray-800 pb-2">
-                        Character Image Generator
-                      </h2>
+      {/* OUT OF THE MAIN PAGE MODALS */}
 
-                      {/* Prompt Input */}
-                      <div className="flex flex-col sm:flex-row gap-3 mb-3">
-                        <input
-                          type="text"
-                          value={charprompt}
-                          onChange={(e) => setcharPrompt(e.target.value)}
-                          placeholder="e.g. A space pirate with a mechanical eye"
-                          className="flex-1 px-4 py-3 border rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500"
-                        />
+        {/* GENERATE CHARACTER IMAGE BOOM */}
+        {showGenImage && selectedCharacter && (
+            <div className="fixed inset-0 flex items-center bg-black/50 z-50 overflow-auto" 
+              onMouseDown={(e) => {
+                if (e.target === e.currentTarget) {
+                  showModal(false);
+                  setImageUrl(null);
+                }
+              }}
+            >
+              <div className="w-9/10 min-w-0 md:max-w-120 mx-auto bg-white dark:bg-gray-100 max-h-screen overflow-y-auto p-6 rounded-xl shadow-lg" onMouseDown={(e) => e.stopPropagation()}>
+                
+                  <h2 className="text-2xl font-bold text-gray-800 pb-2">
+                    Character Image Generator
+                  </h2>
 
-                        <button
-                          onClick={generateImage}
-                          disabled={loading}
-                          className="px-6 py-3 bg-indigo-600 text-white rounded-xl hover:bg-indigo-700 transition disabled:opacity-50"
-                        >
-                          {loading ? "Generating..." : "Generate"}
-                        </button>
-                      </div>
+                  {/* Prompt Input */}
+                  <div className="flex flex-col sm:flex-row gap-3 mb-3">
+                    <input
+                      type="text"
+                      value={charprompt}
+                      onChange={(e) => setcharPrompt(e.target.value)}
+                      placeholder="e.g. A space pirate with a mechanical eye"
+                      className="flex-1 px-4 py-3 border rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                    />
 
-                      {/* Error */}
-                      {error && (
-                        <div className="text-red-500 text-sm">
-                          {error}
+                    <button
+                      onClick={generateImage}
+                      disabled={loading}
+                      className="px-6 py-3 bg-indigo-600 text-white rounded-xl hover:bg-indigo-700 transition disabled:opacity-50"
+                    >
+                      {loading ? "Generating..." : "Generate"}
+                    </button>
+                  </div>
+
+                  {/* Error */}
+                  {error && (
+                    <div className="text-red-500 text-sm">
+                      {error}
+                    </div>
+                  )}
+
+                  {/* Image Preview */}
+                  <div className="w-full flex justify-center">
+                    <div className="w-72 h-96 bg-gray-200 rounded-xl overflow-hidden shadow-inner flex items-center justify-center">
+                      {loading && (
+                        <div className="animate-pulse text-gray-400">
+                          Generating image...Please wait
                         </div>
                       )}
 
-                      {/* Image Preview */}
-                      <div className="w-full flex justify-center">
-                        <div className="w-72 h-96 bg-gray-200 rounded-xl overflow-hidden shadow-inner flex items-center justify-center">
-                          {loading && (
-                            <div className="animate-pulse text-gray-400">
-                              Generating image...Please wait
-                            </div>
-                          )}
+                      {!loading && imageUrl && (
+                        <img
+                          src={imageUrl}
+                          alt="Generated character"
+                          className="w-full h-full object-cover"
+                        />
+                      )}
 
-                          {!loading && imageUrl && (
-                            <img
-                              src={imageUrl}
-                              alt="Generated character"
-                              className="w-full h-full object-cover"
-                            />
-                          )}
-
-                          {!loading && !imageUrl && (
-                            <div className="text-gray-400 text-sm">
-                              Image will appear here
-                            </div>
-                          )}
+                      {!loading && !imageUrl && (
+                        <div className="text-gray-400 text-sm">
+                          Image will appear here
                         </div>
-                      </div>
-
-                      <div className="flex justify-center pt-3">
-                        <button 
-                        className="py-2 px-6 rounded-xl bg-indigo-200 hover:bg-indigo-300 text-center cursor-pointer"
-                        onClick={saveImage}>
-                          Save
-                        </button>
-                      </div>
-
-                  </div>
-                </div>
-            )}
-
-            {/* EXPORT/IMPORT MODAL */}
-            {showFileModal && (
-                <div 
-                className="fixed inset-0 flex items-center justify-center bg-black/50 z-50" 
-                onMouseDown={(e) => {
-                    if (e.target === e.currentTarget) {
-                      showModalFile(false);
-                    }
-                  }}>
-                  <div className="w-9/10 min-w-0 md:max-w-120 mx-auto bg-white dark:bg-gray-100 max-h-[90vh] overflow-y-auto p-6 rounded-xl shadow-lg" onMouseDown={(e) => e.stopPropagation()}>
-                    
-                    {/* DOWNLOAD YOUR DATA as JSON */}
-                    <div className="flex justify-between">
-                      <div>
-                        <h2 className="text-x1 font-bold">SAVE YOUR BOOKS</h2>
-                        <p className="text-sm text-gray-500">From your impulsive actions, save your file now.</p>
-                      </div>
-                      <div className="px-2">
-                        <button
-                          onClick={exportData}
-                          className="border bg-blue-500 px-4 py-2 text-white rounded-xl cursor-pointer hover:border hover:border-blue-900"> 
-                          Export Books
-                        </button>
-                      </div>
+                      )}
                     </div>
-
-                    {/* DIVIDER LINE OR */}
-                    <div className="my-6 flex items-center">
-                      <div className="flex-grow border-t border-gray-300"></div>
-                      <span className="mx-4 text-sm text-gray-500 font-medium">OR</span>
-                      <div className="flex-grow border-t border-gray-300"></div>
-                    </div>
-
-                    {/* UPLOAD YOUR DOWNLOADED JSON FILE TO use in OTHER BROWSER */}
-                    <div className="flex items-center justify-center w-full">
-                        <div 
-                          {...getRootProps()}
-                          className={`flex flex-col items-center justify-center w-full h-35 bg-neutral-secondary-medium border border-dashed border-default-strong rounded-base cursor-pointer hover:bg-neutral-tertiary-medium ${isDragActive ? "border-blue-500 bg-blue-50" : "border-gray-300"}`}>
-                            <input {...getInputProps()} 
-                              accept=".json"
-                              onChange={(e) => {
-                                if (e.target.files?.[0]) {
-                                setSelectedFile(e.target.files[0]);
-                                }
-                              }}
-                            />
-
-                            {selectedFile ? (
-                              <span className="text-lg text-gray-500 truncate max-w-100">
-                                  {selectedFile.name}
-                                </span>
-                            ) : (
-                              <div className="flex flex-col items-center justify-center text-body pt-5 pb-6">
-                                  <svg className="w-8 h-8 mb-4" aria-hidden="true" xmlns="http://www.w3.org/2000/svg" width="24" height="24" fill="none" viewBox="0 0 24 24"><path stroke="currentColor" d="M15 17h3a3 3 0 0 0 0-6h-.025a5.56 5.56 0 0 0 .025-.5A5.5 5.5 0 0 0 7.207 9.021C7.137 9.017 7.071 9 7 9a4 4 0 1 0 0 8h2.167M12 19v-9m0 0-2 2m2-2 2 2"/></svg>
-                                  <p className="mb-2 text-sm"><span className="font-semibold">Click to upload</span></p>
-                                  <p className="text-xs">Exported file only, Json file.</p>
-                              </div>
-                            )}
-                        </div>
-                    </div> 
-
-                    {/* Submit */}
-                      <div className="flex justify-between mt-3">
-                        <div>
-                          <h2 className="text-x1 font-bold">EXTRICATE YOUR CHARACTERS</h2>
-                          <p className="text-sm text-gray-500">From your own chaotic life, upload now.</p>
-                        </div>
-                        <div className="px-2">
-                          <button
-                            disabled={!selectedFile}
-                            onClick={() => importData(selectedFile!)}
-                            className="border bg-blue-500 px-4 py-2 text-white rounded-xl cursor-pointer hover:border hover:border-blue-900 disabled:opacity-40 disabled:cursor-not-allowed
-                            text-white"> 
-                            Import Books
-                          </button>
-                        </div>
-                      </div>
                   </div>
-                </div>
-            )}
 
-            {/* TRASHCAN FEATURE/DELETION OF BOOK CARD ONDROP */}
-            {isDraggingBook && (
-              <div
-                className="
-                  fixed bottom-6 right-6 z-50
-                  transition-all duration-300
-                  scale-100 opacity-100
-                "
-              >
-                <div
-                  onDragOver={handleDragOver}
-                  onDrop={handleDrop}
-                  onDragLeave={handleDragLeave}
-                  className={`
-                    w-20 h-20
-                    group flex items-center justify-center
-                    rounded-full
-                    px-2 py-2 border border-red-300
-                    bg-red-300
-                    text-white
-                    shadow-xl
-                    hover:scale-110
-                    hover:bg-red-500
-                    transition-transform
-                    ${setDrag ? "scale-110 bg-red-500" : ""}
-                  `}
-                > 
-                <FontAwesomeIcon 
-                icon={faTrashCan} 
-                size="2xl"
-                bounce={isDraggingBook && !setDrag}
-                />
-                </div>
+                  <div className="flex justify-center pt-3">
+                    <button 
+                    className="py-2 px-6 rounded-xl bg-indigo-200 hover:bg-indigo-300 text-center cursor-pointer"
+                    onClick={saveImage}>
+                      Save
+                    </button>
+                  </div>
 
-                {/* TOOLTIP */}
-                <span
-                  className={`
-                    ${setDrag === true ? "hidden" : ""}
-                    absolute right-full bottom-6 mr-2
-                    pointer-events-none
-                    transition-opacity duration-200
-                    bg-black/80 text-white text-xs px-2 py-1 rounded-md
-                    whitespace-nowrap
-                  `}
-                  >
-                  DROP BOOKS HERE TO REMOVE.
-                </span>
               </div>
-            )}
+            </div>
+        )}
 
-            {/* CUSTOM MODAL FOR CONFIRM/CANCEL */}
+        {/* EXPORT/IMPORT MODAL */}
+        {showFileModal && (
+            <div 
+            className="fixed inset-0 flex items-center justify-center bg-black/50 z-50" 
+            onMouseDown={(e) => {
+                if (e.target === e.currentTarget) {
+                  showModalFile(false);
+                }
+              }}>
+              <div className="w-9/10 min-w-0 md:max-w-120 mx-auto bg-white dark:bg-gray-100 max-h-[90vh] overflow-y-auto p-6 rounded-xl shadow-lg" onMouseDown={(e) => e.stopPropagation()}>
+                
+                {/* DOWNLOAD YOUR DATA as JSON */}
+                <div className="flex justify-between">
+                  <div>
+                    <h2 className="text-x1 font-bold">SAVE YOUR BOOKS</h2>
+                    <p className="text-sm text-gray-500">From your impulsive actions, save your file now.</p>
+                  </div>
+                  <div className="px-2">
+                    <button
+                      onClick={exportData}
+                      className="border bg-blue-500 px-4 py-2 text-white rounded-xl cursor-pointer hover:border hover:border-blue-900"> 
+                      Export Books
+                    </button>
+                  </div>
+                </div>
+
+                {/* DIVIDER LINE OR */}
+                <div className="my-6 flex items-center">
+                  <div className="flex-grow border-t border-gray-300"></div>
+                  <span className="mx-4 text-sm text-gray-500 font-medium">OR</span>
+                  <div className="flex-grow border-t border-gray-300"></div>
+                </div>
+
+                {/* UPLOAD YOUR DOWNLOADED JSON FILE TO use in OTHER BROWSER */}
+                <div className="flex items-center justify-center w-full">
+                    <div 
+                      {...getRootProps()}
+                      className={`flex flex-col items-center justify-center w-full h-35 bg-neutral-secondary-medium border border-dashed border-default-strong rounded-base cursor-pointer hover:bg-neutral-tertiary-medium ${isDragActive ? "border-blue-500 bg-blue-50" : "border-gray-300"}`}>
+                        <input {...getInputProps()} 
+                          accept=".json"
+                          onChange={(e) => {
+                            if (e.target.files?.[0]) {
+                            setSelectedFile(e.target.files[0]);
+                            }
+                          }}
+                        />
+
+                        {selectedFile ? (
+                          <span className="text-lg text-gray-500 truncate max-w-100">
+                              {selectedFile.name}
+                            </span>
+                        ) : (
+                          <div className="flex flex-col items-center justify-center text-body pt-5 pb-6">
+                              <svg className="w-8 h-8 mb-4" aria-hidden="true" xmlns="http://www.w3.org/2000/svg" width="24" height="24" fill="none" viewBox="0 0 24 24"><path stroke="currentColor" d="M15 17h3a3 3 0 0 0 0-6h-.025a5.56 5.56 0 0 0 .025-.5A5.5 5.5 0 0 0 7.207 9.021C7.137 9.017 7.071 9 7 9a4 4 0 1 0 0 8h2.167M12 19v-9m0 0-2 2m2-2 2 2"/></svg>
+                              <p className="mb-2 text-sm"><span className="font-semibold">Click to upload</span></p>
+                              <p className="text-xs">Exported file only, Json file.</p>
+                          </div>
+                        )}
+                    </div>
+                </div> 
+
+                {/* Submit */}
+                  <div className="flex justify-between mt-3">
+                    <div>
+                      <h2 className="text-x1 font-bold">EXTRICATE YOUR CHARACTERS</h2>
+                      <p className="text-sm text-gray-500">From your own chaotic life, upload now.</p>
+                    </div>
+                    <div className="px-2">
+                      <button
+                        disabled={!selectedFile}
+                        onClick={() => importData(selectedFile!)}
+                        className="border bg-blue-500 px-4 py-2 text-white rounded-xl cursor-pointer hover:border hover:border-blue-900 disabled:opacity-40 disabled:cursor-not-allowed
+                        text-white"> 
+                        Import Books
+                      </button>
+                    </div>
+                  </div>
+              </div>
+            </div>
+        )}
+
+        {/* TRASHCAN FEATURE/DELETION OF BOOK CARD ONDROP */}
+        {isDraggingBook && (
+          <div
+            className="
+              fixed bottom-6 right-6 z-50
+              transition-all duration-300
+              scale-100 opacity-100
+            "
+          >
+            <div
+              onDragOver={handleDragOver}
+              onDrop={handleDrop}
+              onDragLeave={handleDragLeave}
+              className={`
+                w-20 h-20
+                group flex items-center justify-center
+                rounded-full
+                px-2 py-2 border border-red-300
+                bg-red-300
+                text-white
+                shadow-xl
+                hover:scale-110
+                hover:bg-red-500
+                transition-transform
+                ${setDrag ? "scale-110 bg-red-500" : ""}
+              `}
+            > 
+            <FontAwesomeIcon 
+            icon={faTrashCan} 
+            size="2xl"
+            bounce={isDraggingBook && !setDrag}
+            />
+            </div>
+
+            {/* TOOLTIP */}
+            <span
+              className={`
+                ${setDrag === true ? "hidden" : ""}
+                absolute right-full bottom-6 mr-2
+                pointer-events-none
+                transition-opacity duration-200
+                bg-black/80 text-white text-xs px-2 py-1 rounded-md
+                whitespace-nowrap
+              `}
+              >
+              DROP BOOKS HERE TO REMOVE.
+            </span>
+          </div>
+        )}
+
+        {/* CUSTOM MODAL FOR CONFIRM/CANCEL */}
 
     </div>
   );
