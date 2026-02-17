@@ -598,10 +598,6 @@ const exportData = async () => {
 }, [currentBook]);
 
 
-// NOTES CONNECT DB VARIABLES
-const [notesSubject, setNotesSubject] = useState("");
-const [notesContent, setNotesContent] = useState("");
-
 const stickyColors = [
   "yellow",
   "pink",
@@ -620,7 +616,35 @@ const colorMap: Record<string, string> = {
   gray: "bg-gray-200 dark:bg-gray-900"
 };
 
-async function addNotes() {
+  
+const notesSubject = "";
+const notesContent = "";
+
+// async function addNotes() {
+//   const randomColor =
+//     stickyColors[Math.floor(Math.random() * stickyColors.length)];
+
+//   const newNotes = {
+//       notesId: crypto.randomUUID(),
+//       subject: notesSubject,
+//       content: notesContent,
+//       createdAt: Date.now(),
+//       color: randomColor,
+//     };
+
+//     // Save to IndexedDB
+//     const id = await db.notes.add(newNotes);
+
+//     // Update React state
+//     setUserNotes(prev => [...prev, { ...newNotes, id }]);
+// }
+
+// DRAFT NOTE
+const [draftNote, setDraftNote] = useState<Notes | null>(null);
+
+async function addDraftNotes() {
+  if (draftNote) return;
+  
   const randomColor =
     stickyColors[Math.floor(Math.random() * stickyColors.length)];
 
@@ -630,15 +654,44 @@ async function addNotes() {
       content: notesContent,
       createdAt: Date.now(),
       color: randomColor,
+      isDraft: true,
     };
 
-    // Save to IndexedDB
-    const id = await db.notes.add(newNotes);
-
     // Update React state
-    setUserNotes(prev => [...prev, { ...newNotes, id }]);
+    setDraftNote(newNotes);
 }
 
+async function saveNote(note: any) {
+  if (!note.content.trim()) return;
+
+  if (note.isDraft) {
+    // first time saving
+    const { isDraft, ...noteData } = note;
+
+    const dbId = await db.notes.add(noteData);
+
+    setUserNotes(prev => [
+      ...prev,
+      { ...noteData, id: dbId }
+    ]);
+
+    setDraftNote(null);
+  } else {
+    // update existing note
+    await db.notes.update(note.id, {
+      content: note.content,
+    });
+  }
+}
+
+// DELETE NOTES/DRAFT
+function handleDeleteNote(note: Notes) {
+   if (draftNote && note.id === draftNote.id) {
+    setDraftNote(null);
+  } else {
+    deleteNotes(note.id!);
+  }
+}
 
 const [Addnewbooks, setAddnewBooks] = useState(false);
 
@@ -657,10 +710,16 @@ async function deleteNotes(id: number) {
 }
 
 // UPDATING NOTES CONTENT
-async function updateNotes(id: number, content: string) {
-  await db.notes.update(id, {
-    content: normalizeWhitespace(content),
-  });
+// async function updateNotes(id: number, content: string) {
+//   await db.notes.update(id, {
+//     content: normalizeWhitespace(content),
+//   });
+// }
+
+function autoResize(e: React.ChangeEvent<HTMLTextAreaElement>) {
+  const el = e.target;
+  el.style.height = "auto";
+  el.style.height = el.scrollHeight + "px";
 }
 
   // HTML/TAILWIND CSS | INDEX
@@ -821,12 +880,12 @@ async function updateNotes(id: number, content: string) {
       </header>
       
       {/* THEME BACKGROUND */}
-      <div className={`relative min-h-screen w-full min-w-0 mx-auto px-3 transition-colors transition duration-300 bg-white text-black dark:bg-gray-800 dark:text-white backdrop-blur-lg overflow-x-hidden`}>    
+      <div className={`relative min-h-screen w-full min-w-0 mx-auto px-3 transition-colors transition duration-300 bg-white text-black dark:bg-gray-800 dark:text-white backdrop-blur-lg overflow-hidden`}>    
         
-        {/* MAIN PAGE */}
-        <div className="w-full mx-auto min-h-screen flex justify-center pt-15 gap-2">
+        {/* MAIN PARENT CONTAINER */}
+        <div className="w-full mx-auto flex justify-center pt-15 gap-2 notes-scroll">
           
-          {/* LEFT SIDE ELEMENT */}
+          {/* LEFT SIDE CONTAINER */}
           <div className="hidden xs:block flex-1">
 
             {/* ADD BOOK FORM SUBMIT */}
@@ -914,8 +973,8 @@ async function updateNotes(id: number, content: string) {
 
           </div>
           
-          {/* CENTER ELEMENT */}
-          <div className="w-full max-w-3xl min-h-screen mx-auto">
+          {/* CENTER CONTAINER */}
+          <div className="w-full max-w-3xl mx-auto">
 
             {/* BOOK LIST / HOMEPAGE */}
             {currentBookId === null && (
@@ -966,7 +1025,7 @@ async function updateNotes(id: number, content: string) {
                   </div>
                 )}
                 
-                <div className="grid grid-cols-2 px-15 sm:grid-cols-2 md:grid-cols-3 gap-2 md:gap-x-20 md:gap-y-5 pb-1 place-items-center">
+                <div className="grid grid-cols-2 px-15 sm:grid-cols-2 md:grid-cols-3 gap-2 md:gap-x-20 md:gap-y-5 pb-1 place-items-center overflow-y-auto notes-scroll">
                     {books.map(book => (
                     <div
                       key={book.id} 
@@ -1259,13 +1318,13 @@ async function updateNotes(id: number, content: string) {
 
           </div>
 
-          {/* RIGHT SIDE ELEMENT */}
-          <div className="hidden xs:block flex-1">
+          {/* RIGHT SIDE CONTAINER */}
+          <div className="hidden xs:block flex-1 h-screen flex flex-col">
             
             {/* NOTES FOR THE USER */}
             {currentBookId === null && (
               
-              <div>
+              <div className="PARENT CONTAINER FOR THE NOTES PANEL">
                 <div className="flex-1 rounded-md shadow-lg p-3 bg-gray-100 dark:bg-gray-900 mb-2 flex justify-between">
 
                   <h3 className="text-2xl font-semibold">Notes</h3>
@@ -1275,84 +1334,92 @@ async function updateNotes(id: number, content: string) {
                       value={bookTitle}
                       // onChange={e => setBookTitle(e.target.value)}
                       className="cursor-pointer border-gray-500 border-1 text-black rounded hover:bg-gray-300 hover:text-gray-950 px-2 transition dark:border-white dark:text-white"
-                      onClick={addNotes}>
+                      onClick={addDraftNotes}>
                         <FontAwesomeIcon icon={faPlus} size="xs"/>
                     </button>
                   </div>
 
                 </div>
 
-                  <div>
-                    {userNotes.map(notes => (
-                      <div 
-                        className={`${colorMap[notes.color]} p-1 rounded-md shadow-md mb-2 bg-gray-100 dark:bg-gray-900 cursor-pointer hover:scale-101`}
-                        key={notes.id}
-                        data-id={notes.id}
-                      >
+                <div className="overflow-y-auto overflow-x-hidden h-[84vh] notes-scroll">
+                  {[...(draftNote ? [draftNote] : []), ...userNotes, ].map(notes => (
+                    <div 
+                      className={`${colorMap[notes.color]} p-1 rounded-md shadow-md mb-2 bg-gray-100 dark:bg-gray-900 cursor-pointer hover:scale-101`}
+                      key={notes.id ?? notes.notesId}
+                      data-id={notes.id}
+                    >
 
-                        <div className="flex justify-between pb-1"> 
-                          
-                          <span className="text-xs text-gray-800 dark:text-gray-400">
-                            {new Date(notes.createdAt).toLocaleString("en-US", {
-                              month: "short",
-                              day: "numeric",
-                              year: "numeric",
-                              hour: "2-digit",
-                              minute: "2-digit",
-                            })}
-                          </span>
-
-                          <button className="cursor-pointer">
-                            <svg
-                              xmlns="http://www.w3.org/2000/svg"
-                              className="h-5 w-5 text-gray-700 hover:text-white"
-                              fill="none"
-                              viewBox="0 0 24 24"
-                              stroke="currentColor"
-                              strokeWidth={2}
-                              onClick={() => deleteNotes(notes.id!)}
-                            >
-                              <path strokeLinecap="round" strokeLinejoin="round" d="M6 6l12 12M6 18L18 6" />
-                            </svg>
-                          </button>
-
-                        </div>
+                      <div className="flex justify-between pb-1"> 
                         
-                        <textarea
-                          className="
-                          w-full text-base 
-                          border rounded-md 
-                          px-4 py-2 
-                          focus:outline-none focus:ring-2 focus:ring-blue-400 
-                          placeholder-gray-400 dark:placeholder-gray-400 
-                          resize-none
-                          overflow-hidden
-                          transition-all duration-200
-                          focus:min-h-[150px]
-                          min-h-[60px]"
-                          placeholder="Enter Notes"
-                          rows={3}
-                          value={notes.content}
-                          onChange={(e) =>
+                        <span className="text-xs text-gray-800 dark:text-gray-400">
+                          {new Date(notes.createdAt).toLocaleString("en-US", {
+                            month: "short",
+                            day: "numeric",
+                            year: "numeric",
+                            hour: "2-digit",
+                            minute: "2-digit",
+                          })}
+                        </span>
+
+                        <button className="cursor-pointer">
+                          <svg
+                            xmlns="http://www.w3.org/2000/svg"
+                            className="h-5 w-5 text-gray-700 dark:text-gray-400 hover:text-white"
+                            fill="none"
+                            viewBox="0 0 24 24"
+                            stroke="currentColor"
+                            strokeWidth={2}
+                            onClick={() => handleDeleteNote(notes)}
+                          >
+                            <path strokeLinecap="round" strokeLinejoin="round" d="M6 6l12 12M6 18L18 6" />
+                          </svg>
+                        </button>
+
+                      </div>
+                      
+                      <textarea
+                        className="
+                        w-full text-base 
+                        border rounded-md 
+                        px-4 py-2 
+                        focus:outline-none focus:ring-2 focus:ring-blue-400 
+                        placeholder-gray-400 dark:placeholder-gray-400 
+                        resize-none
+                        overflow-hidden
+                        transition-all duration-200
+                        "
+                        placeholder="Enter Notes"
+                        onFocus={(e) => autoResize(e)}
+                        rows={2}
+                        value={notes.content}
+                        onChange={(e) => {
+                          if (!notes.id) {
+                            // This is draft
+                            setDraftNote(prev =>
+                              prev ? { ...prev, content: e.target.value } : prev
+                            );
+                          } else {
+                            // This is saved note
                             setUserNotes(prev =>
                               prev.map(note =>
                                 note.id === notes.id
                                   ? { ...note, content: e.target.value }
                                   : note
                               )
-                            )
+                            );
                           }
-                          onKeyDown={(e) => {
-                            if (e.key === "Enter" && !e.shiftKey) {
-                              e.preventDefault();
-                              updateNotes(notes.id!, notes.content);
-                            }
-                          }}
-                          onBlur={() => updateNotes(notes.id!, notes.content)}
-                        />
-                      </div>
+                        }}
+                        onKeyDown={(e) => {
+                          if (e.key === "Enter" && !e.shiftKey) {
+                            e.preventDefault();
+                            (e.target as HTMLElement).blur();
+                          }
+                        }}
+                        onBlur={(e) => {(saveNote(notes)); e.currentTarget.style.height = "auto";}}
+                      />
+                    </div>
                   ))}
-                  </div>
+                </div>
 
               </div>
                 
