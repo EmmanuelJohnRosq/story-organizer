@@ -9,7 +9,19 @@
 
 /* For Chrome, Edge, Safari */
 .notes-scroll::-webkit-scrollbar {
-  width: 2px; /* super thin */
+  width: 4px;
+}
+
+/* .notes-scroll { */
+  /* 1. New Standard (Chrome 121+, Firefox, Edge) */
+  /* scrollbar-width: none;  */
+
+  /* 2. Legacy IE & Edge */
+  /* -ms-overflow-style: none;  */
+/* } */
+
+.main-scroll::-webkit-scrollbar {
+  width: 2px;
 }
 
 .notes-scroll::-webkit-scrollbar-track {
@@ -21,15 +33,38 @@
   border-radius: 9999px;
 }
 
+.notes-scroll::-webkit-scrollbar-button {
+  display: none;
+}
+
 .notes-scroll::-webkit-scrollbar-thumb:hover {
   background-color: rgba(100, 100, 100, 0.6);
 }
 
-/* For Firefox */
-.notes-scroll {
+button {
+  cursor: pointer;
+}
+
+@keyframes fadeDown {
+  from { 
+    opacity: 0; 
+    transform: translateY(-10px); 
+  }
+  to { 
+    opacity: 1; 
+    transform: translateY(0); 
+  }
+}
+
+.animate-fadeDown {
+  animation: fadeDown 0.3s ease-out;
+}
+
+/* NEWEST BROWSERS SCROLLBAR SET */
+/* .notes-scroll {
   scrollbar-width: thin;
   scrollbar-color: rgba(100, 100, 100, 0.4) transparent;
-}
+} */
 
 
 /* THIS code outlines all the elements in the page. */

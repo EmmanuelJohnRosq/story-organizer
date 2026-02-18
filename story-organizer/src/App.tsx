@@ -1,15 +1,9 @@
 import { useState, useEffect, useCallback, useRef } from "react";
 import { db, type Book, type Character, type EditableCharacter, type Images, type Notes } from "./db";
 
-
 import { useDropzone } from "react-dropzone";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
-import { faFileImport } from "@fortawesome/free-solid-svg-icons";
-import { faTrashCan } from "@fortawesome/free-solid-svg-icons";
-import { faCheck } from "@fortawesome/free-solid-svg-icons";
-import { faArrowLeftLong } from "@fortawesome/free-solid-svg-icons";
-import { faSpinner } from "@fortawesome/free-solid-svg-icons";
-import { faPlus, faMinus } from "@fortawesome/free-solid-svg-icons";
+import { faFileImport, faTrashCan, faCheck, faArrowLeftLong, faSpinner, faPlus, faMinus } from "@fortawesome/free-solid-svg-icons";
 
 
 export default function StoryOrganizer() {
@@ -50,10 +44,6 @@ export default function StoryOrganizer() {
   // IMPORT Variables
   // const fileInputRef = useRef<HTMLInputElement>(null);
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
-  
-  // HEADER SCROLL VARIABLES
-  const [headerVisible, setHeaderVisible] = useState(true);
-  const lastScrollY = useRef(0);
 
   // USER DRAGGIN STATE
   const [setDrag, setIsDragOver] = useState(false);
@@ -63,11 +53,11 @@ export default function StoryOrganizer() {
   const [titleEditing, settitleEditing] = useState(false);
 
   const [darktheme, setDarkTheme] = useState(
-    localStorage.getItem("theme") || "light"
+    localStorage.getItem("theme") || "dark"
   );
   
   const onDrop = useCallback((acceptedFiles: File[]) => {
-    setSelectedFile(acceptedFiles[0]); // 🔥 THIS triggers re-render
+    setSelectedFile(acceptedFiles[0]); // triggers re-render
   }, []);
 
   const { getRootProps, getInputProps, isDragActive } = useDropzone({
@@ -84,11 +74,9 @@ export default function StoryOrganizer() {
   const [abilities, setAbilities] = useState("");
   const [arcStage, setArcStage] = useState("");
 
-  // const [theme, setTheme] = useState<'default'|'fantasy'|'scifi'|'horror'|'romance'|'xianxia'>('default');
-
   const currentBook = books.find(book => book.id === currentBookId);
 
-  // UseEFFECT FUNCTIONS
+  // LOAD DN DATA ON START and call db when changes happen
   useEffect(() => {
     const loadBooks = async () => {
       const allBooks = await db.books.toArray();
@@ -98,7 +86,7 @@ export default function StoryOrganizer() {
 
     const loadNotes = async () => {
       const allNotes = await db.notes.toArray();
-      allNotes.sort((a , b) => a.createdAt - b.createdAt);
+      allNotes.sort((a , b) => b.createdAt - a.createdAt);
       setUserNotes(allNotes);
     }
 
@@ -113,18 +101,18 @@ export default function StoryOrganizer() {
   }
 
   function sanitizeCharacter(char: EditableCharacter): Character {
-  return {
-    ...char,
-    name: normalizeWhitespace(char.name),
-    role: normalizeWhitespace(char.role),
-    notes: char.notes.trim().replace(/[^\S\r\n]+/g, " "),
-    arcStage: normalizeWhitespace(char.arcStage),
-    abilities: char.abilitiesText
-      .split(",")
-      .map(a => normalizeWhitespace(a),)
-      .filter(a => a.length > 0) // removes empty ones
-  };
-}
+    return {
+      ...char,
+      name: normalizeWhitespace(char.name),
+      role: normalizeWhitespace(char.role),
+      notes: char.notes.trim().replace(/[^\S\r\n]+/g, " "),
+      arcStage: normalizeWhitespace(char.arcStage),
+      abilities: char.abilitiesText
+        .split(",")
+        .map(a => normalizeWhitespace(a),)
+        .filter(a => a.length > 0) // removes empty ones
+    };
+  }
 
 // Convert blob to base64 for image
 const blobToBase64 = (blob: Blob): Promise<string> => {
@@ -195,44 +183,44 @@ const exportData = async () => {
 
   // IMPORT DATA/SAVE File
   const importData = async (file: File) => {
-  try {
-    const text = await file.text();
-    const parsed = JSON.parse(text);
+    try {
+      const text = await file.text();
+      const parsed = JSON.parse(text);
 
-    // Clear old data
-    await db.books.clear();
-    await db.images.clear();
-    await db.notes.clear();
+      // Clear old data
+      await db.books.clear();
+      await db.images.clear();
+      await db.notes.clear();
 
-    // Restore books
-    await db.books.bulkAdd(parsed.books);
-    await db.notes.bulkAdd(parsed.userNotes);
+      // Restore books
+      await db.books.bulkAdd(parsed.books);
+      await db.notes.bulkAdd(parsed.userNotes);
 
-    // Restore images (if they exist)
-    if (parsed.images && parsed.images.length > 0) {
-      const restoredImages = parsed.images.map((img: any) => ({
-        imageId: img.imageId,
-        charId: img.charId,
-        createdAt: img.createdAt,
-        imageBlob: base64ToBlob(img.base64),
-      }));
+      // Restore images (if they exist)
+      if (parsed.images && parsed.images.length > 0) {
+        const restoredImages = parsed.images.map((img: any) => ({
+          imageId: img.imageId,
+          charId: img.charId,
+          createdAt: img.createdAt,
+          imageBlob: base64ToBlob(img.base64),
+        }));
 
-      await db.images.bulkAdd(restoredImages);
+        await db.images.bulkAdd(restoredImages);
+      }
+
+      setBooks(parsed.books);
+      setUserNotes(parsed.userNotes);
+
+      alert("Import successful!");
+    } catch (err) {
+      console.error(err);
+      alert("Invalid file format");
     }
 
-    setBooks(parsed.books);
-    setUserNotes(parsed.userNotes);
-
-    alert("Import successful!");
-  } catch (err) {
-    console.error(err);
-    alert("Invalid file format");
-  }
-
-  showModalFile(false);
-  setCurrentBookId(null);
-  setSelectedCharacter(null);
-};
+    showModalFile(false);
+    setCurrentBookId(null);
+    setSelectedCharacter(null);
+  };
 
   // DRAG AND DROP TO DELETE BOOK CARDS
   const handleDragStart = (e: React.DragEvent<HTMLDivElement>) => {
@@ -310,10 +298,10 @@ const exportData = async () => {
       createdAt: Date.now(),
     };
 
-    // Save to IndexedDB
+    // add new book to IndexedDB
     const id = await db.books.add(newBook);
 
-    // Update React state
+    // Update React state: call set state, get prev array => assign new array, put the previous arrays/data, and new book data...
     setBooks(prev => [...prev, { ...newBook, id }]);
 
     // UI stuff
@@ -457,9 +445,10 @@ const exportData = async () => {
     }
   }, [currentBook]);
 
+  // SAVE BOOK TITLE on DB when called
   async function saveBookTitle() {
     if (!titleDraft.trim() || titleDraft.trim() === currentBook?.title) {
-      setTitleDraft(currentBook!.title); //Revert to previous title'
+      setTitleDraft(currentBook!.title); //Revert to previous title
       setSavedTitle(false);
       settitleEditing(false);
       return;
@@ -476,27 +465,8 @@ const exportData = async () => {
     setTimeout(() => {setSavedTitle(false), settitleEditing(false)}, 2000);
   }
 
+  // DEFAULT CHAR IMAGE FORMAT
   const [char_image] = useState("/textures/char_images/default_char.jpg")
-
-  // HEADER COLLAPSE AND SHOWS WHEN SCROLLED
-  useEffect(() => {
-    const handleScroll = () => {
-      const currentScrollY = window.scrollY;
-
-      if (currentScrollY > lastScrollY.current && currentScrollY > 80) {
-        // scrolling down
-        setHeaderVisible(false);
-      } else {
-        // scrolling up
-        setHeaderVisible(true);
-      }
-
-      lastScrollY.current = currentScrollY;
-    };
-
-    window.addEventListener("scroll", handleScroll, { passive: true });
-    return () => window.removeEventListener("scroll", handleScroll);
-  }, []);
   
   // DARK MODE USE EFFECT
   useEffect(() => {
@@ -544,6 +514,7 @@ const exportData = async () => {
     }
   };
 
+  // SAVE IMAGE INSIDE DB
   async function saveImage() {
     if (!imageSaved) return;
 
@@ -574,6 +545,7 @@ const exportData = async () => {
 
   }
 
+  // LOAD IMAGES IN DB, fetch and put on a setState for display
   useEffect(() => {
   const loadImages = async () => {
     if (!currentBook?.characters?.length) return;
@@ -598,6 +570,7 @@ const exportData = async () => {
 }, [currentBook]);
 
 
+// COLOR PICKER
 const stickyColors = [
   "yellow",
   "pink",
@@ -607,6 +580,7 @@ const stickyColors = [
   "gray",
 ];
 
+// COLOR MAP FOR RANDOM COLOR ASSIGNMENT OF NOTES
 const colorMap: Record<string, string> = {
   yellow: "bg-yellow-200 dark:bg-yellow-800",
   pink: "bg-pink-200 dark:bg-pink-800",
@@ -615,32 +589,13 @@ const colorMap: Record<string, string> = {
   purple: "bg-purple-200 dark:bg-purple-800",
   gray: "bg-gray-200 dark:bg-gray-900"
 };
-
   
 const notesSubject = "";
 const notesContent = "";
 
-// async function addNotes() {
-//   const randomColor =
-//     stickyColors[Math.floor(Math.random() * stickyColors.length)];
-
-//   const newNotes = {
-//       notesId: crypto.randomUUID(),
-//       subject: notesSubject,
-//       content: notesContent,
-//       createdAt: Date.now(),
-//       color: randomColor,
-//     };
-
-//     // Save to IndexedDB
-//     const id = await db.notes.add(newNotes);
-
-//     // Update React state
-//     setUserNotes(prev => [...prev, { ...newNotes, id }]);
-// }
-
-// DRAFT NOTE
+// DRAFT NOTE/ Blank note for adding new notes
 const [draftNote, setDraftNote] = useState<Notes | null>(null);
+const [draftNoteState, setDraftstate] = useState(false);
 
 async function addDraftNotes() {
   if (draftNote) return;
@@ -657,10 +612,12 @@ async function addDraftNotes() {
       isDraft: true,
     };
 
-    // Update React state
-    setDraftNote(newNotes);
+  // Update React state
+  setDraftNote(newNotes);
+  setDraftstate(true);
 }
 
+// SAVE NOTE AFTER UPDATING DRAFT NOTE TO DB
 async function saveNote(note: any) {
   if (!note.content.trim()) return;
 
@@ -671,8 +628,7 @@ async function saveNote(note: any) {
     const dbId = await db.notes.add(noteData);
 
     setUserNotes(prev => [
-      ...prev,
-      { ...noteData, id: dbId }
+      { ...noteData, id: dbId }, ...prev
     ]);
 
     setDraftNote(null);
@@ -684,42 +640,97 @@ async function saveNote(note: any) {
   }
 }
 
-// DELETE NOTES/DRAFT
-function handleDeleteNote(note: Notes) {
-   if (draftNote && note.id === draftNote.id) {
-    setDraftNote(null);
-  } else {
-    deleteNotes(note.id!);
-  }
-}
-
 const [Addnewbooks, setAddnewBooks] = useState(false);
+const [notesShowState, setNotesShowState] = useState(true);
 
 // SHOW/HIDE CREATE NEW BOOK FORM
 const addBooksState = () => {
     setAddnewBooks(!Addnewbooks);
 };
 
+// SHOW/HIDE NOTES DISPLAY
+const displayNotes = () => {
+    setNotesShowState(!notesShowState);
+};
+
+// MATCHES THE SIZE OF THE CONTENT INSIDE THE NOTE
+function autoResize(e: React.ChangeEvent<HTMLTextAreaElement>) {
+  const el = e.target;
+  el.style.height = "auto";
+  el.style.height = el.scrollHeight + "px";
+}
+
+// CREATING NEW NOTES WILL FOCUS AND SCROLL
+const draftTextareaRef = useRef<HTMLTextAreaElement | null>(null);
+
+useEffect(() => {
+  if (draftNote && draftTextareaRef.current) {
+    draftTextareaRef.current?.focus({ 
+      preventScroll: true 
+    });
+    draftTextareaRef.current.scrollIntoView({
+      behavior: "smooth",
+      block: "center",
+    });
+  }
+}, [draftNote]);
+
+const [showUndoPopup, setShowUndoPopup] = useState(false);
+const [deletedNote, setDeletedNote] = useState<Notes | null>(null);
+const deleteTimeoutRef = useRef<number | null>(null);
+
+// DELETE NOTES/DRAFT
 // DELETE NOTES
 async function deleteNotes(id: number) {
   if(!id) return;
   
   await db.notes.delete(id);
-
-  setUserNotes(prev => prev.filter(notes => notes.id !== id));
 }
 
-// UPDATING NOTES CONTENT
-// async function updateNotes(id: number, content: string) {
-//   await db.notes.update(id, {
-//     content: normalizeWhitespace(content),
-//   });
-// }
+function handleDeleteNote(note: Notes) {
+   if (draftNote && note.id === draftNote.id) {
+    setDraftNote(null);
+  } else {
+    // Save to temporary deleted state
+    setDeletedNote(note);
 
-function autoResize(e: React.ChangeEvent<HTMLTextAreaElement>) {
-  const el = e.target;
-  el.style.height = "auto";
-  el.style.height = el.scrollHeight + "px";
+    // Show undo popup
+    setShowUndoPopup(true);
+
+    // Remove from UI immediately
+    setUserNotes(prev => prev.filter(notes => notes.id !== note.id));
+
+    // Clear any previous timeout (important if deleting fast)
+    if (deleteTimeoutRef.current) {
+      clearTimeout(deleteTimeoutRef.current);
+    }
+
+    deleteTimeoutRef.current = window.setTimeout(() => {
+      deleteNotes(note.id!);
+      setDeletedNote(null);
+      setShowUndoPopup(false);
+      deleteTimeoutRef.current = null;
+    }, 3000);
+  }
+}
+
+function handleUndo() {
+  if (!deletedNote) return;
+
+  // Restore note
+  setUserNotes(prev => [deletedNote!, ...prev]);
+
+  // Cancel scheduled deletion
+  if (deleteTimeoutRef.current) {
+    clearTimeout(deleteTimeoutRef.current);
+    deleteTimeoutRef.current = null;
+  }
+
+  // Hide popup
+  setShowUndoPopup(false);
+
+  // Cancel the permanent deletion
+  setDeletedNote(null);
 }
 
   // HTML/TAILWIND CSS | INDEX
@@ -732,7 +743,6 @@ function autoResize(e: React.ChangeEvent<HTMLTextAreaElement>) {
         fixed top-0 left-0 w-full z-50
         bg-gray-950 backdrop-blur-md
         transition-transform duration-300 ease-in-out
-        ${headerVisible ? "translate-y-0" : "-translate-y-full"}
       `}>
         <div className="flex justify-between place-items-center py-2 px-1 md:py-2 md:px-5 w-full sm:w-full mx-auto">
           <h1 
@@ -782,7 +792,7 @@ function autoResize(e: React.ChangeEvent<HTMLTextAreaElement>) {
                 border rounded-md
                 text-white bg-gray-950 
                 hover:bg-gray-200
-                transition cursor-pointer
+                transition
               "
             >
               <svg 
@@ -831,7 +841,7 @@ function autoResize(e: React.ChangeEvent<HTMLTextAreaElement>) {
 
                 <button
                   onClick={() => setOpenSearch(false)}
-                  className="text-gray-400 hover:text-gray-200 transition cursor-pointer"
+                  className="text-gray-400 hover:text-gray-200 transition"
                 >
                   ✕
                 </button>
@@ -839,12 +849,12 @@ function autoResize(e: React.ChangeEvent<HTMLTextAreaElement>) {
             )}
 
             <div onClick={toggleTheme} className="border border-white text-gray-200 rounded-md hover:bg-gray-300 hover:text-gray-950 transition">
-              <button className="hidden dark:block cursor-pointer">
+              <button className="hidden dark:block">
               <span className="group inline-flex shrink-0 justify-center items-center size-8 stroke-2">
                 <svg className="shrink-0 size-5" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M12 3a6 6 0 0 0 9 9 9 9 0 1 1-9-9Z"/></svg>
               </span>
             </button>
-            <button className="block dark:hidden cursor-pointer">
+            <button className="block dark:hidden">
               <span className="group inline-flex shrink-0 justify-center items-center size-8 stroke-2">
                 <svg className="shrink-0 size-5" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor"><circle cx="12" cy="12" r="4"/><path d="M12 2v2"/><path d="M12 20v2"/><path d="m4.93 4.93 1.41 1.41"/><path d="m17.66 17.66 1.41 1.41"/><path d="M2 12h2"/><path d="M20 12h2"/><path d="m6.34 17.66-1.41 1.41"/><path d="m19.07 4.93-1.41 1.41"/></svg>
               </span>
@@ -855,7 +865,7 @@ function autoResize(e: React.ChangeEvent<HTMLTextAreaElement>) {
             <div className="relative group inline-block group">
               <button 
                 title="IMPORT/EXPORT FILE"
-                className="cursor-pointer p-1 transition border border-white text-gray-200 rounded-md hover:bg-gray-300 hover:text-gray-950 transition" 
+                className="p-1 transition border border-white text-gray-200 rounded-md hover:bg-gray-300 hover:text-gray-950 transition" 
                 onClick={() => showModalFile(true)} > 
                 <FontAwesomeIcon icon={faFileImport} size="xl" />
               </button>
@@ -880,17 +890,17 @@ function autoResize(e: React.ChangeEvent<HTMLTextAreaElement>) {
       </header>
       
       {/* THEME BACKGROUND */}
-      <div className={`relative min-h-screen w-full min-w-0 mx-auto px-3 transition-colors transition duration-300 bg-white text-black dark:bg-gray-800 dark:text-white backdrop-blur-lg overflow-hidden`}>    
+      <div className={`relative min-h-screen w-full min-w-0 mx-auto px-1 transition-colors transition duration-300 bg-white text-black dark:bg-gray-800 dark:text-white backdrop-blur-lg`}>    
         
         {/* MAIN PARENT CONTAINER */}
-        <div className="w-full mx-auto flex justify-center pt-15 gap-2 notes-scroll">
+        <div className="w-full mx-auto flex justify-center gap-2 pt-15">
           
           {/* LEFT SIDE CONTAINER */}
-          <div className="hidden xs:block flex-1">
+          <div className="hidden xs:block flex-1 relative">
 
             {/* ADD BOOK FORM SUBMIT */}
             {currentBookId === null && (
-              <div className="">
+              <div className="sticky top-15">
 
                 <div className="flex-1 rounded-md shadow-lg bg-gray-100 dark:bg-gray-900 mb-2 p-3 flex justify-between transition duration-300">
 
@@ -899,7 +909,7 @@ function autoResize(e: React.ChangeEvent<HTMLTextAreaElement>) {
                   <div className="flex justify-center">
                     <button 
                       value={bookTitle}
-                      className="cursor-pointer border-gray-500 border-1 text-black rounded hover:bg-gray-300 hover:text-gray-950 px-2 dark:border-white dark:text-white"
+                      className="border-gray-500 border-1 text-black rounded hover:bg-gray-300 hover:text-gray-950 px-2 dark:border-white dark:text-white"
                       onClick={addBooksState}>
                         {Addnewbooks ? <FontAwesomeIcon icon={faPlus} size="xs" className="transition duration-500"/> : <FontAwesomeIcon icon={faMinus} size="xs"/>}
                     </button>
@@ -910,7 +920,7 @@ function autoResize(e: React.ChangeEvent<HTMLTextAreaElement>) {
                 {/* CREATE NEW BOOK FORM */}
                 {(!Addnewbooks && 
                 
-                <div className="flex-1 rounded-md shadow-lg p-3 bg-gray-100 dark:bg-gray-900 transition duration-300">
+                <div className="flex-1 rounded-md shadow-lg p-3 bg-gray-100 dark:bg-gray-900 transition duration-300 animate-fadeDown">
                   <form className="space-y-2">
                   
                   {/* Title */}
@@ -959,7 +969,7 @@ function autoResize(e: React.ChangeEvent<HTMLTextAreaElement>) {
 
                   <button
                     type="button"
-                    className="w-full bg-blue-500 text-white py-2 rounded-md hover:bg-blue-600 transition cursor-pointer"
+                    className="w-full bg-blue-500 text-white py-2 rounded-md hover:bg-blue-600 transition"
                     onClick={addBook}
                   >
                     SAVE
@@ -974,7 +984,7 @@ function autoResize(e: React.ChangeEvent<HTMLTextAreaElement>) {
           </div>
           
           {/* CENTER CONTAINER */}
-          <div className="w-full max-w-3xl mx-auto">
+          <div className="w-full max-w-3xl mx-auto ">
 
             {/* BOOK LIST / HOMEPAGE */}
             {currentBookId === null && (
@@ -997,7 +1007,7 @@ function autoResize(e: React.ChangeEvent<HTMLTextAreaElement>) {
                   <button 
                     onClick={addBook} 
                     title="Add book title"
-                    className="cursor-pointer border-gray-200 border-1 text-black rounded hover:bg-gray-300 hover:text-gray-950 p-1 transition dark:border-white dark:text-white"
+                    className="border-gray-200 border-1 text-black rounded hover:bg-gray-300 hover:text-gray-950 p-1 transition dark:border-white dark:text-white"
                   >
                     <FontAwesomeIcon icon={faPlus} size="lg"/>
                   </button>
@@ -1015,7 +1025,7 @@ function autoResize(e: React.ChangeEvent<HTMLTextAreaElement>) {
 
                 {/* SHOW BOOK LIST */}
                 {/* BOOK CARDS */}
-                <h2 className="text-2xl font-semibold pb-2">My Books</h2>
+                <h2 className="text-2xl font-semibold">My Books</h2>
 
                 {!books.length && (
                   <div className="w-full flex justify-center items-center py-20 px-10"> 
@@ -1025,7 +1035,7 @@ function autoResize(e: React.ChangeEvent<HTMLTextAreaElement>) {
                   </div>
                 )}
                 
-                <div className="grid grid-cols-2 px-15 sm:grid-cols-2 md:grid-cols-3 gap-2 md:gap-x-20 md:gap-y-5 pb-1 place-items-center overflow-y-auto notes-scroll">
+                <div className="grid grid-cols-2 px-15 pt-2 sm:grid-cols-2 md:grid-cols-3 gap-2 md:gap-x-20 md:gap-y-5 pb-1 place-items-center overflow-y-auto notes-scroll">
                     {books.map(book => (
                     <div
                       key={book.id} 
@@ -1042,7 +1052,7 @@ function autoResize(e: React.ChangeEvent<HTMLTextAreaElement>) {
                         dark:bg-gradient-to-br dark:from-gray-600 dark:to-gray-500
                         shadow-lg
                         hover:-translate-y-2 hover:shadow-2xl
-                        transition-all duration-300
+                        transition-all duration-300 animate-fadeDown
                         ${draggingId === book.id ? "opacity-0" : ""}
                         `}>
                       {/* Spine and bottom pages design */}
@@ -1082,7 +1092,7 @@ function autoResize(e: React.ChangeEvent<HTMLTextAreaElement>) {
                   <div className="">
                     <button 
                       onClick={() => setCurrentBookId(null)} 
-                    > <FontAwesomeIcon className="cursor-pointer hover:text-blue-500 transition duration-300 hover:scale-105" icon={faArrowLeftLong} size="xl"/>
+                    > <FontAwesomeIcon className="hover:text-blue-500 transition duration-300 hover:scale-105" icon={faArrowLeftLong} size="xl"/>
                     </button>
                   </div>
                 
@@ -1111,7 +1121,7 @@ function autoResize(e: React.ChangeEvent<HTMLTextAreaElement>) {
                       
                     </div>
 
-                    <button onClick={() => setShowAddCharacter(!showAddCharacter)} className="bg-black border border-black text-white text-xs md:text-base px-5 py-2 rounded-md cursor-pointer hover:bg-gray-800 transition">
+                    <button onClick={() => setShowAddCharacter(!showAddCharacter)} className="bg-black border border-black text-white text-xs md:text-base px-5 py-2 rounded-md hover:bg-gray-800 transition">
                         {showAddCharacter ? 'Cancel' : 'Add Character'}
                     </button>
                   </div>
@@ -1124,7 +1134,7 @@ function autoResize(e: React.ChangeEvent<HTMLTextAreaElement>) {
                         <textarea className="border p-2 w-full mb-2 rounded" placeholder="Notes" value={notes} onChange={e => setNotes(e.target.value)} />
                         <input className="border p-2 w-full mb-2 rounded" placeholder="Abilities (comma separated)" value={abilities} onChange={e => setAbilities(e.target.value)} />
                         <input type="number" className="border p-2 w-full mb-2 rounded" placeholder="Volume" value={arcStage} onChange={e => setArcStage(e.target.value)} />
-                        <button onClick={addCharacter} className="float-right bg-black border border-black text-white px-4 py-2 rounded-md cursor-pointer hover:bg-gray-800 transition">Confirm</button>
+                        <button onClick={addCharacter} className="float-right bg-black border border-black text-white px-4 py-2 rounded-md hover:bg-gray-800 transition">Confirm</button>
                       </div>
                   )}
 
@@ -1189,20 +1199,20 @@ function autoResize(e: React.ChangeEvent<HTMLTextAreaElement>) {
 
                   <button 
                     onClick={() => {setSelectedCharacter(null), setcharEditing(false)}} 
-                    > <FontAwesomeIcon className="cursor-pointer hover:text-blue-500 transition hover:scale-105" icon={faArrowLeftLong} size="xl"/>
+                    > <FontAwesomeIcon className="hover:text-blue-500 transition hover:scale-105" icon={faArrowLeftLong} size="xl"/>
                   </button>
 
                   <div className="space-x-2">
                     <button 
                       onClick={() => setShowGenImage(true)}
-                      className="cursor-pointer border-gray-200 border-1 text-black rounded hover:bg-gray-300 hover:text-gray-950 p-1 transition dark:border-white dark:text-white"
+                      className="border-gray-200 border-1 text-black rounded hover:bg-gray-300 hover:text-gray-950 p-1 transition dark:border-white dark:text-white"
                     >
                       <FontAwesomeIcon icon={faPlus} size="lg"/>
                     </button>
 
                     <button 
                       onClick={() => deleteCharacter(editingCharacter.id) }
-                      > <FontAwesomeIcon className="cursor-pointer hover:text-red-500 transition hover:scale-105" icon={faTrashCan} size="xl"/>
+                      > <FontAwesomeIcon className="hover:text-red-500 transition hover:scale-105" icon={faTrashCan} size="xl"/>
                     </button>
 
                       {charEditing && <FontAwesomeIcon icon={faSpinner} size="xl" spin />}
@@ -1319,21 +1329,25 @@ function autoResize(e: React.ChangeEvent<HTMLTextAreaElement>) {
           </div>
 
           {/* RIGHT SIDE CONTAINER */}
-          <div className="hidden xs:block flex-1 h-screen flex flex-col">
+          <div className="hidden xs:block flex-1 flex flex-col relative">
             
             {/* NOTES FOR THE USER */}
             {currentBookId === null && (
               
-              <div className="PARENT CONTAINER FOR THE NOTES PANEL">
+              <div className="PARENT CONTAINER FOR THE NOTES PANEL sticky top-15">
                 <div className="flex-1 rounded-md shadow-lg p-3 bg-gray-100 dark:bg-gray-900 mb-2 flex justify-between">
 
-                  <h3 className="text-2xl font-semibold">Notes</h3>
+                  <h3 
+                    onClick={displayNotes}
+                    className="text-2xl font-semibold cursor-pointer hover:text-blue-400 select-none"
+                    title="Click to minimize notes"
+                    >Notes</h3>
 
                   <div className="flex justify-center">
                     <button 
                       value={bookTitle}
                       // onChange={e => setBookTitle(e.target.value)}
-                      className="cursor-pointer border-gray-500 border-1 text-black rounded hover:bg-gray-300 hover:text-gray-950 px-2 transition dark:border-white dark:text-white"
+                      className="border-gray-500 border-1 text-black rounded hover:bg-gray-300 hover:text-gray-950 px-2 transition dark:border-white dark:text-white"
                       onClick={addDraftNotes}>
                         <FontAwesomeIcon icon={faPlus} size="xs"/>
                     </button>
@@ -1341,85 +1355,92 @@ function autoResize(e: React.ChangeEvent<HTMLTextAreaElement>) {
 
                 </div>
 
-                <div className="overflow-y-auto overflow-x-hidden h-[84vh] notes-scroll">
-                  {[...(draftNote ? [draftNote] : []), ...userNotes, ].map(notes => (
-                    <div 
-                      className={`${colorMap[notes.color]} p-1 rounded-md shadow-md mb-2 bg-gray-100 dark:bg-gray-900 cursor-pointer hover:scale-101`}
-                      key={notes.id ?? notes.notesId}
-                      data-id={notes.id}
-                    >
+                { notesShowState && (
+                  <div className="h-[calc(100vh-8rem)] overflow-y-auto overflow-x-hidden notes-scroll overflow-contain">
+                    {[ ...(draftNote ? [draftNote] : []), ...userNotes ].map(notes => (
+                      <div 
+                        className={`${colorMap[notes.color]} p-1 rounded-md shadow-md mb-2 bg-gray-100 dark:bg-gray-900 cursor-pointer animate-fadeDown`}
+                        key={notes.id ?? notes.notesId}
+                        data-id={notes.id}
+                      >
 
-                      <div className="flex justify-between pb-1"> 
+                        <div className="flex justify-between pb-1"> 
+                          
+                          <span className="text-xs text-gray-800 dark:text-gray-400">
+                            {new Date(notes.createdAt).toLocaleString("en-US", {
+                              month: "short",
+                              day: "numeric",
+                              year: "numeric",
+                              hour: "2-digit",
+                              minute: "2-digit",
+                            })}
+                          </span>
+
+                          {!deletedNote && (
+                            <button 
+                              className="hover:bg-neutral-300/50 rounded-2xl group"
+                              onClick={() => handleDeleteNote(notes)}>
+                              <svg
+                                xmlns="http://www.w3.org/2000/svg"
+                                className="h-5 w-5 text-gray-700 dark:text-gray-400 group-hover:text-red-500"
+                                fill="none"
+                                viewBox="0 0 24 24"
+                                stroke="currentColor"
+                                strokeWidth={2}
+                              >
+                                <path strokeLinecap="round" strokeLinejoin="round" d="M6 6l12 12M6 18L18 6" />
+                              </svg>
+                            </button>
+                          )}
+
+                        </div>
                         
-                        <span className="text-xs text-gray-800 dark:text-gray-400">
-                          {new Date(notes.createdAt).toLocaleString("en-US", {
-                            month: "short",
-                            day: "numeric",
-                            year: "numeric",
-                            hour: "2-digit",
-                            minute: "2-digit",
-                          })}
-                        </span>
-
-                        <button className="cursor-pointer">
-                          <svg
-                            xmlns="http://www.w3.org/2000/svg"
-                            className="h-5 w-5 text-gray-700 dark:text-gray-400 hover:text-white"
-                            fill="none"
-                            viewBox="0 0 24 24"
-                            stroke="currentColor"
-                            strokeWidth={2}
-                            onClick={() => handleDeleteNote(notes)}
-                          >
-                            <path strokeLinecap="round" strokeLinejoin="round" d="M6 6l12 12M6 18L18 6" />
-                          </svg>
-                        </button>
-
+                        <textarea
+                          className="
+                          w-full text-sm
+                          rounded-md 
+                          px-1
+                          focus:outline-none focus:ring-2 focus:ring-blue-400 
+                          hover:ring-blue-400 hover:ring-2
+                          placeholder-gray-400 dark:placeholder-gray-400 
+                          resize-none
+                          overflow-hidden
+                          transition-all duration-200
+                          "
+                          ref={!notes.id ? draftTextareaRef : null}
+                          placeholder="Enter Notes"
+                          onFocus={(e) => autoResize(e)}
+                          rows={3}
+                          value={notes.content}
+                          onChange={(e) => {
+                            if (!notes.id) {
+                              // This is draft
+                              setDraftNote(prev =>
+                                prev ? { ...prev, content: e.target.value } : prev
+                              );
+                            } else {
+                              // This is saved note
+                              setUserNotes(prev =>
+                                prev.map(note =>
+                                  note.id === notes.id
+                                    ? { ...note, content: e.target.value }
+                                    : note
+                                )
+                              );
+                            }
+                          }}
+                          onKeyDown={(e) => {
+                            if (e.key === "Enter" && !e.shiftKey) {
+                              e.preventDefault();
+                              (e.target as HTMLElement).blur();
+                            }
+                          }}
+                          onBlur={(e) => {(saveNote(notes)); e.currentTarget.style.height = "auto";}}
+                        />
                       </div>
-                      
-                      <textarea
-                        className="
-                        w-full text-base 
-                        border rounded-md 
-                        px-4 py-2 
-                        focus:outline-none focus:ring-2 focus:ring-blue-400 
-                        placeholder-gray-400 dark:placeholder-gray-400 
-                        resize-none
-                        overflow-hidden
-                        transition-all duration-200
-                        "
-                        placeholder="Enter Notes"
-                        onFocus={(e) => autoResize(e)}
-                        rows={2}
-                        value={notes.content}
-                        onChange={(e) => {
-                          if (!notes.id) {
-                            // This is draft
-                            setDraftNote(prev =>
-                              prev ? { ...prev, content: e.target.value } : prev
-                            );
-                          } else {
-                            // This is saved note
-                            setUserNotes(prev =>
-                              prev.map(note =>
-                                note.id === notes.id
-                                  ? { ...note, content: e.target.value }
-                                  : note
-                              )
-                            );
-                          }
-                        }}
-                        onKeyDown={(e) => {
-                          if (e.key === "Enter" && !e.shiftKey) {
-                            e.preventDefault();
-                            (e.target as HTMLElement).blur();
-                          }
-                        }}
-                        onBlur={(e) => {(saveNote(notes)); e.currentTarget.style.height = "auto";}}
-                      />
-                    </div>
-                  ))}
-                </div>
+                    ))}
+                  </div>
+                )}
 
               </div>
                 
@@ -1502,7 +1523,7 @@ function autoResize(e: React.ChangeEvent<HTMLTextAreaElement>) {
 
                   <div className="flex justify-center pt-3">
                     <button 
-                    className="py-2 px-6 rounded-md bg-indigo-200 hover:bg-indigo-300 text-center cursor-pointer"
+                    className="py-2 px-6 rounded-md bg-indigo-200 hover:bg-indigo-300 text-center"
                     onClick={saveImage}>
                       Save
                     </button>
@@ -1532,7 +1553,7 @@ function autoResize(e: React.ChangeEvent<HTMLTextAreaElement>) {
                   <div className="px-2">
                     <button
                       onClick={exportData}
-                      className="border bg-blue-500 px-4 py-2 text-white rounded-md cursor-pointer hover:border hover:border-blue-900"> 
+                      className="border bg-blue-500 px-4 py-2 text-white rounded-md hover:border hover:border-blue-900"> 
                       Export Books
                     </button>
                   </div>
@@ -1583,7 +1604,7 @@ function autoResize(e: React.ChangeEvent<HTMLTextAreaElement>) {
                       <button
                         disabled={!selectedFile}
                         onClick={() => importData(selectedFile!)}
-                        className="border bg-blue-500 px-4 py-2 text-white rounded-md cursor-pointer hover:border hover:border-blue-900 disabled:opacity-40 disabled:cursor-not-allowed
+                        className="border bg-blue-500 px-4 py-2 text-white rounded-md hover:border hover:border-blue-900 disabled:opacity-40 disabled:cursor-not-allowed
                         text-white"> 
                         Import Books
                       </button>
@@ -1644,6 +1665,27 @@ function autoResize(e: React.ChangeEvent<HTMLTextAreaElement>) {
         )}
 
         {/* CUSTOM MODAL FOR CONFIRM/CANCEL */}
+
+        {/* Undo Popup */}
+        {showUndoPopup && (
+          <div className="fixed top-14 left-1/2 bg-gray-300 py-4 px-8 transform -translate-x-1/2 rounded shadow-lg flex justify-center space-x-4 animate-fadeDown">
+            <span>Deleted</span>
+            <button 
+              className="bg-blue-500 hover:bg-blue-400 px-3 py-1 rounded text-sm font-semibold flex"
+              onClick={handleUndo}>
+              <svg
+                xmlns="http://www.w3.org/2000/svg"
+                fill="none"
+                viewBox="0 0 24 24"
+                strokeWidth={2}
+                stroke="currentColor"
+                className="w-4 h-5"
+              >
+                <path d="M9 15L3 9m0 0l6-6M3 9h12a6 6 0 010 12h-3" />
+              </svg> Undo
+            </button>
+          </div>
+        )}
 
     </div>
   );
