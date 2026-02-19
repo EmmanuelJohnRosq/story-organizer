@@ -2,7 +2,7 @@ import { useState, useEffect, useCallback, useRef } from "react";
 import { db, type Book, type Character, type EditableCharacter, type Images, type Notes } from "./db";
 
 import { useDropzone } from "react-dropzone";
-import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
+import { FontAwesomeIcon, FontAwesomeLayers } from "@fortawesome/react-fontawesome";
 import { faFileImport, faTrashCan, faCheck, faArrowLeftLong, faSpinner, faPlus, faMinus } from "@fortawesome/free-solid-svg-icons";
 
 
@@ -11,6 +11,10 @@ export default function StoryOrganizer() {
   const [books, setBooks] = useState<Book[]>([]);
   const [images, setImages] = useState<Images[]>([]);
   const [userNotes, setUserNotes] = useState<Notes[]>([]);
+  const [bookNotes, setBookNotes] = useState<Notes[]>([]);
+
+  // USER STATE
+  const [mode, setMode] = useState("user"); // THREE MODE PAGES: user, book, & character
 
   // Constant Variables
   const [currentBookId, setCurrentBookId] = useState<string | null>(null);
@@ -76,23 +80,48 @@ export default function StoryOrganizer() {
 
   const currentBook = books.find(book => book.id === currentBookId);
 
+  // FUNCTION ON START - CONNETION TO DB
+  const loadBooks = async () => {
+    const allBooks = await db.books.toArray();
+    allBooks.sort((a, b) => a.createdAt - b.createdAt);
+    setBooks(allBooks);
+  };
+
+  // FILTERS USER NOTES FOR USER PAGE
+  const loadUserNotes = async () => {
+    const notes = await db.notes
+      .where("bookId")
+      .equals("")
+      .toArray();
+
+    notes.sort((a, b) => b.createdAt - a.createdAt);
+    setUserNotes(notes);
+  };
+
+  // FILTERS USER NOTES FOR BOOK PAGE
+  const loadBookNotes = async (bookId: string) => {
+    const notes = await db.notes
+      .where("bookId")
+      .equals(bookId)
+      .toArray();
+
+    notes.sort((a, b) => b.createdAt - a.createdAt);
+    setBookNotes(notes);
+  };
+
   // LOAD DN DATA ON START and call db when changes happen
   useEffect(() => {
-    const loadBooks = async () => {
-      const allBooks = await db.books.toArray();
-      allBooks.sort((a, b) => a.createdAt - b.createdAt);
-      setBooks(allBooks);
-    };
+    loadBooks();
 
-    const loadNotes = async () => {
-      const allNotes = await db.notes.toArray();
-      allNotes.sort((a , b) => b.createdAt - a.createdAt);
-      setUserNotes(allNotes);
+    if (mode === "user" && currentBookId === null) {
+      loadUserNotes();
     }
 
-    loadBooks();
-    loadNotes();
-  }, []);
+    if (mode === "book" && currentBookId) {
+      loadBookNotes(currentBookId);
+    }
+
+  }, [mode, currentBookId]);
 
   function normalizeWhitespace(text: string) {
     return text
@@ -157,13 +186,15 @@ const exportData = async () => {
     }))
   );
 
+    const allNotes = await db.notes.toArray();
+
     const data = {
       app: "story-organizer",
       version: "2.0",
       exportedAt: new Date().toISOString(),
       books,
       images: imagesWithBase64,
-      userNotes,
+      allNotes,
     }; 
 
     const blob = new Blob(
@@ -194,7 +225,7 @@ const exportData = async () => {
 
       // Restore books
       await db.books.bulkAdd(parsed.books);
-      await db.notes.bulkAdd(parsed.userNotes);
+      await db.notes.bulkAdd(parsed.allNotes);
 
       // Restore images (if they exist)
       if (parsed.images && parsed.images.length > 0) {
@@ -209,7 +240,7 @@ const exportData = async () => {
       }
 
       setBooks(parsed.books);
-      setUserNotes(parsed.userNotes);
+      loadUserNotes();
 
       alert("Import successful!");
     } catch (err) {
@@ -316,6 +347,7 @@ const exportData = async () => {
   function selectBook(id: string) {
     setCurrentBookId(id);
     setShowAddCharacter(false);
+    setMode("book");
   }
 
   // create new character block Dexie
@@ -389,6 +421,8 @@ const exportData = async () => {
   // open edit Char Modal
   function openEditCharacter(characters: Character) {
 
+    setMode("character");
+
     const selectedCharacter = { ...characters, abilitiesText: characters.abilities.join(", ")
     } as Character & { abilitiesText : string };
     
@@ -461,8 +495,13 @@ const exportData = async () => {
     setBooks(prev => prev.map(book => book.id === currentBookId ? {...book, title: titleDraft.trim().replace(/\s+/g, " ")} : book));
 
     setSavedTitle(true);
+    setStatePopup(true);
     settitleEditing(true);
-    setTimeout(() => {setSavedTitle(false), settitleEditing(false)}, 2000);
+    setTimeout(() => {setSavedTitle(false), settitleEditing(false), setStatePopup(false)}, 2000);
+  }
+
+  function updateBook() {
+    console.log("Book update");
   }
 
   // DEFAULT CHAR IMAGE FORMAT
@@ -610,6 +649,7 @@ async function addDraftNotes() {
       createdAt: Date.now(),
       color: randomColor,
       isDraft: true,
+      bookId: currentBookId ? currentBookId : "",
     };
 
   // Update React state
@@ -627,9 +667,17 @@ async function saveNote(note: any) {
 
     const dbId = await db.notes.add(noteData);
 
-    setUserNotes(prev => [
-      { ...noteData, id: dbId }, ...prev
-    ]);
+    if (mode === "user") {
+      setUserNotes(prev => [
+        { ...noteData, id: dbId }, ...prev
+      ]);
+    }
+
+    else if (mode === "book") {
+      setBookNotes(prev => [
+        { ...noteData, id: dbId }, ...prev
+      ]);
+    }
 
     setDraftNote(null);
   } else {
@@ -637,15 +685,28 @@ async function saveNote(note: any) {
     await db.notes.update(note.id, {
       content: note.content,
     });
+
+    setStatePopup(true);
+    setTimeout(() => {
+      setStatePopup(false);
+    }, 2000);
   }
 }
 
 const [Addnewbooks, setAddnewBooks] = useState(false);
 const [notesShowState, setNotesShowState] = useState(true);
+const [addCharacterState, setAddCharState] = useState(true);
 
 // SHOW/HIDE CREATE NEW BOOK FORM
 const addBooksState = () => {
     setAddnewBooks(!Addnewbooks);
+    setAddCharState(true);
+};
+
+// SHOW/HIDE ADD CHARACTER FORM
+const addNewcharacter = () => {
+    setAddCharState(!addCharacterState);
+    setAddnewBooks(true);
 };
 
 // SHOW/HIDE NOTES DISPLAY
@@ -675,7 +736,10 @@ useEffect(() => {
   }
 }, [draftNote]);
 
+// POP UP VARIABLES
 const [showUndoPopup, setShowUndoPopup] = useState(false);
+const [showStatePopup, setStatePopup] = useState(false);
+
 const [deletedNote, setDeletedNote] = useState<Notes | null>(null);
 const deleteTimeoutRef = useRef<number | null>(null);
 
@@ -698,8 +762,15 @@ function handleDeleteNote(note: Notes) {
     setShowUndoPopup(true);
 
     // Remove from UI immediately
-    setUserNotes(prev => prev.filter(notes => notes.id !== note.id));
-
+    if (mode === "user") {
+      console.log(mode, "delete in userNotes");
+      setUserNotes(prev => prev.filter(notes => notes.id !== note.id));
+    }
+    else if (mode === "book") {
+      console.log(mode, "delete in booknotes");
+      setBookNotes(prev => prev.filter(notes => notes.id !== note.id));
+    }
+    
     // Clear any previous timeout (important if deleting fast)
     if (deleteTimeoutRef.current) {
       clearTimeout(deleteTimeoutRef.current);
@@ -717,8 +788,14 @@ function handleDeleteNote(note: Notes) {
 function handleUndo() {
   if (!deletedNote) return;
 
+  console.log(deletedNote);
   // Restore note
-  setUserNotes(prev => [deletedNote!, ...prev]);
+  if (mode === "user") {
+    setUserNotes(prev => [deletedNote!, ...prev]);
+  }
+  else if (mode === "book") {
+    setBookNotes(prev => [deletedNote!, ...prev]);
+  }
 
   // Cancel scheduled deletion
   if (deleteTimeoutRef.current) {
@@ -981,6 +1058,112 @@ function handleUndo() {
               </div>
             )}
 
+            {/* BOOK AND CHARACTER FORMS LEFT PANEL */}
+            {currentBookId !== null && currentBook && (
+              <div className="sticky top-15 h-[calc(100vh-4rem)] overflow-y-auto overflow-x-hidden notes-scroll overflow-contain">
+
+                {/* BOOK SUMMARY TITLE */}
+                <div className="flex-1 rounded-md shadow-lg bg-gray-100 dark:bg-gray-900 mb-2 p-3 flex justify-between transition duration-300">
+
+                  <h3 className="text-2xl font-semibold">Book Details</h3>
+
+                  <div className="flex justify-center">
+                    <button 
+                      value={bookTitle}
+                      className="border-gray-500 border-1 text-black rounded hover:bg-gray-300 hover:text-gray-950 px-2 dark:border-white dark:text-white"
+                      onClick={addBooksState}>
+                        {Addnewbooks ? <FontAwesomeIcon icon={faPlus} size="xs" className="transition duration-500"/> : <FontAwesomeIcon icon={faMinus} size="xs"/>}
+                    </button>
+                  </div>
+
+                </div>
+
+                {/* BOOK SUMMARY FORM */}
+                {(!Addnewbooks && 
+                
+                // BOOK DETAILS
+                <div className="flex-1 rounded-md shadow-lg p-3 mb-2 bg-gray-100 dark:bg-gray-900 transition duration-300 animate-fadeDown">
+                  <form className="space-y-2">
+
+                    {/* Summary */}
+                    <div>
+                      <label className="block text-xs mb-1">
+                        Summary
+                      </label>
+                      <textarea
+                        rows={8}
+                        className="w-full border rounded-md px-4 py-2 focus:outline-none focus:ring-2 focus:ring-blue-400 placeholder-gray-400 dark:placeholder-gray-600 text-area-scroll"
+                        placeholder="Update book summary"
+                        value={currentBook.summary}
+                        onChange={e => setBookSummary(e.target.value)}
+                      />
+                    </div>
+
+                    {/* Current Volume */}
+                    <div>
+                      <label className="block text-xs font-medium mb-1">
+                        Current Volume
+                      </label>
+                      <input
+                        type="number"
+                        className="w-full border rounded-md px-4 py-2 focus:outline-none focus:ring-2 focus:ring-blue-400 placeholder-gray-400 dark:placeholder-gray-600"
+                        value={currentBook.volume}
+                        placeholder="Update current book volume"
+                        onChange={e => setBookVolume(Number(e.target.value))}
+                      />
+                    </div>
+
+                    <button
+                      type="button"
+                      className="w-full bg-blue-500 text-white py-2 rounded-md hover:bg-blue-600 transition"
+                      onClick={updateBook}
+                    >
+                      SAVE
+                    </button>
+                  </form>
+                </div>
+
+                )}
+
+                {/* ADD CHARACTER FORM */}
+                <div className="flex-1 rounded-md shadow-lg bg-gray-100 dark:bg-gray-900 mb-2 p-3 flex justify-between transition duration-300">
+
+                  <h3 className="text-2xl font-semibold">Add Character</h3>
+
+                  <div className="flex justify-center">
+                    <button 
+                      value={bookTitle}
+                      className="border-gray-500 border-1 text-black rounded hover:bg-gray-300 hover:text-gray-950 px-2 dark:border-white dark:text-white"
+                      onClick={addNewcharacter}>
+                        {addCharacterState ? <FontAwesomeIcon icon={faPlus} size="xs" className="transition duration-500"/> : <FontAwesomeIcon icon={faMinus} size="xs"/>}
+                    </button>
+                  </div>
+
+                </div>
+
+                {/* ADD CHARACTER TITLE */}
+                {(!addCharacterState &&
+                  <div className="flex-1 rounded-md shadow-lg p-3 mb-2 bg-gray-100 dark:bg-gray-900 transition duration-300 animate-fadeDown">
+                    <input className="border p-2 w-full mb-2 rounded" placeholder="Name" value={name} onChange={e => setName(e.target.value)} />
+                    <input className="border p-2 w-full mb-2 rounded" placeholder="Role / Affiliation" value={role} onChange={e => setRole(e.target.value)} />
+                    <textarea className="border p-2 w-full mb-2 rounded" placeholder="Notes" rows={4} value={notes} onChange={e => setNotes(e.target.value)} />
+                    <input className="border p-2 w-full mb-2 rounded" placeholder="Abilities (comma separated)" value={abilities} onChange={e => setAbilities(e.target.value)} />
+                    <input type="number" className="border p-2 w-full mb-2 rounded" placeholder="Volume" value={arcStage} onChange={e => setArcStage(e.target.value)} />
+                    <button
+                      type="button"
+                      className="w-full bg-blue-500 text-white py-2 rounded-md hover:bg-blue-600 transition"
+                      onClick={addCharacter}
+                    >
+                      SAVE
+                    </button>
+                  </div>
+                )}
+
+                
+                
+              </div>
+            )}
+
           </div>
           
           {/* CENTER CONTAINER */}
@@ -1091,37 +1274,42 @@ function handleUndo() {
                 <div className="px-3 pt-3 mb-3 rounded-md shadow-lg bg-gray-100 dark:bg-gray-900">
                   <div className="">
                     <button 
-                      onClick={() => setCurrentBookId(null)} 
+                      onClick={() => {setCurrentBookId(null); setMode("user")}} 
                     > <FontAwesomeIcon className="hover:text-blue-500 transition duration-300 hover:scale-105" icon={faArrowLeftLong} size="xl"/>
                     </button>
                   </div>
                 
                   {/* Conditional "Changes Saved" message */}
-                  <div className="absolute mt-8">
+                  {/* <div className="absolute mt-8">
                     {savedTitle && (
                       <span className="mt-2 text-sm text-green-600 font-semibold animate-pulse">
                         Changes Saved!
                       </span>
                     )}
-                  </div>
+                  </div> */}
                   
                   <div className="flex items-center gap-3 mb-4">
                     {/*CHANGEABLE CURRENT BOOK TITLE */}
                     <div className="flex-1">
                       <input 
                         title="Edit book title..."
-                        className="text-2xl w-full font-semibold border-b-1 border-gray-200 hover:border-gray-500 outline-none focus-ring-0 truncate" 
+                        className="text-2xl w-full text-center font-semibold border-b-1 border-gray-200 hover:border-gray-500 outline-none focus-ring-0 truncate" 
                         value={titleDraft}
                         onChange={(e) => setTitleDraft(e.target.value)}
                         onBlur={saveBookTitle}
                         onKeyDown={(e) => {
-                          if (e.key === "Enter") saveBookTitle();
+                          if (e.key === "Enter") {
+                            e.preventDefault();
+                            (e.target as HTMLElement).blur();
+                          }
                         }}
                       />
                       
                     </div>
 
-                    <button onClick={() => setShowAddCharacter(!showAddCharacter)} className="bg-black border border-black text-white text-xs md:text-base px-5 py-2 rounded-md hover:bg-gray-800 transition">
+                    <button 
+                      onClick={() => setShowAddCharacter(!showAddCharacter)} 
+                      className="xs:hidden bg-black border border-black text-white text-xs md:text-base px-5 py-2 rounded-md hover:bg-gray-800 transition">
                         {showAddCharacter ? 'Cancel' : 'Add Character'}
                     </button>
                   </div>
@@ -1159,10 +1347,9 @@ function handleUndo() {
                         cursor-pointer bg-white shadow-lg rounded-md
                         transition-all duration-300
                         hover:-translate-y-2 hover:shadow-2xl
-                        group
+                        group animate-fadeDown
                         flex flex-col
                         dark:bg-gray-950"
-                      // onClick={() => openEditCharacter(char)}
                       onClick={() => openEditCharacter(char)}>
 
                           {/* IMAGE */}
@@ -1198,7 +1385,7 @@ function handleUndo() {
                 <div className="flex justify-between pb-3 px-3">
 
                   <button 
-                    onClick={() => {setSelectedCharacter(null), setcharEditing(false)}} 
+                    onClick={() => {setSelectedCharacter(null); setcharEditing(false); setMode("book") }} 
                     > <FontAwesomeIcon className="hover:text-blue-500 transition hover:scale-105" icon={faArrowLeftLong} size="xl"/>
                   </button>
 
@@ -1331,128 +1518,223 @@ function handleUndo() {
           {/* RIGHT SIDE CONTAINER */}
           <div className="hidden xs:block flex-1 flex flex-col relative">
             
-            {/* NOTES FOR THE USER */}
-            {currentBookId === null && (
-              
-              <div className="PARENT CONTAINER FOR THE NOTES PANEL sticky top-15">
-                <div className="flex-1 rounded-md shadow-lg p-3 bg-gray-100 dark:bg-gray-900 mb-2 flex justify-between">
+            {/* NOTES CONTAINER */}
+            <div className="PARENT CONTAINER FOR THE NOTES PANEL sticky top-15">
 
-                  <h3 
-                    onClick={displayNotes}
-                    className="text-2xl font-semibold cursor-pointer hover:text-blue-400 select-none"
-                    title="Click to minimize notes"
-                    >Notes</h3>
+              {/* NOTES TITLE */}
+              <div className="flex-1 rounded-md shadow-lg p-3 bg-gray-100 dark:bg-gray-900 mb-2 flex justify-between">
 
-                  <div className="flex justify-center">
-                    <button 
-                      value={bookTitle}
-                      // onChange={e => setBookTitle(e.target.value)}
-                      className="border-gray-500 border-1 text-black rounded hover:bg-gray-300 hover:text-gray-950 px-2 transition dark:border-white dark:text-white"
-                      onClick={addDraftNotes}>
-                        <FontAwesomeIcon icon={faPlus} size="xs"/>
-                    </button>
-                  </div>
+                <h3 
+                  onClick={displayNotes}
+                  className="text-2xl font-semibold cursor-pointer hover:text-blue-400 select-none"
+                  title="Click to minimize notes"
+                  >Notes</h3>
 
+                <div className="flex justify-center">
+                  <button 
+                    value={bookTitle}
+                    className="border-gray-500 border-1 text-black rounded hover:bg-gray-300 hover:text-gray-950 px-2 transition dark:border-white dark:text-white"
+                    onClick={addDraftNotes}>
+                      <FontAwesomeIcon icon={faPlus} size="xs"/>
+                  </button>
                 </div>
 
+              </div>
+
+                {/* NOTES CONTENTS */}
                 { notesShowState && (
                   <div className="h-[calc(100vh-8rem)] overflow-y-auto overflow-x-hidden notes-scroll overflow-contain">
-                    {[ ...(draftNote ? [draftNote] : []), ...userNotes ].map(notes => (
-                      <div 
-                        className={`${colorMap[notes.color]} p-1 rounded-md shadow-md mb-2 bg-gray-100 dark:bg-gray-900 cursor-pointer animate-fadeDown`}
-                        key={notes.id ?? notes.notesId}
-                        data-id={notes.id}
-                      >
+                    
+                    {/* THIS IS FOR THE USER NOTES */}
+                    {( currentBookId === null && !currentBookId &&
+                      <div className="">
+                        {[ ...(draftNote ? [draftNote] : []), ...userNotes ].map(notes => (
+                          <div 
+                            className={`${colorMap[notes.color]} p-1 rounded-md shadow-md mb-2 bg-gray-100 dark:bg-gray-900 cursor-pointer animate-fadeDown`}
+                            key={notes.id ?? notes.notesId}
+                            data-id={notes.id}
+                          >
 
-                        <div className="flex justify-between pb-1"> 
-                          
-                          <span className="text-xs text-gray-800 dark:text-gray-400">
-                            {new Date(notes.createdAt).toLocaleString("en-US", {
-                              month: "short",
-                              day: "numeric",
-                              year: "numeric",
-                              hour: "2-digit",
-                              minute: "2-digit",
-                            })}
-                          </span>
+                            <div className="flex justify-between pb-1"> 
+                              
+                              <span className="text-xs text-gray-800 dark:text-gray-400">
+                                {new Date(notes.createdAt).toLocaleString("en-US", {
+                                  month: "short",
+                                  day: "numeric",
+                                  year: "numeric",
+                                  hour: "2-digit",
+                                  minute: "2-digit",
+                                })}
+                              </span>
 
-                          {!deletedNote && (
-                            <button 
-                              className="hover:bg-neutral-300/50 rounded-2xl group"
-                              onClick={() => handleDeleteNote(notes)}>
-                              <svg
-                                xmlns="http://www.w3.org/2000/svg"
-                                className="h-5 w-5 text-gray-700 dark:text-gray-400 group-hover:text-red-500"
-                                fill="none"
-                                viewBox="0 0 24 24"
-                                stroke="currentColor"
-                                strokeWidth={2}
-                              >
-                                <path strokeLinecap="round" strokeLinejoin="round" d="M6 6l12 12M6 18L18 6" />
-                              </svg>
-                            </button>
-                          )}
+                              {!deletedNote && (
+                                <button 
+                                  className="hover:bg-neutral-300/50 rounded-2xl group"
+                                  onClick={() => handleDeleteNote(notes)}>
+                                  <svg
+                                    xmlns="http://www.w3.org/2000/svg"
+                                    className="h-5 w-5 text-gray-700 dark:text-gray-400 group-hover:text-red-500"
+                                    fill="none"
+                                    viewBox="0 0 24 24"
+                                    stroke="currentColor"
+                                    strokeWidth={2}
+                                  >
+                                    <path strokeLinecap="round" strokeLinejoin="round" d="M6 6l12 12M6 18L18 6" />
+                                  </svg>
+                                </button>
+                              )}
 
-                        </div>
-                        
-                        <textarea
-                          className="
-                          w-full text-sm
-                          rounded-md 
-                          px-1
-                          focus:outline-none focus:ring-2 focus:ring-blue-400 
-                          hover:ring-blue-400 hover:ring-2
-                          placeholder-gray-400 dark:placeholder-gray-400 
-                          resize-none
-                          overflow-hidden
-                          transition-all duration-200
-                          "
-                          ref={!notes.id ? draftTextareaRef : null}
-                          placeholder="Enter Notes"
-                          onFocus={(e) => autoResize(e)}
-                          rows={3}
-                          value={notes.content}
-                          onChange={(e) => {
-                            if (!notes.id) {
-                              // This is draft
-                              setDraftNote(prev =>
-                                prev ? { ...prev, content: e.target.value } : prev
-                              );
-                            } else {
-                              // This is saved note
-                              setUserNotes(prev =>
-                                prev.map(note =>
-                                  note.id === notes.id
-                                    ? { ...note, content: e.target.value }
-                                    : note
-                                )
-                              );
-                            }
-                          }}
-                          onKeyDown={(e) => {
-                            if (e.key === "Enter" && !e.shiftKey) {
-                              e.preventDefault();
-                              (e.target as HTMLElement).blur();
-                            }
-                          }}
-                          onBlur={(e) => {(saveNote(notes)); e.currentTarget.style.height = "auto";}}
-                        />
+                            </div>
+                            
+                            <textarea
+                              className="
+                              w-full text-sm
+                              rounded-md 
+                              px-1
+                              focus:outline-none focus:ring-2 focus:ring-blue-400 
+                              hover:ring-blue-400 hover:ring-2
+                              placeholder-gray-400 dark:placeholder-gray-400 
+                              resize-none
+                              overflow-hidden
+                              transition-all duration-200
+                              "
+                              ref={!notes.id ? draftTextareaRef : null}
+                              placeholder="Enter Notes"
+                              onFocus={(e) => autoResize(e)}
+                              rows={3}
+                              value={notes.content}
+                              onChange={(e) => {
+                                if (!notes.id) {
+                                  // This is draft
+                                  setDraftNote(prev =>
+                                    prev ? { ...prev, content: e.target.value } : prev
+                                  );
+                                } else {
+                                  // This is saved note
+                                  setUserNotes(prev =>
+                                    prev.map(note =>
+                                      note.id === notes.id
+                                        ? { ...note, content: e.target.value }
+                                        : note
+                                    )
+                                  );
+                                }
+                              }}
+                              onKeyDown={(e) => {
+                                if (e.key === "Enter" && !e.shiftKey) {
+                                  e.preventDefault();
+                                  (e.target as HTMLElement).blur();
+                                }
+                              }}
+                              onBlur={(e) => {(saveNote(notes)); e.currentTarget.style.height = "auto";}}
+                            />
+                          </div>
+                        ))}
                       </div>
-                    ))}
+                    )}
+
+                    {/* THIS IS THE BOOK NOTES */}
+                    {( currentBookId && currentBook && !selectedCharacter &&
+                      <div className="">
+                        {[ ...(draftNote ? [draftNote] : []), ...bookNotes ].map(notes => (
+                          <div 
+                            className={`${colorMap[notes.color]} p-1 rounded-md shadow-md mb-2 bg-gray-100 dark:bg-gray-900 cursor-pointer animate-fadeDown`}
+                            key={notes.id ?? notes.notesId}
+                            data-id={notes.id}
+                          >
+
+                            <div className="flex justify-between pb-1"> 
+                              
+                              <span className="text-xs text-gray-800 dark:text-gray-400">
+                                {new Date(notes.createdAt).toLocaleString("en-US", {
+                                  month: "short",
+                                  day: "numeric",
+                                  year: "numeric",
+                                  hour: "2-digit",
+                                  minute: "2-digit",
+                                })}
+                              </span>
+
+                              {!deletedNote && (
+                                <button 
+                                  className="hover:bg-neutral-300/50 rounded-2xl group"
+                                  onClick={() => handleDeleteNote(notes)}>
+                                  <svg
+                                    xmlns="http://www.w3.org/2000/svg"
+                                    className="h-5 w-5 text-gray-700 dark:text-gray-400 group-hover:text-red-500"
+                                    fill="none"
+                                    viewBox="0 0 24 24"
+                                    stroke="currentColor"
+                                    strokeWidth={2}
+                                  >
+                                    <path strokeLinecap="round" strokeLinejoin="round" d="M6 6l12 12M6 18L18 6" />
+                                  </svg>
+                                </button>
+                              )}
+
+                            </div>
+                            
+                            <textarea
+                              className="
+                              w-full text-sm
+                              rounded-md 
+                              px-1
+                              focus:outline-none focus:ring-2 focus:ring-blue-400 
+                              hover:ring-blue-400 hover:ring-2
+                              placeholder-gray-400 dark:placeholder-gray-400 
+                              resize-none
+                              overflow-hidden
+                              transition-all duration-200
+                              "
+                              ref={!notes.id ? draftTextareaRef : null}
+                              placeholder="Enter Notes"
+                              onFocus={(e) => autoResize(e)}
+                              rows={3}
+                              value={notes.content}
+                              onChange={(e) => {
+                                if (!notes.id) {
+                                  // This is draft
+                                  setDraftNote(prev =>
+                                    prev ? { ...prev, content: e.target.value } : prev
+                                  );
+                                } else {
+                                  // This is saved note
+                                  setBookNotes(prev =>
+                                    prev.map(note =>
+                                      note.id === notes.id
+                                        ? { ...note, content: e.target.value }
+                                        : note
+                                    )
+                                  );
+                                }
+                              }}
+                              onKeyDown={(e) => {
+                                if (e.key === "Enter" && !e.shiftKey) {
+                                  e.preventDefault();
+                                  (e.target as HTMLElement).blur();
+                                }
+                              }}
+                              onBlur={(e) => {(saveNote(notes)); e.currentTarget.style.height = "auto";}}
+                            />
+                          </div>
+                        ))}
+                      </div>
+                    )}
+
                   </div>
+
                 )}
 
-              </div>
-                
-            )}
+            </div>
     
           </div>
 
+        {/* MAIN PARENT CONTAINER DIV CLOSER */}
         </div>
       
       </div>
 
-      {/* OUT OF THE MAIN PAGE MODALS */}
+      {/* OUT OF MAIN PAGE MODALS */}
 
         {/* GENERATE CHARACTER IMAGE BOOM */}
         {showGenImage && selectedCharacter && (
@@ -1684,6 +1966,16 @@ function handleUndo() {
                 <path d="M9 15L3 9m0 0l6-6M3 9h12a6 6 0 010 12h-3" />
               </svg> Undo
             </button>
+          </div>
+        )}
+
+        {/* CHANGES SAVED POPUP */}
+        {showStatePopup && (
+          <div className="fixed top-14 left-1/2 bg-gray-300 py-1 px-5 transform -translate-x-1/2 rounded shadow-lg flex justify-center space-x-4 animate-fadeDown">
+            <span>
+              Changes Saved
+              <FontAwesomeIcon className="text-green-500" size="lg" icon={faCheck}/>
+            </span>
           </div>
         )}
 

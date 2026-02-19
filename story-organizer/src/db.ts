@@ -37,6 +37,7 @@ export type Notes = {
   subject: string;
   content: string;
   color: string;
+  bookId: string;
 }
 
 class StoryDB extends Dexie {
@@ -47,10 +48,10 @@ class StoryDB extends Dexie {
   constructor() {
     super("StoryDB");
 
-    this.version(5).stores({
+    this.version(6).stores({
       books: "id, title", 
       images: "imageId, charId, imageBlob",
-      notes: "++id, subject",
+      notes: "++id, subject, bookId",
       // ++id = auto increment
       // title = indexed (useful later for search)
     });
