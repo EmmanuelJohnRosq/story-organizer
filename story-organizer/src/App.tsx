@@ -71,7 +71,7 @@ export default function StoryOrganizer() {
 
   const [bookTitle, setBookTitle] = useState("");
   const [bookSummary, setBookSummary] = useState("");
-  const [bookVolume, setBookVolume] = useState<number>(0);
+  const [bookVolume, setBookVolume] = useState<string>("0");
   const [name, setName] = useState("");
   const [role, setRole] = useState("");
   const [notes, setNotes] = useState("");
@@ -324,7 +324,7 @@ const exportData = async () => {
       id: crypto.randomUUID(),
       title: normalizedTitle,
       summary: bookSummary,
-      volume: bookVolume,
+      volume: Number(bookVolume) || 0,
       characters: [],
       createdAt: Date.now(),
     };
@@ -337,7 +337,7 @@ const exportData = async () => {
 
     // UI stuff
     setBookTitle("");
-    setBookVolume(0);
+    setBookVolume("");
     setBookSummary("");
     setBookAdded(true);
     setTimeout(() => setBookAdded(false), 2000);
@@ -348,6 +348,40 @@ const exportData = async () => {
     setCurrentBookId(id);
     setShowAddCharacter(false);
     setMode("book");
+    setDraftNote(null);
+  }
+
+  // UPDATE BOOK DETAILS
+  async function updateBookDetails( bookId: string, updatedSummary: string, updatedVolume: number) {
+    try {
+      await db.books.update(bookId, {
+        summary: updatedSummary,
+        volume: updatedVolume,
+      });
+
+      // Update React state immediately (no reload needed)
+      setBooks(prev =>
+        prev.map(book =>
+          book.id === bookId
+            ? { ...book, summary: updatedSummary, volume: updatedVolume }
+            : book
+        )
+      );
+
+      setStatePopup(true);
+      setTimeout(() => setStatePopup(false), 2000);
+
+    } catch (error) {
+      console.error("Failed to update book:", error);
+    }
+  }
+
+  async function updateBook(id: string, editedSummary:string, editedVolume: number) {
+    if (editedSummary.trim() === currentBook?.summary && editedVolume === currentBook?.volume) return;
+
+    await updateBookDetails( id, editedSummary, editedVolume);
+
+    console.log("Book update");
   }
 
   // create new character block Dexie
@@ -422,6 +456,7 @@ const exportData = async () => {
   function openEditCharacter(characters: Character) {
 
     setMode("character");
+    setDraftNote(null);
 
     const selectedCharacter = { ...characters, abilitiesText: characters.abilities.join(", ")
     } as Character & { abilitiesText : string };
@@ -476,6 +511,8 @@ const exportData = async () => {
   useEffect(() => {
     if (currentBook) {
       setTitleDraft(currentBook.title);
+      setBookSummary(currentBook.summary);
+      setBookVolume(String(currentBook.volume));
     }
   }, [currentBook]);
 
@@ -498,10 +535,6 @@ const exportData = async () => {
     setStatePopup(true);
     settitleEditing(true);
     setTimeout(() => {setSavedTitle(false), settitleEditing(false), setStatePopup(false)}, 2000);
-  }
-
-  function updateBook() {
-    console.log("Book update");
   }
 
   // DEFAULT CHAR IMAGE FORMAT
@@ -579,13 +612,13 @@ const exportData = async () => {
     setShowGenImage(false);
     setImageUrl(null);
     setcharPrompt("");
+    setImageSaved(null);
 
     //PROMPT: A young man, 18 years old. Black and white hair, sharp golden eyes, chiseled face. quite cold and handsome.
 
   }
 
   // LOAD IMAGES IN DB, fetch and put on a setState for display
-  useEffect(() => {
   const loadImages = async () => {
     if (!currentBook?.characters?.length) return;
 
@@ -605,8 +638,9 @@ const exportData = async () => {
     setImageMap(newMap);
   };
 
-  loadImages();
-}, [currentBook]);
+  useEffect(() => {
+    loadImages();
+  }, [currentBook]);
 
 
 // COLOR PICKER
@@ -659,6 +693,7 @@ async function addDraftNotes() {
 
 // SAVE NOTE AFTER UPDATING DRAFT NOTE TO DB
 async function saveNote(note: any) {
+  console.log(note);
   if (!note.content.trim()) return;
 
   if (note.isDraft) {
@@ -681,6 +716,7 @@ async function saveNote(note: any) {
 
     setDraftNote(null);
   } else {
+    // if () return;
     // update existing note
     await db.notes.update(note.id, {
       content: note.content,
@@ -763,11 +799,9 @@ function handleDeleteNote(note: Notes) {
 
     // Remove from UI immediately
     if (mode === "user") {
-      console.log(mode, "delete in userNotes");
       setUserNotes(prev => prev.filter(notes => notes.id !== note.id));
     }
     else if (mode === "book") {
-      console.log(mode, "delete in booknotes");
       setBookNotes(prev => prev.filter(notes => notes.id !== note.id));
     }
     
@@ -781,14 +815,13 @@ function handleDeleteNote(note: Notes) {
       setDeletedNote(null);
       setShowUndoPopup(false);
       deleteTimeoutRef.current = null;
-    }, 3000);
+    }, 2000);
   }
 }
 
 function handleUndo() {
   if (!deletedNote) return;
 
-  console.log(deletedNote);
   // Restore note
   if (mode === "user") {
     setUserNotes(prev => [deletedNote!, ...prev]);
@@ -1026,8 +1059,10 @@ function handleUndo() {
                       rows={4}
                       className="w-full border rounded-md px-4 py-2 focus:outline-none focus:ring-2 focus:ring-blue-400 placeholder-gray-400 dark:placeholder-gray-600"
                       placeholder="Enter book summary"
+                      onFocus={(e) => autoResize(e)}
                       value={bookSummary}
                       onChange={e => setBookSummary(e.target.value)}
+                      onBlur={(e) => { e.currentTarget.style.height = "auto";}}
                     />
                   </div>
 
@@ -1040,7 +1075,7 @@ function handleUndo() {
                       type="number"
                       className="w-full border rounded-md px-4 py-2 focus:outline-none focus:ring-2 focus:ring-blue-400 placeholder-gray-400 dark:placeholder-gray-600"
                       placeholder="0"
-                      onChange={e => setBookVolume(Number(e.target.value))}
+                      onChange={e => setBookVolume(e.target.value)}
                     />
                   </div>
 
@@ -1088,13 +1123,15 @@ function handleUndo() {
                     {/* Summary */}
                     <div>
                       <label className="block text-xs mb-1">
-                        Summary
+                        Summary / Synopsis
                       </label>
                       <textarea
                         rows={8}
                         className="w-full border rounded-md px-4 py-2 focus:outline-none focus:ring-2 focus:ring-blue-400 placeholder-gray-400 dark:placeholder-gray-600 text-area-scroll"
                         placeholder="Update book summary"
-                        value={currentBook.summary}
+                        value={bookSummary}
+                        onFocus={(e) => autoResize(e)}
+                        onBlur={(e) => { e.currentTarget.style.height = "auto";}}
                         onChange={e => setBookSummary(e.target.value)}
                       />
                     </div>
@@ -1107,16 +1144,16 @@ function handleUndo() {
                       <input
                         type="number"
                         className="w-full border rounded-md px-4 py-2 focus:outline-none focus:ring-2 focus:ring-blue-400 placeholder-gray-400 dark:placeholder-gray-600"
-                        value={currentBook.volume}
+                        value={bookVolume}
                         placeholder="Update current book volume"
-                        onChange={e => setBookVolume(Number(e.target.value))}
+                        onChange={e => setBookVolume(String (e.target.value))}
                       />
                     </div>
 
                     <button
                       type="button"
                       className="w-full bg-blue-500 text-white py-2 rounded-md hover:bg-blue-600 transition"
-                      onClick={updateBook}
+                      onClick={() => {updateBook(currentBookId, bookSummary, Number(bookVolume))}}
                     >
                       SAVE
                     </button>
@@ -1274,19 +1311,10 @@ function handleUndo() {
                 <div className="px-3 pt-3 mb-3 rounded-md shadow-lg bg-gray-100 dark:bg-gray-900">
                   <div className="">
                     <button 
-                      onClick={() => {setCurrentBookId(null); setMode("user")}} 
+                      onClick={() => {setCurrentBookId(null); setMode("user"); setDraftNote(null); setBookSummary(""); setBookVolume("");}} 
                     > <FontAwesomeIcon className="hover:text-blue-500 transition duration-300 hover:scale-105" icon={faArrowLeftLong} size="xl"/>
                     </button>
                   </div>
-                
-                  {/* Conditional "Changes Saved" message */}
-                  {/* <div className="absolute mt-8">
-                    {savedTitle && (
-                      <span className="mt-2 text-sm text-green-600 font-semibold animate-pulse">
-                        Changes Saved!
-                      </span>
-                    )}
-                  </div> */}
                   
                   <div className="flex items-center gap-3 mb-4">
                     {/*CHANGEABLE CURRENT BOOK TITLE */}
@@ -1385,7 +1413,7 @@ function handleUndo() {
                 <div className="flex justify-between pb-3 px-3">
 
                   <button 
-                    onClick={() => {setSelectedCharacter(null); setcharEditing(false); setMode("book") }} 
+                    onClick={() => {setSelectedCharacter(null); setcharEditing(false); setMode("book"); setDraftNote(null); setBookSummary(""); setBookVolume("");}} 
                     > <FontAwesomeIcon className="hover:text-blue-500 transition hover:scale-105" icon={faArrowLeftLong} size="xl"/>
                   </button>
 
