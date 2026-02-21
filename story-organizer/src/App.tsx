@@ -2,14 +2,14 @@ import { useState, useEffect, useCallback, useRef } from "react";
 import { db, type Book, type Character, type EditableCharacter, type Images, type Notes } from "./db";
 
 import { useDropzone } from "react-dropzone";
-import { FontAwesomeIcon, FontAwesomeLayers } from "@fortawesome/react-fontawesome";
+import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { faFileImport, faTrashCan, faCheck, faArrowLeftLong, faSpinner, faPlus, faMinus } from "@fortawesome/free-solid-svg-icons";
 
 
 export default function StoryOrganizer() {
 
   const [books, setBooks] = useState<Book[]>([]);
-  const [images, setImages] = useState<Images[]>([]);
+  // const [images, setImages] = useState<Images[]>([]);
   const [userNotes, setUserNotes] = useState<Notes[]>([]);
   const [bookNotes, setBookNotes] = useState<Notes[]>([]);
 
