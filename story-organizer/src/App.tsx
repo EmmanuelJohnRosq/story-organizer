@@ -693,7 +693,6 @@ async function addDraftNotes() {
 
 // SAVE NOTE AFTER UPDATING DRAFT NOTE TO DB
 async function saveNote(note: any) {
-  console.log(note);
   if (!note.content.trim()) return;
 
   if (note.isDraft) {
@@ -715,6 +714,8 @@ async function saveNote(note: any) {
     }
 
     setDraftNote(null);
+    setDraftstate(false);
+    setHideSave(false);
   } else {
     // if () return;
     // update existing note
@@ -723,6 +724,7 @@ async function saveNote(note: any) {
     });
 
     setStatePopup(true);
+    setHideSave(false);
     setTimeout(() => {
       setStatePopup(false);
     }, 2000);
@@ -749,6 +751,11 @@ const addNewcharacter = () => {
 const displayNotes = () => {
     setNotesShowState(!notesShowState);
 };
+
+const [hideSave, setHideSave] = useState(false);
+const [notSaved, setNotSaved] = useState(false);
+const [onFocusId, setOnFocusId] = useState("");
+const [noteContent ,setNoteContent] = useState("");
 
 // MATCHES THE SIZE OF THE CONTENT INSIDE THE NOTE
 function autoResize(e: React.ChangeEvent<HTMLTextAreaElement>) {
@@ -1575,12 +1582,15 @@ function handleUndo() {
                     
                     {/* THIS IS FOR THE USER NOTES */}
                     {( currentBookId === null && !currentBookId &&
-                      <div className="">
+                      <div 
+                        className=""
+                      >
                         {[ ...(draftNote ? [draftNote] : []), ...userNotes ].map(notes => (
                           <div 
                             className={`${colorMap[notes.color]} p-1 rounded-md shadow-md mb-2 bg-gray-100 dark:bg-gray-900 cursor-pointer animate-fadeDown`}
                             key={notes.id ?? notes.notesId}
                             data-id={notes.id}
+                            // onFocus={() => {setOnFocusId(String(notes.id!)); setNoteContent(notes.content); setHideSave(true);}}
                           >
 
                             <div className="flex justify-between pb-1"> 
@@ -1628,7 +1638,14 @@ function handleUndo() {
                               "
                               ref={!notes.id ? draftTextareaRef : null}
                               placeholder="Enter Notes"
-                              onFocus={(e) => autoResize(e)}
+                              onFocus={(e) => {autoResize(e); setOnFocusId(String(notes.id!)); setNoteContent(notes.content); setHideSave(true); 
+                                if (notes.id) {
+                                  setDraftstate(false);
+                                }
+                                else {
+                                  setDraftstate(true);
+                                }
+                              }}
                               rows={3}
                               value={notes.content}
                               onChange={(e) => {
@@ -1652,10 +1669,35 @@ function handleUndo() {
                                 if (e.key === "Enter" && !e.shiftKey) {
                                   e.preventDefault();
                                   (e.target as HTMLElement).blur();
+                                  (saveNote(notes));
                                 }
                               }}
-                              onBlur={(e) => {(saveNote(notes)); e.currentTarget.style.height = "auto";}}
+                              onBlur={(e) => { e.currentTarget.style.height = "auto";}}
                             />
+
+                            {(hideSave && (notes.id ? Number(onFocusId) === notes.id : draftNoteState) &&
+                              <div className="flex justify-end gap-1">
+                                {/* {(notSaved &&
+                                  <span>Not saved</span>
+                                )} */}
+
+                                <button 
+                                  className="flex px-4 py-1 bg-neutral-500 rounded-xl hover:bg-neutral-600"
+                                  onClick={() => {setHideSave(false); setDraftNote(null);}}
+                                >
+                                  Cancel
+                                </button>
+
+                                <button 
+                                  className="flex px-4 py-1 bg-blue-700 rounded-xl"
+                                  onClick={() => {saveNote(notes);}}
+                                  disabled={noteContent === notes.content}
+                                >
+                                  Save 
+                                </button> 
+                              </div>
+                            )}
+
                           </div>
                         ))}
                       </div>
