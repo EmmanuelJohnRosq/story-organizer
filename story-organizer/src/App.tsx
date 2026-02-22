@@ -2,16 +2,17 @@ import { useState, useEffect, useCallback, useRef } from "react";
 import { db, type Book, type Character, type EditableCharacter, type Images, type Notes } from "./db";
 
 import { useDropzone } from "react-dropzone";
-import { FontAwesomeIcon, FontAwesomeLayers } from "@fortawesome/react-fontawesome";
+import { FontAwesomeIcon} from "@fortawesome/react-fontawesome";
 import { faFileImport, faTrashCan, faCheck, faArrowLeftLong, faSpinner, faPlus, faMinus } from "@fortawesome/free-solid-svg-icons";
 
 
 export default function StoryOrganizer() {
 
   const [books, setBooks] = useState<Book[]>([]);
-  const [images, setImages] = useState<Images[]>([]);
+  // const [images, setImages] = useState<Images[]>([]);
   const [userNotes, setUserNotes] = useState<Notes[]>([]);
   const [bookNotes, setBookNotes] = useState<Notes[]>([]);
+  const [charNotes, setCharNotes] = useState<Notes[]>([]);
 
   // USER STATE
   const [mode, setMode] = useState("user"); // THREE MODE PAGES: user, book, & character
@@ -76,7 +77,7 @@ export default function StoryOrganizer() {
   const [role, setRole] = useState("");
   const [notes, setNotes] = useState("");
   const [abilities, setAbilities] = useState("");
-  const [arcStage, setArcStage] = useState("");
+  const [chapterAppearance, setChapterAppearance] = useState("");
 
   const currentBook = books.find(book => book.id === currentBookId);
 
@@ -103,10 +104,22 @@ export default function StoryOrganizer() {
     const notes = await db.notes
       .where("bookId")
       .equals(bookId)
+      .filter(note => note.charId == null)
       .toArray();
 
     notes.sort((a, b) => b.createdAt - a.createdAt);
     setBookNotes(notes);
+  };
+
+  // FILTERS USER NOTES FOR CHARACTER PAGE
+  const loadCharNotes = async (charId: number) => {
+    const notes = await db.notes
+      .where("charId")
+      .equals(charId)
+      .toArray();
+
+    notes.sort((a, b) => b.createdAt - a.createdAt);
+    setCharNotes(notes);
   };
 
   // LOAD DN DATA ON START and call db when changes happen
@@ -121,7 +134,11 @@ export default function StoryOrganizer() {
       loadBookNotes(currentBookId);
     }
 
-  }, [mode, currentBookId]);
+    if (mode === "character" && selectedCharacter) {
+      loadCharNotes(selectedCharacter);
+    }
+
+  }, [mode, currentBookId, selectedCharacter]);
 
   function normalizeWhitespace(text: string) {
     return text
@@ -134,8 +151,8 @@ export default function StoryOrganizer() {
       ...char,
       name: normalizeWhitespace(char.name),
       role: normalizeWhitespace(char.role),
-      notes: char.notes.trim().replace(/[^\S\r\n]+/g, " "),
-      arcStage: normalizeWhitespace(char.arcStage),
+      notes: char.notes.replace(/[^\S\r\n]+/g, " "),
+      chapters: normalizeWhitespace(char.chapters),
       abilities: char.abilitiesText
         .split(",")
         .map(a => normalizeWhitespace(a),)
@@ -390,11 +407,12 @@ const exportData = async () => {
 
     const newCharacter: Character = {
       id: Date.now(),
+      bookId: currentBookId,
       name: normalizeWhitespace(name),
       role: normalizeWhitespace(role),
       notes: notes.trim().replace(/[^\S\r\n]+/g, " "),
       abilities: abilities.split(",").map(a => normalizeWhitespace(a)),
-      arcStage: normalizeWhitespace(arcStage),
+      chapters: normalizeWhitespace(chapterAppearance),
       relationships: [],
     };
 
@@ -413,7 +431,7 @@ const exportData = async () => {
     setRole("");
     setNotes("");
     setAbilities("");
-    setArcStage("");
+    setChapterAppearance("");
     setShowAddCharacter(false);
   }
 
@@ -501,6 +519,10 @@ const exportData = async () => {
 
     setBooks(prev => prev.map(b => b.id === currentBookId ? updatedBook : b));
     setonChange(false);
+
+    setStatePopup(true)
+
+    setTimeout(() => setStatePopup(false), 2000);
     
     setOriginalCharacter({...cleanedCharacter});
     setEditingCharacter({ ...editableVersion });
@@ -670,6 +692,9 @@ const notesContent = "";
 const [draftNote, setDraftNote] = useState<Notes | null>(null);
 const [draftNoteState, setDraftstate] = useState(false);
 
+// EDITING NOTES
+// const [editingNote, setEditingNote] = useState<Notes | null>(null);
+
 async function addDraftNotes() {
   if (draftNote) return;
   
@@ -684,6 +709,7 @@ async function addDraftNotes() {
       color: randomColor,
       isDraft: true,
       bookId: currentBookId ? currentBookId : "",
+      charId: selectedCharacter ? selectedCharacter : null,
     };
 
   // Update React state
@@ -709,6 +735,11 @@ async function saveNote(note: any) {
 
     else if (mode === "book") {
       setBookNotes(prev => [
+        { ...noteData, id: dbId }, ...prev
+      ]);
+    }
+    else if (mode === "character") {
+      setCharNotes(prev => [
         { ...noteData, id: dbId }, ...prev
       ]);
     }
@@ -753,7 +784,7 @@ const displayNotes = () => {
 };
 
 const [hideSave, setHideSave] = useState(false);
-const [notSaved, setNotSaved] = useState(false);
+// const [notSaved, setNotSaved] = useState(false);
 const [onFocusId, setOnFocusId] = useState("");
 const [noteContent ,setNoteContent] = useState("");
 
@@ -811,6 +842,9 @@ function handleDeleteNote(note: Notes) {
     else if (mode === "book") {
       setBookNotes(prev => prev.filter(notes => notes.id !== note.id));
     }
+    else if (mode === "character") {
+      setCharNotes(prev => prev.filter(notes => notes.id !== note.id));
+    }
     
     // Clear any previous timeout (important if deleting fast)
     if (deleteTimeoutRef.current) {
@@ -835,6 +869,9 @@ function handleUndo() {
   }
   else if (mode === "book") {
     setBookNotes(prev => [deletedNote!, ...prev]);
+  }
+  else if (mode === "character") {
+    setCharNotes(prev => [deletedNote!, ...prev]);
   }
 
   // Cancel scheduled deletion
@@ -1101,7 +1138,7 @@ function handleUndo() {
             )}
 
             {/* BOOK AND CHARACTER FORMS LEFT PANEL */}
-            {currentBookId !== null && currentBook && (
+            {currentBookId !== null && currentBook &&  !selectedCharacter &&(
               <div className="sticky top-15 h-[calc(100vh-4rem)] overflow-y-auto overflow-x-hidden notes-scroll overflow-contain">
 
                 {/* BOOK SUMMARY TITLE */}
@@ -1121,7 +1158,7 @@ function handleUndo() {
                 </div>
 
                 {/* BOOK SUMMARY FORM */}
-                {(!Addnewbooks && 
+                {(!Addnewbooks &&
                 
                 // BOOK DETAILS
                 <div className="flex-1 rounded-md shadow-lg p-3 mb-2 bg-gray-100 dark:bg-gray-900 transition duration-300 animate-fadeDown">
@@ -1192,7 +1229,7 @@ function handleUndo() {
                     <input className="border p-2 w-full mb-2 rounded" placeholder="Role / Affiliation" value={role} onChange={e => setRole(e.target.value)} />
                     <textarea className="border p-2 w-full mb-2 rounded" placeholder="Notes" rows={4} value={notes} onChange={e => setNotes(e.target.value)} />
                     <input className="border p-2 w-full mb-2 rounded" placeholder="Abilities (comma separated)" value={abilities} onChange={e => setAbilities(e.target.value)} />
-                    <input type="number" className="border p-2 w-full mb-2 rounded" placeholder="Volume" value={arcStage} onChange={e => setArcStage(e.target.value)} />
+                    <input type="number" className="border p-2 w-full mb-2 rounded" placeholder="Volume" value={chapterAppearance} onChange={e => setChapterAppearance(e.target.value)} />
                     <button
                       type="button"
                       className="w-full bg-blue-500 text-white py-2 rounded-md hover:bg-blue-600 transition"
@@ -1356,7 +1393,7 @@ function handleUndo() {
                         <input className="border p-2 w-full mb-2 rounded" placeholder="Role / Affiliation" value={role} onChange={e => setRole(e.target.value)} />
                         <textarea className="border p-2 w-full mb-2 rounded" placeholder="Notes" value={notes} onChange={e => setNotes(e.target.value)} />
                         <input className="border p-2 w-full mb-2 rounded" placeholder="Abilities (comma separated)" value={abilities} onChange={e => setAbilities(e.target.value)} />
-                        <input type="number" className="border p-2 w-full mb-2 rounded" placeholder="Volume" value={arcStage} onChange={e => setArcStage(e.target.value)} />
+                        <input type="number" className="border p-2 w-full mb-2 rounded" placeholder="Volume" value={chapterAppearance} onChange={e => setChapterAppearance(e.target.value)} />
                         <button onClick={addCharacter} className="float-right bg-black border border-black text-white px-4 py-2 rounded-md hover:bg-gray-800 transition">Confirm</button>
                       </div>
                   )}
@@ -1426,6 +1463,7 @@ function handleUndo() {
 
                   <div className="space-x-2">
                     <button 
+                      title="Generate character image"
                       onClick={() => setShowGenImage(true)}
                       className="border-gray-200 border-1 text-black rounded hover:bg-gray-300 hover:text-gray-950 p-1 transition dark:border-white dark:text-white"
                     >
@@ -1590,7 +1628,6 @@ function handleUndo() {
                             className={`${colorMap[notes.color]} p-1 rounded-md shadow-md mb-2 bg-gray-100 dark:bg-gray-900 cursor-pointer animate-fadeDown`}
                             key={notes.id ?? notes.notesId}
                             data-id={notes.id}
-                            // onFocus={() => {setOnFocusId(String(notes.id!)); setNoteContent(notes.content); setHideSave(true);}}
                           >
 
                             <div className="flex justify-between pb-1"> 
@@ -1654,7 +1691,8 @@ function handleUndo() {
                                   setDraftNote(prev =>
                                     prev ? { ...prev, content: e.target.value } : prev
                                   );
-                                } else {
+                                } 
+                                else {
                                   // This is saved note
                                   setUserNotes(prev =>
                                     prev.map(note =>
@@ -1758,7 +1796,14 @@ function handleUndo() {
                               "
                               ref={!notes.id ? draftTextareaRef : null}
                               placeholder="Enter Notes"
-                              onFocus={(e) => autoResize(e)}
+                              onFocus={(e) => {autoResize(e); setOnFocusId(String(notes.id!)); setNoteContent(notes.content); setHideSave(true); 
+                                if (notes.id) {
+                                  setDraftstate(false);
+                                }
+                                else {
+                                  setDraftstate(true);
+                                }
+                              }}
                               rows={3}
                               value={notes.content}
                               onChange={(e) => {
@@ -1782,10 +1827,153 @@ function handleUndo() {
                                 if (e.key === "Enter" && !e.shiftKey) {
                                   e.preventDefault();
                                   (e.target as HTMLElement).blur();
+                                  (saveNote(notes));
                                 }
                               }}
-                              onBlur={(e) => {(saveNote(notes)); e.currentTarget.style.height = "auto";}}
+                              onBlur={(e) => { e.currentTarget.style.height = "auto";}}
                             />
+
+                            {(hideSave && (notes.id ? Number(onFocusId) === notes.id : draftNoteState) &&
+                              <div className="flex justify-end gap-1">
+                                {/* {(notSaved &&
+                                  <span>Not saved</span>
+                                )} */}
+
+                                <button 
+                                  className="flex px-4 py-1 bg-neutral-500 rounded-xl hover:bg-neutral-600"
+                                  onClick={() => {setHideSave(false); setDraftNote(null);}}
+                                >
+                                  Cancel
+                                </button>
+
+                                <button 
+                                  className="flex px-4 py-1 bg-blue-700 rounded-xl"
+                                  onClick={() => {saveNote(notes);}}
+                                  disabled={noteContent === notes.content}
+                                >
+                                  Save 
+                                </button> 
+                              </div>
+                            )}
+                          </div>
+                        ))}
+                      </div>
+                    )}
+
+                    {/* THIS IS THE CHARACTER NOTES */}
+                    {( currentBookId && currentBook && selectedCharacter &&
+                      <div className="">
+                        {[ ...(draftNote ? [draftNote] : []), ...charNotes ].map(notes => (
+                          <div 
+                            className={`${colorMap[notes.color]} p-1 rounded-md shadow-md mb-2 bg-gray-100 dark:bg-gray-900 cursor-pointer animate-fadeDown`}
+                            key={notes.id ?? notes.notesId}
+                            data-id={notes.id}
+                          >
+
+                            <div className="flex justify-between pb-1"> 
+                              
+                              <span className="text-xs text-gray-800 dark:text-gray-400">
+                                {new Date(notes.createdAt).toLocaleString("en-US", {
+                                  month: "short",
+                                  day: "numeric",
+                                  year: "numeric",
+                                  hour: "2-digit",
+                                  minute: "2-digit",
+                                })}
+                              </span>
+
+                              {!deletedNote && (
+                                <button 
+                                  className="hover:bg-neutral-300/50 rounded-2xl group"
+                                  onClick={() => handleDeleteNote(notes)}>
+                                  <svg
+                                    xmlns="http://www.w3.org/2000/svg"
+                                    className="h-5 w-5 text-gray-700 dark:text-gray-400 group-hover:text-red-500"
+                                    fill="none"
+                                    viewBox="0 0 24 24"
+                                    stroke="currentColor"
+                                    strokeWidth={2}
+                                  >
+                                    <path strokeLinecap="round" strokeLinejoin="round" d="M6 6l12 12M6 18L18 6" />
+                                  </svg>
+                                </button>
+                              )}
+
+                            </div>
+                            
+                            <textarea
+                              className="
+                              w-full text-sm
+                              rounded-md 
+                              px-1
+                              focus:outline-none focus:ring-2 focus:ring-blue-400 
+                              hover:ring-blue-400 hover:ring-2
+                              placeholder-gray-400 dark:placeholder-gray-400 
+                              resize-none
+                              overflow-hidden
+                              transition-all duration-200
+                              "
+                              ref={!notes.id ? draftTextareaRef : null}
+                              placeholder="Enter Notes"
+                              onFocus={(e) => {autoResize(e); setOnFocusId(String(notes.id!)); setNoteContent(notes.content); setHideSave(true); 
+                                if (notes.id) {
+                                  setDraftstate(false);
+                                }
+                                else {
+                                  setDraftstate(true);
+                                }
+                              }}
+                              rows={3}
+                              value={notes.content}
+                              onChange={(e) => {
+                                if (!notes.id) {
+                                  // This is draft
+                                  setDraftNote(prev =>
+                                    prev ? { ...prev, content: e.target.value } : prev
+                                  );
+                                } else {
+                                  // This is saved note
+                                  setCharNotes(prev =>
+                                    prev.map(note =>
+                                      note.id === notes.id
+                                        ? { ...note, content: e.target.value }
+                                        : note
+                                    )
+                                  );
+                                }
+                              }}
+                              onKeyDown={(e) => {
+                                if (e.key === "Enter" && !e.shiftKey) {
+                                  e.preventDefault();
+                                  (e.target as HTMLElement).blur();
+                                  (saveNote(notes));
+                                }
+                              }}
+                              onBlur={(e) => { e.currentTarget.style.height = "auto";}}
+                            />
+
+                            {(hideSave && (notes.id ? Number(onFocusId) === notes.id : draftNoteState) &&
+                              <div className="flex justify-end gap-1">
+                                {/* {(notSaved &&
+                                  <span>Not saved</span>
+                                )} */}
+
+                                <button 
+                                  className="flex px-4 py-1 bg-neutral-500 rounded-xl hover:bg-neutral-600"
+                                  onClick={() => {setHideSave(false); setDraftNote(null);}}
+                                >
+                                  Cancel
+                                </button>
+
+                                <button 
+                                  className="flex px-4 py-1 bg-blue-700 rounded-xl"
+                                  onClick={() => {saveNote(notes);}}
+                                  disabled={noteContent === notes.content}
+                                >
+                                  Save 
+                                </button> 
+                              </div>
+                            )}
                           </div>
                         ))}
                       </div>

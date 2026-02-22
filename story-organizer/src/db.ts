@@ -2,11 +2,12 @@ import Dexie, { type Table } from "dexie";
 
 export type Character = {
   id: number;
+  bookId: string;
   name: string;
   role: string;
   notes: string;
   abilities: string[];
-  arcStage: string;
+  chapters: string;
   relationships: { name: string; type: string }[];
 };
 
@@ -38,6 +39,7 @@ export type Notes = {
   content: string;
   color: string;
   bookId: string;
+  charId: number | null;
 }
 
 class StoryDB extends Dexie {
@@ -48,13 +50,48 @@ class StoryDB extends Dexie {
   constructor() {
     super("StoryDB");
 
-    this.version(6).stores({
+    this.version(8).stores({
       books: "id, title", 
       images: "imageId, charId, imageBlob",
-      notes: "++id, subject, bookId",
+      notes: "++id, bookId, charId",
+      characters: "id, bookId, name, relationships, chapters"
       // ++id = auto increment
       // title = indexed (useful later for search)
+    })
+    
+    .upgrade(async (tx) => {
+
+    await tx.table("books").toCollection().modify((book: any) => {
+
+      if (!Array.isArray(book.characters)) return;
+
+      book.characters.forEach((char: any) => {
+
+        // Add chapters only if missing
+        if (char.chapters === undefined) {
+          char.chapters = char.arcStage ?? "";
+        }
+
+        // Add bookId only if missing
+        if (!char.bookId) {
+          char.bookId = book.id;
+        }
+
+        // Ensure defaults but DO NOT delete old fields
+        if (!char.relationships) {
+          char.relationships = [];
+        }
+
+        if (!char.abilities) {
+          char.abilities = [];
+        }
+
+      });
+
     });
+
+    });
+
   }
 }
 
