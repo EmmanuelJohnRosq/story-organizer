@@ -9,6 +9,7 @@ import { faFileImport, faTrashCan, faCheck, faArrowLeftLong, faSpinner, faPlus, 
 export default function StoryOrganizer() {
 
   const [books, setBooks] = useState<Book[]>([]);
+  const [character, setCharacters] = useState<Character[]>([]);
   // const [images, setImages] = useState<Images[]>([]);
   const [userNotes, setUserNotes] = useState<Notes[]>([]);
   const [bookNotes, setBookNotes] = useState<Notes[]>([]);
@@ -88,6 +89,17 @@ export default function StoryOrganizer() {
     setBooks(allBooks);
   };
 
+  const loadChars = async (bookId : string) => {
+    const characters = await db.characters
+      .where("bookId")
+      .equals(bookId)
+      .toArray();
+
+    characters.sort((a, b) => a.id - b.id);
+    setCharacters(characters);
+    loadImages(characters);
+  };
+
   // FILTERS USER NOTES FOR USER PAGE
   const loadUserNotes = async () => {
     const notes = await db.notes
@@ -122,23 +134,25 @@ export default function StoryOrganizer() {
     setCharNotes(notes);
   };
 
-  // LOAD DN DATA ON START and call db when changes happen
+  // LOAD BOOKS ONCE WHEN WEB APP STARTS
   useEffect(() => {
     loadBooks();
+    loadUserNotes();
+  }, []);
 
-    if (mode === "user" && currentBookId === null) {
-      loadUserNotes();
-    }
+  // Call db data when changes happen to currenBookId and selected character
+  useEffect(() => {
 
     if (mode === "book" && currentBookId) {
-      loadBookNotes(currentBookId);
+      loadBookNotes(currentBookId); 
+      loadChars(currentBookId);
     }
 
     if (mode === "character" && selectedCharacter) {
       loadCharNotes(selectedCharacter);
     }
 
-  }, [mode, currentBookId, selectedCharacter]);
+  }, [currentBookId, selectedCharacter]);
 
   function normalizeWhitespace(text: string) {
     return text
@@ -397,8 +411,6 @@ const exportData = async () => {
     if (editedSummary.trim() === currentBook?.summary && editedVolume === currentBook?.volume) return;
 
     await updateBookDetails( id, editedSummary, editedVolume);
-
-    console.log("Book update");
   }
 
   // create new character block Dexie
@@ -416,16 +428,11 @@ const exportData = async () => {
       relationships: [],
     };
 
-    const book = books.find(b => b.id === currentBookId);
-    if (!book) return;
+    // console.log(newCharacter);
 
-    const updatedCharacter = {
-      ...book, characters: [...book.characters, newCharacter]
-    };
+    await db.characters.add(newCharacter);
 
-    await db.books.put(updatedCharacter)
-
-    setBooks(prev => prev.map(b => b.id === currentBookId ? updatedCharacter : b));
+    setCharacters(prev => [...prev, newCharacter]);
 
     setName("");
     setRole("");
@@ -497,27 +504,24 @@ const exportData = async () => {
     const cleanedCharacter = sanitizeCharacter(editingCharacter);
 
     const editableVersion: EditableCharacter = {
-    ...cleanedCharacter,
-    abilitiesText: cleanedCharacter.abilities.join(", ")
-  };
+      ...cleanedCharacter,
+      abilitiesText: cleanedCharacter.abilities.join(", ")
+    };
 
     const updatedCharacter: Character = { ...cleanedCharacter, 
       abilities: cleanedCharacter.abilities
     };
 
-    const book = books.find(b => b.id === currentBookId);
-    if (!book) return;
+    const updatedChars = [...character.map(c =>
+        c.id === cleanedCharacter.id ? updatedCharacter : c
+      )
+    ];
+      
+    await db.characters.update(cleanedCharacter.id, updatedCharacter);
 
-    const updatedBook = {
-    ...book,
-    characters: book.characters.map(c =>
-      c.id === cleanedCharacter.id ? updatedCharacter : c
-    )
-  };
-
-    await db.books.put(updatedBook);
-
-    setBooks(prev => prev.map(b => b.id === currentBookId ? updatedBook : b));
+      // Update React state immediately (no reload needed)
+    setCharacters(updatedChars);
+    
     setonChange(false);
 
     setStatePopup(true)
@@ -550,6 +554,7 @@ const exportData = async () => {
     const titleUpdate = { title: normalizeWhitespace(titleDraft)};
 
     await db.books.update(currentBookId, titleUpdate);
+
 
     setBooks(prev => prev.map(book => book.id === currentBookId ? {...book, title: titleDraft.trim().replace(/\s+/g, " ")} : book));
 
@@ -641,10 +646,10 @@ const exportData = async () => {
   }
 
   // LOAD IMAGES IN DB, fetch and put on a setState for display
-  const loadImages = async () => {
-    if (!currentBook?.characters?.length) return;
+  const loadImages = async (chars: any) => {
+    if (!chars.length) return;
 
-    const charIds = currentBook.characters.map(c => c.id);
+    const charIds = chars.map((c: { id: any; }) => c.id);
 
     const images = await db.images
       .where("charId")
@@ -659,10 +664,6 @@ const exportData = async () => {
 
     setImageMap(newMap);
   };
-
-  useEffect(() => {
-    loadImages();
-  }, [currentBook]);
 
 
 // COLOR PICKER
@@ -748,7 +749,6 @@ async function saveNote(note: any) {
     setDraftstate(false);
     setHideSave(false);
   } else {
-    // if () return;
     // update existing note
     await db.notes.update(note.id, {
       content: note.content,
@@ -1206,7 +1206,7 @@ function handleUndo() {
 
                 )}
 
-                {/* ADD CHARACTER FORM */}
+                {/* ADD CHARACTER TITLE  */}
                 <div className="flex-1 rounded-md shadow-lg bg-gray-100 dark:bg-gray-900 mb-2 p-3 flex justify-between transition duration-300">
 
                   <h3 className="text-2xl font-semibold">Add Character</h3>
@@ -1222,14 +1222,14 @@ function handleUndo() {
 
                 </div>
 
-                {/* ADD CHARACTER TITLE */}
+                {/* ADD CHARACTER FORM */}
                 {(!addCharacterState &&
                   <div className="flex-1 rounded-md shadow-lg p-3 mb-2 bg-gray-100 dark:bg-gray-900 transition duration-300 animate-fadeDown">
                     <input className="border p-2 w-full mb-2 rounded" placeholder="Name" value={name} onChange={e => setName(e.target.value)} />
                     <input className="border p-2 w-full mb-2 rounded" placeholder="Role / Affiliation" value={role} onChange={e => setRole(e.target.value)} />
                     <textarea className="border p-2 w-full mb-2 rounded" placeholder="Notes" rows={4} value={notes} onChange={e => setNotes(e.target.value)} />
                     <input className="border p-2 w-full mb-2 rounded" placeholder="Abilities (comma separated)" value={abilities} onChange={e => setAbilities(e.target.value)} />
-                    <input type="number" className="border p-2 w-full mb-2 rounded" placeholder="Volume" value={chapterAppearance} onChange={e => setChapterAppearance(e.target.value)} />
+                    <input type="number" className="border p-2 w-full mb-2 rounded" placeholder="First Chapter Appearance" value={chapterAppearance} onChange={e => setChapterAppearance(e.target.value)} />
                     <button
                       type="button"
                       className="w-full bg-blue-500 text-white py-2 rounded-md hover:bg-blue-600 transition"
@@ -1331,7 +1331,7 @@ function handleUndo() {
                       
 
                       {/* Title */}
-                      <div className="p-4 pt-15 text-center font-semibold line-clamp-5 max-h-45">
+                      <div className="p-4 pt-15 text-base text-center font-semibold line-clamp-5 max-h-45">
                         {book.title}
 
                         {/* Vertical TITLE */}
@@ -1339,7 +1339,7 @@ function handleUndo() {
                           <span className="text-xs font-bold">{book.title}</span>
                         </div>
                       </div>
-                      <p className="text-center">{book.characters.length} Characters</p>
+                      {/* <p className="text-center">{book.characters.length} Characters</p> */}
                       
                     </div>
                     ))}
@@ -1353,15 +1353,16 @@ function handleUndo() {
             {/* DETAILS / CHARACTERS */}
             {currentBookId !== null && currentBook && selectedCharacter === null && (
                 <div className="px-3 pt-3 mb-3 rounded-md shadow-lg bg-gray-100 dark:bg-gray-900">
+                  {/* BACK BUTTON */}
                   <div className="">
                     <button 
-                      onClick={() => {setCurrentBookId(null); setMode("user"); setDraftNote(null); setBookSummary(""); setBookVolume("");}} 
+                      onClick={() => {setCurrentBookId(null); setMode("user"); setDraftNote(null); setBookSummary(""); setBookVolume(""); setCharacters([]);}} 
                     > <FontAwesomeIcon className="hover:text-blue-500 transition duration-300 hover:scale-105" icon={faArrowLeftLong} size="xl"/>
                     </button>
                   </div>
                   
+                  {/*CHANGEABLE CURRENT BOOK TITLE */}
                   <div className="flex items-center gap-3 mb-4">
-                    {/*CHANGEABLE CURRENT BOOK TITLE */}
                     <div className="flex-1">
                       <input 
                         title="Edit book title..."
@@ -1379,6 +1380,7 @@ function handleUndo() {
                       
                     </div>
 
+                    {/* THIS IS THE HIDDEN ADD CHARACTER FORM FOR SMALLER DIMENSION */}
                     <button 
                       onClick={() => setShowAddCharacter(!showAddCharacter)} 
                       className="xs:hidden bg-black border border-black text-white text-xs md:text-base px-5 py-2 rounded-md hover:bg-gray-800 transition">
@@ -1398,7 +1400,8 @@ function handleUndo() {
                       </div>
                   )}
 
-                  {currentBook.characters.length === 0 && (
+                  {/* DISPLAY IF CHARACTERS ARE NONE */}
+                  {character.length === 0 && (
                   <div className="w-full flex justify-center items-center py-20"> 
                     <h1 className="text-3xl font-bold text-gray-400 text-center"> 
                       PLEASE ADD SOME CHARACTERS. IT GETS LONELY SOMETIMES HERE... 
@@ -1408,7 +1411,7 @@ function handleUndo() {
 
                   {/* Display Character Card Block */}
                   <div className="grid gap-4 pb-4 sm:grid-cols-2 md:grid-cols-3 items-stretch place-items-center">
-                      {currentBook.characters.map(char => (
+                      {character.map(char => (
 
                       // CHARACTER CARDS w/ image... //
                       <div 
@@ -1438,7 +1441,7 @@ function handleUndo() {
                               <a href="#">
                                   <h3 className="text-xl font-semibold tracking-tight line-clamp-1">{char.name}</h3>
                                   <p className="text-sm text-gray-400 mb-2 line-clamp-1">{char.role || "Character Role"}</p>
-                                  <p className="text-sm text-gray-400 mb-2 line-clamp-1">*First Chapter Appearance</p>
+                                  <p className="text-sm text-gray-400 mb-2 line-clamp-1">First Chapter Appearance: {char.chapters}</p>
                               </a>
                           </div>
                       </div>
@@ -1544,7 +1547,7 @@ function handleUndo() {
                     {/* NOTES */}
                     <div className="space-y-1">
                       <div className="flex items-center gap-2 text-sm font-semibold text-gray-700 dark:text-gray-500">
-                        <label><span>📝</span> Character Notes</label>
+                        <label><span>📝</span> Background</label>
                       </div>
                       <textarea 
                       rows={5} 
@@ -1573,10 +1576,11 @@ function handleUndo() {
                         <span className="text-indigo-500">📖</span> Chapter Appearances
                       </div>
                       <input 
-                      placeholder="Chapter Appearances"
-                      readOnly
-                      className="w-full outline-none focus:border-b pl-3 hover:border-b"
-                      value={"2, 3"} />
+                        placeholder="Chapter Appearances"
+                        className="w-full outline-none focus:border-b pl-3 hover:border-b"
+                        value={editingCharacter.chapters} 
+                        onChange={(e) => setEditingCharacter({ ...editingCharacter, chapters: e.target.value })} 
+                      />
                     </div>   
 
                   </div>
@@ -1675,7 +1679,7 @@ function handleUndo() {
                               "
                               ref={!notes.id ? draftTextareaRef : null}
                               placeholder="Enter Notes"
-                              onFocus={(e) => {autoResize(e); setOnFocusId(String(notes.id!)); setNoteContent(notes.content); setHideSave(true); 
+                              onFocus={(e) => {autoResize(e); setOnFocusId(String(notes.id!)); setHideSave(true);
                                 if (notes.id) {
                                   setDraftstate(false);
                                 }
@@ -1727,9 +1731,8 @@ function handleUndo() {
                                 </button>
 
                                 <button 
-                                  className="flex px-4 py-1 bg-blue-700 rounded-xl"
+                                  className="flex px-4 py-1 bg-blue-700 rounded-xl hover:bg-blue-800"
                                   onClick={() => {saveNote(notes);}}
-                                  disabled={noteContent === notes.content}
                                 >
                                   Save 
                                 </button> 
@@ -2189,7 +2192,7 @@ function handleUndo() {
             </div>
 
             {/* TOOLTIP */}
-            <span
+            {/* <span
               className={`
                 ${setDrag === true ? "hidden" : ""}
                 absolute right-full bottom-6 mr-2
@@ -2200,7 +2203,7 @@ function handleUndo() {
               `}
               >
               DROP BOOKS HERE TO REMOVE.
-            </span>
+            </span> */}
           </div>
         )}
 

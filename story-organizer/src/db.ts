@@ -9,6 +9,7 @@ export type Character = {
   abilities: string[];
   chapters: string;
   relationships: { name: string; type: string }[];
+  // description: { race: string, age: string, }[];
 };
 
 export type Book = {
@@ -46,11 +47,12 @@ class StoryDB extends Dexie {
   books!: Table<Book>;
   images!: Table<Images>;
   notes!: Table<Notes>;
+  characters!: Table<Character>;
 
   constructor() {
     super("StoryDB");
 
-    this.version(8).stores({
+    this.version(9).stores({
       books: "id, title", 
       images: "imageId, charId, imageBlob",
       notes: "++id, bookId, charId",
@@ -61,35 +63,24 @@ class StoryDB extends Dexie {
     
     .upgrade(async (tx) => {
 
-    await tx.table("books").toCollection().modify((book: any) => {
+      const books = await tx.table("books").toArray();
 
-      if (!Array.isArray(book.characters)) return;
+      for (const book of books) {
+        if (book.characters && book.characters.length > 0) {
+          
+          for (const character of book.characters) {
+            await tx.table("characters").add({
+              ...character,
+              bookId: book.id
+            });
+          }
 
-      book.characters.forEach((char: any) => {
-
-        // Add chapters only if missing
-        if (char.chapters === undefined) {
-          char.chapters = char.arcStage ?? "";
+          // OPTIONAL: clear characters from book after migration
+          await tx.table("books").update(book.id, {
+            characters: []
+          });
         }
-
-        // Add bookId only if missing
-        if (!char.bookId) {
-          char.bookId = book.id;
-        }
-
-        // Ensure defaults but DO NOT delete old fields
-        if (!char.relationships) {
-          char.relationships = [];
-        }
-
-        if (!char.abilities) {
-          char.abilities = [];
-        }
-
-      });
-
-    });
-
+      }
     });
 
   }
