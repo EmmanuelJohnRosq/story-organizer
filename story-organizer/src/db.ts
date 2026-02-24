@@ -2,12 +2,14 @@ import Dexie, { type Table } from "dexie";
 
 export type Character = {
   id: number;
+  bookId: string;
   name: string;
   role: string;
   notes: string;
   abilities: string[];
-  arcStage: string;
+  chapters: string;
   relationships: { name: string; type: string }[];
+  // description: { race: string, age: string, }[];
 };
 
 export type Book = {
@@ -38,23 +40,49 @@ export type Notes = {
   content: string;
   color: string;
   bookId: string;
+  charId: number | null;
 }
 
 class StoryDB extends Dexie {
   books!: Table<Book>;
   images!: Table<Images>;
   notes!: Table<Notes>;
+  characters!: Table<Character>;
 
   constructor() {
     super("StoryDB");
 
-    this.version(6).stores({
+    this.version(9).stores({
       books: "id, title", 
       images: "imageId, charId, imageBlob",
-      notes: "++id, subject, bookId",
+      notes: "++id, bookId, charId",
+      characters: "id, bookId, name, relationships, chapters"
       // ++id = auto increment
       // title = indexed (useful later for search)
+    })
+    
+    .upgrade(async (tx) => {
+
+      const books = await tx.table("books").toArray();
+
+      for (const book of books) {
+        if (book.characters && book.characters.length > 0) {
+          
+          for (const character of book.characters) {
+            await tx.table("characters").add({
+              ...character,
+              bookId: book.id
+            });
+          }
+
+          // OPTIONAL: clear characters from book after migration
+          await tx.table("books").update(book.id, {
+            characters: []
+          });
+        }
+      }
     });
+
   }
 }
 
