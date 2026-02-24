@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback, useRef } from "react";
+import { useState, useEffect, useCallback, useRef, use } from "react";
 import { db, type Book, type Character, type EditableCharacter, type Images, type Notes } from "./db";
 
 import { useDropzone } from "react-dropzone";
@@ -367,11 +367,13 @@ const exportData = async () => {
     setBooks(prev => [...prev, { ...newBook, id }]);
 
     // UI stuff
+    setAlert("Book Added");
+    setStatePopup(true);
     setBookTitle("");
     setBookVolume("");
     setBookSummary("");
     setBookAdded(true);
-    setTimeout(() => setBookAdded(false), 2000);
+    setTimeout(() => {setBookAdded(false); setStatePopup(false); setAlert("");}, 2000);
   }
 
   // select book element
@@ -399,8 +401,9 @@ const exportData = async () => {
         )
       );
 
+      setAlert("Changes Saved")
       setStatePopup(true);
-      setTimeout(() => setStatePopup(false), 2000);
+      setTimeout(() => {setStatePopup(false); setAlert("");}, 2000);
 
     } catch (error) {
       console.error("Failed to update book:", error);
@@ -434,12 +437,17 @@ const exportData = async () => {
 
     setCharacters(prev => [...prev, newCharacter]);
 
+    setAlert("Character Successfully Created");
+    setStatePopup(true);
+
     setName("");
     setRole("");
     setNotes("");
     setAbilities("");
     setChapterAppearance("");
     setShowAddCharacter(false);
+
+    setTimeout(() => {setStatePopup(false); setAlert("");}, 2000);
   }
 
   // Show Edit Modal
@@ -463,16 +471,12 @@ const exportData = async () => {
 
     if (!confirmed) return;
 
-    const book = books.find(book => book.id === currentBookId);
-    if (!book) return;
+    // THIS DELETES USING PRIMARY KEY/CHARACTER ID
+    await db.characters.delete(characterId);
 
-    const updatedBook = {
-      ...book, characters: book.characters.filter(c => c.id !== characterId)
-    };
-
-    await db.books.put(updatedBook);
-
-    setBooks(prev => prev.map(b => b.id === currentBookId ? updatedBook : b));
+    setCharacters(prev => // Calls back the previous array inside setCharacters
+      prev.filter( //THIS CREATES A NEW ARRAY
+        c => c.id !== characterId)); // CONDITION TO KEEP ALL CHARACTERS THAT DOES NOT MATCH THE characterId
 
     setSelectedCharacter(null);
   }
@@ -524,14 +528,14 @@ const exportData = async () => {
     
     setonChange(false);
 
+    setAlert("Changes Saved");
     setStatePopup(true)
 
-    setTimeout(() => setStatePopup(false), 2000);
+    setTimeout(() => {setStatePopup(false); setAlert("");}, 2000);
     
     setOriginalCharacter({...cleanedCharacter});
     setEditingCharacter({ ...editableVersion });
   }
-
 
   // BOOK TITLE CHANGES - CHANGEABLE INPUT DATA
   useEffect(() => {
@@ -559,9 +563,10 @@ const exportData = async () => {
     setBooks(prev => prev.map(book => book.id === currentBookId ? {...book, title: titleDraft.trim().replace(/\s+/g, " ")} : book));
 
     setSavedTitle(true);
+    setAlert("Changes Saved");
     setStatePopup(true);
     settitleEditing(true);
-    setTimeout(() => {setSavedTitle(false), settitleEditing(false), setStatePopup(false)}, 2000);
+    setTimeout(() => {setSavedTitle(false), settitleEditing(false), setStatePopup(false), setAlert("");}, 2000);
   }
 
   // DEFAULT CHAR IMAGE FORMAT
@@ -588,37 +593,60 @@ const exportData = async () => {
   const generateImage = async () => {
     setLoading(true);
     setError("");
+
     try {
-      const enhancedPrompt = `
-      close portrait shot, shoulder up,
-      ${charprompt},
-      looking at camera,
-      fantasy art style, 
-      solid color background, centered composition.
-      soft lighting
-      `;
+      const enhancedPrompt = 
+      `close portrait shot, shoulder up,${charprompt},looking at camera,fantasy anime art style, solid color background, centered composition, soft lighting`;
 
       // Use the puter.ai.txt2img function to generate an image
       const image = await puter.ai.txt2img(enhancedPrompt , {
-            model: "gpt-image-1.5",
-            quality: "low"
-          });
+        // model: "gpt-image-1.5", // best/not working
+        // model: "gpt-image-1", // not working
+        // model: "black-forest-labs/FLUX.1.1-pro", // good
+        // model: "dall-e-3", // okay/super fucking expensive
+        model: "black-forest-labs/FLUX.1-schnell", // kinda okay/ cheap
+        // model: "gemini-2.5-flash-image-preview", // this is shit
+        // model: "grok-image", // not fucking working
+      });
+
+      const src = image?.src;
+
+      // Validate that it is actually an image
+      if (!src || typeof src !== "string" || (!src.startsWith("data:image/") && !src.startsWith("http"))) {
+        console.error("Invalid image response:", src);
+        setImageUrl(null);
+        // setImageSaved(null);
+        throw new Error("Image generation failed: Not a valid image.");
+      }
+
       setImageUrl(image.src); // Puter returns an HTMLImageElement
       setImageSaved(image.src);
     } catch (err) {
       setError('Failed to generate image. Please try again.');
       console.error(err);
+      
+      setImageUrl(null);
+      // setImageSaved(null);
     } finally {
       setLoading(false);
     }
   };
 
+  async function checkimageUsage() {
+    console.log("image file: ", imageSaved ? (imageSaved!.split(",")[0]) : "No imagefile");
+    const month = puter.auth.getMonthlyUsage()
+    const appid = puter.auth.getDetailedAppUsage('app-907541aa-7512-568b-af67-9f6b383a53ca')
+    
+    console.log("appID", appid);
+    console.log("motht", month);
+  }
+
   // SAVE IMAGE INSIDE DB
-  async function saveImage() {
-    if (!imageSaved) return;
+  async function saveImage(imageFile: any) {
+    if (!imageFile) return;
 
      // 1️⃣ Convert image URL to Blob
-    const response = await fetch(imageSaved);
+    const response = await fetch(imageFile);
     const blob = await response.blob();
 
     // 2️⃣ Save Blob to IndexedDB
@@ -754,10 +782,12 @@ async function saveNote(note: any) {
       content: note.content,
     });
 
+    setAlert("Changes Saved");
     setStatePopup(true);
     setHideSave(false);
     setTimeout(() => {
       setStatePopup(false);
+      setAlert("");
     }, 2000);
   }
 }
@@ -813,6 +843,7 @@ useEffect(() => {
 // POP UP VARIABLES
 const [showUndoPopup, setShowUndoPopup] = useState(false);
 const [showStatePopup, setStatePopup] = useState(false);
+const [alertMessage, setAlert] = useState("");
 
 const [deletedNote, setDeletedNote] = useState<Notes | null>(null);
 const deleteTimeoutRef = useRef<number | null>(null);
@@ -886,6 +917,19 @@ function handleUndo() {
   // Cancel the permanent deletion
   setDeletedNote(null);
 }
+
+const [uploadCharImage, showUploadCharImage] = useState(false);
+
+const [imageFile, setImageFile] = useState<File | null>(null);
+const [previewUrl, setPreviewUrl] = useState<string | null>(null);
+
+useEffect(() => {
+  if (imageFile) {
+    const objectUrl = URL.createObjectURL(imageFile);
+    setPreviewUrl(objectUrl);
+  }
+},[imageFile]);
+
 
   // HTML/TAILWIND CSS | INDEX
   return (
@@ -1224,7 +1268,8 @@ function handleUndo() {
 
                 {/* ADD CHARACTER FORM */}
                 {(!addCharacterState &&
-                  <div className="flex-1 rounded-md shadow-lg p-3 mb-2 bg-gray-100 dark:bg-gray-900 transition duration-300 animate-fadeDown">
+                  <div className="flex-1 rounded-md shadow-lg p-3 mb-2 bg-gray-100 dark:bg-gray-900 transition duration-300 animate-fadeDown"
+                      onKeyDown={(e) => {if (e.key === "Enter") addCharacter();}}>
                     <input className="border p-2 w-full mb-2 rounded" placeholder="Name" value={name} onChange={e => setName(e.target.value)} />
                     <input className="border p-2 w-full mb-2 rounded" placeholder="Role / Affiliation" value={role} onChange={e => setRole(e.target.value)} />
                     <textarea className="border p-2 w-full mb-2 rounded" placeholder="Notes" rows={4} value={notes} onChange={e => setNotes(e.target.value)} />
@@ -1302,6 +1347,7 @@ function handleUndo() {
                 <div className="grid grid-cols-2 px-15 pt-2 sm:grid-cols-2 md:grid-cols-3 gap-2 md:gap-x-20 md:gap-y-5 pb-1 place-items-center overflow-y-auto notes-scroll">
                     {books.map(book => (
                     <div
+                      role="list"
                       key={book.id} 
                       draggable
                       onDragStart={handleDragStart}
@@ -1460,7 +1506,7 @@ function handleUndo() {
                 <div className="flex justify-between pb-3 px-3">
 
                   <button 
-                    onClick={() => {setSelectedCharacter(null); setcharEditing(false); setMode("book"); setDraftNote(null); setBookSummary(""); setBookVolume("");}} 
+                    onClick={() => {setSelectedCharacter(null); setcharEditing(false); setMode("book"); setDraftNote(null);}} 
                     > <FontAwesomeIcon className="hover:text-blue-500 transition hover:scale-105" icon={faArrowLeftLong} size="xl"/>
                   </button>
 
@@ -1605,6 +1651,7 @@ function handleUndo() {
                   onClick={displayNotes}
                   className="text-2xl font-semibold cursor-pointer hover:text-blue-400 select-none"
                   title="Click to minimize notes"
+                  role="button"
                   >Notes</h3>
 
                 <div className="flex justify-center">
@@ -1997,82 +2044,183 @@ function handleUndo() {
 
       {/* OUT OF MAIN PAGE MODALS */}
 
-        {/* GENERATE CHARACTER IMAGE BOOM */}
+        {/* UPLOAD || GENERATE CHARACTER IMAGE*/}
         {showGenImage && selectedCharacter && (
             <div className="fixed inset-0 flex items-center bg-black/50 z-50 overflow-auto" 
               onMouseDown={(e) => {
                 if (e.target === e.currentTarget) {
                   showModal(false);
                   setImageUrl(null);
+                  setImageFile(null);
+                  setPreviewUrl(null);
                 }
               }}
             >
-              <div className="w-9/10 min-w-0 md:max-w-120 mx-auto bg-white dark:bg-gray-100 max-h-screen overflow-y-auto p-6 rounded-md shadow-lg" onMouseDown={(e) => e.stopPropagation()}>
-                
-                  <h2 className="text-2xl font-bold text-gray-800 pb-2">
-                    Character Image Generator
-                  </h2>
+              {/* MAIN MODAL CONTENT */}
+              <div className="w-9/10 min-w-0 md:max-w-120 mx-auto bg-white dark:bg-gray-100 max-h-screen overflow-y-auto rounded-md shadow-lg" onMouseDown={(e) => e.stopPropagation()}>
 
-                  {/* Prompt Input */}
-                  <div className="flex flex-col sm:flex-row gap-3 mb-3">
-                    <input
-                      type="text"
-                      value={charprompt}
-                      onChange={(e) => setcharPrompt(e.target.value)}
-                      placeholder="e.g. A space pirate with a mechanical eye"
-                      className="flex-1 px-4 py-3 border rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500"
-                    />
+                {/* EXIT BUTTON AT THE TOP OF MODAL */}
+                <div id="Close modal" className="flex justify-between pl-1">
+                  <button
+                    onClick={() => showUploadCharImage(!uploadCharImage)}
+                    className="px-1 hover:text-semibold hover:text-blue-500 hover:underline"
+                  >
+                    {!uploadCharImage ? ('Upload?') : ('Generate?')}
+                  </button>
 
-                    <button
-                      onClick={generateImage}
-                      disabled={loading}
-                      className="px-6 py-3 bg-indigo-600 text-white rounded-md hover:bg-indigo-700 transition disabled:opacity-50"
+                  <button 
+                    className="hover:bg-neutral-300/50 rounded-2xl group"
+                    onClick={() => {
+                      showModal(false);
+                      setImageUrl(null);
+                      setImageFile(null);
+                      setPreviewUrl(null);
+                    }}
+                  >
+                    <svg
+                      xmlns="http://www.w3.org/2000/svg"
+                      className="h-5 w-5 text-gray-700 dark:text-gray-800 group-hover:text-red-500"
+                      fill="none"
+                      viewBox="0 0 24 24"
+                      stroke="currentColor"
+                      strokeWidth={2}
                     >
-                      {loading ? "Generating..." : "Generate"}
-                    </button>
-                  </div>
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M6 6l12 12M6 18L18 6" />
+                    </svg>
+                  </button>
+                </div>
 
-                  {/* Error */}
-                  {error && (
-                    <div className="text-red-500 text-sm">
-                      {error}
-                    </div>
-                  )}
+                <div className="p-4">
+                    
+                    {uploadCharImage ? 
+                      ( 
+                        // UPLOAD IMAGE
+                        <div>
+                          {/* UPLOAD YOUR CHARACTER IMAGE */}
+                          <div className="flex items-center justify-center w-full">
+                            <div 
+                              {...getRootProps()}
+                              className={`flex flex-col items-center justify-center w-full h-100 bg-neutral-secondary-medium border border-dashed border-default-strong rounded-base cursor-pointer hover:bg-neutral-tertiary-medium ${isDragActive ? "border-blue-500 bg-blue-50" : "border-gray-300"}`}>
+                                <input {...getInputProps()} 
+                                  accept="image/*"
+                                  onChange={(e) => {
+                                    if (e.target.files?.[0]) {
+                                    setImageFile(e.target.files[0]);
+                                    }
+                                  }}
+                                />
 
-                  {/* Image Preview */}
-                  <div className="w-full flex justify-center">
-                    <div className="w-72 h-96 bg-gray-200 rounded-md overflow-hidden shadow-inner flex items-center justify-center">
-                      {loading && (
-                        <div className="animate-pulse text-gray-400">
-                          Generating image...Please wait
+                                {imageFile ? (
+                                  <div className="text-lg text-gray-500 truncate max-w-100">
+                                    <img
+                                      src={previewUrl ?? undefined}
+                                      alt="Generated character"
+                                      className="w-full h-full object-cover"
+                                    />
+                                  </div>
+                                ) : (
+                                  <div className="flex flex-col items-center justify-center text-body pt-5 pb-6">
+                                      <svg className="w-8 h-8 mb-4" aria-hidden="true" xmlns="http://www.w3.org/2000/svg" width="24" height="24" fill="none" viewBox="0 0 24 24"><path stroke="currentColor" d="M15 17h3a3 3 0 0 0 0-6h-.025a5.56 5.56 0 0 0 .025-.5A5.5 5.5 0 0 0 7.207 9.021C7.137 9.017 7.071 9 7 9a4 4 0 1 0 0 8h2.167M12 19v-9m0 0-2 2m2-2 2 2"/></svg>
+                                      <p className="mb-2 text-sm"><span className="font-semibold">Click to upload character image</span></p>
+                                  </div>
+                                )}
+                            </div>
+                          </div> 
+
+                          {/* Submit */}
+                          <div className="flex pt-3">
+                            <button
+                              disabled={!imageFile}
+                              onClick={() => saveImage(imageFile)}
+                              className="border w-full bg-blue-500 px-4 py-2 text-white rounded-md hover:border hover:border-blue-900
+                              text-white"> 
+                              Save image
+                            </button>
+                          </div>
                         </div>
-                      )}
+                      ) 
+                      :
+                      (
+                        // GENERATE IMAGE
+                        <div>
+                          {/* TITLE */}
+                          <h2 className="text-2xl font-bold text-gray-800 pb-2">
+                            Character Image Generator
+                          </h2>
 
-                      {!loading && imageUrl && (
-                        <img
-                          src={imageUrl}
-                          alt="Generated character"
-                          className="w-full h-full object-cover"
-                        />
-                      )}
+                          {/* ENTER PROMPT */}
+                          <div className="flex flex-col sm:flex-row gap-3 mb-3">
+                            <input
+                              type="text"
+                              value={charprompt}
+                              onChange={(e) => setcharPrompt(e.target.value)}
+                              placeholder="e.g. A space pirate with a mechanical eye"
+                              className="flex-1 px-4 py-3 border rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                            />
 
-                      {!loading && !imageUrl && (
-                        <div className="text-gray-400 text-sm">
-                          Image will appear here
+                            <button
+                              onClick={generateImage}
+                              disabled={loading}
+                              className="px-6 py-3 bg-indigo-600 text-white rounded-md hover:bg-indigo-700 transition disabled:opacity-50"
+                            >
+                              {loading ? "Generating..." : "Generate"}
+                            </button>
+                          </div>
+
+                          {/* HANDLE ERROR */}
+                          {error && (
+                            <div className="text-red-500 text-sm">
+                              {error}
+                            </div>
+                          )}
+
+                          {/* IMAGE PREVIEW */}
+                          <div className="w-full flex justify-center">
+                            <div className="w-72 h-96 bg-gray-200 rounded-md overflow-hidden shadow-inner flex items-center justify-center">
+                              {loading && (
+                                <div className="animate-pulse text-gray-400">
+                                  Generating image...Please wait
+                                </div>
+                              )}
+
+                              {!loading && imageUrl && (
+                                <img
+                                  src={imageUrl}
+                                  alt="Generated character"
+                                  className="w-full h-full object-cover"
+                                />
+                              )}
+
+                              {!loading && !imageUrl && (
+                                <div className="text-gray-400 text-sm">
+                                  Image will appear here
+                                </div>
+                              )}
+                            </div>
+                          </div>
+
+                          {/* SAVE IMAGE TO DB */}
+                          <div className="flex justify-center pt-3">
+                            <button 
+                            disabled={!imageSaved}
+                            className="py-2 px-6 w-full rounded-md bg-indigo-200 hover:bg-indigo-300 text-center"
+                            onClick={() =>saveImage(imageSaved)}
+                            >
+                              Save
+                            </button>
+                            
+                          </div>
+                          <button onClick={checkimageUsage} className="rounded bg-blue-100 hover:bg-blue-300 p-4"> CHECK PLEASE </button>
+
                         </div>
-                      )}
-                    </div>
-                  </div>
+                      )
+                    }
 
-                  <div className="flex justify-center pt-3">
-                    <button 
-                    className="py-2 px-6 rounded-md bg-indigo-200 hover:bg-indigo-300 text-center"
-                    onClick={saveImage}>
-                      Save
-                    </button>
-                  </div>
+                </div>
+                
 
               </div>
+              
             </div>
         )}
 
@@ -2234,7 +2382,7 @@ function handleUndo() {
         {showStatePopup && (
           <div className="fixed top-14 left-1/2 bg-gray-300 py-1 px-5 transform -translate-x-1/2 rounded shadow-lg flex justify-center space-x-4 animate-fadeDown">
             <span>
-              Changes Saved
+              {alertMessage}
               <FontAwesomeIcon className="text-green-500" size="lg" icon={faCheck}/>
             </span>
           </div>
