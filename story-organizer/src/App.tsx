@@ -38,6 +38,12 @@ export default function StoryOrganizer() {
   const [imageSaved, setImageSaved] = useState<string | null>(null);
   const [imageMap, setImageMap] = useState<Record<string, string>>({});
 
+  // CHARACTER UPLOAD IMAGE
+  const [uploadCharImage, showUploadCharImage] = useState(false);
+
+  const [imageFile, setImageFile] = useState<File | null>(null);
+  const [previewUrl, setPreviewUrl] = useState<string | null>(null);
+
   // EDITING OF BOOK TITLE
   const [titleDraft, setTitleDraft] = useState("");
   const [savedTitle, setSavedTitle] = useState(false);
@@ -142,7 +148,6 @@ export default function StoryOrganizer() {
 
   // Call db data when changes happen to currenBookId and selected character
   useEffect(() => {
-
     if (mode === "book" && currentBookId) {
       loadBookNotes(currentBookId); 
       loadChars(currentBookId);
@@ -589,8 +594,17 @@ const exportData = async () => {
     setDarkTheme(prev => (prev === "dark" ? "light" : "dark"));
   };
 
+  // CALL WHEN USER UPLOADED IMAGE
+  useEffect(() => {
+    if (imageFile) {
+      const objectUrl = URL.createObjectURL(imageFile);
+      setPreviewUrl(objectUrl);
+    }
+  },[imageFile]);
+
   // IMAGE GENERATION - PUTER.JS
   const generateImage = async () => {
+    if(!charprompt) return;
     setLoading(true);
     setError("");
 
@@ -600,24 +614,23 @@ const exportData = async () => {
 
       // Use the puter.ai.txt2img function to generate an image
       const image = await puter.ai.txt2img(enhancedPrompt , {
-        // model: "gpt-image-1.5", // best/not working
+        model: "gpt-image-1.5", // best
         // model: "gpt-image-1", // not working
         // model: "black-forest-labs/FLUX.1.1-pro", // good
         // model: "dall-e-3", // okay/super fucking expensive
-        model: "black-forest-labs/FLUX.1-schnell", // kinda okay/ cheap
+        // model: "black-forest-labs/FLUX.1-schnell", // kinda okay/ cheap
         // model: "gemini-2.5-flash-image-preview", // this is shit
         // model: "grok-image", // not fucking working
       });
 
-      const src = image?.src;
-
       // Validate that it is actually an image
-      if (!src || typeof src !== "string" || (!src.startsWith("data:image/") && !src.startsWith("http"))) {
-        console.error("Invalid image response:", src);
-        setImageUrl(null);
-        // setImageSaved(null);
-        throw new Error("Image generation failed: Not a valid image.");
-      }
+      // const src = image?.src;
+      // if (!src || typeof src !== "string" || (!src.startsWith("data:image/") && !src.startsWith("http") && !src.startsWith("data:text/xml"))) {
+      //   console.error("Invalid image response:", src);
+      //   setImageUrl(null);
+      //   setImageSaved(null);
+      //   throw new Error("Image generation failed: Not a valid image.");
+      // }
 
       setImageUrl(image.src); // Puter returns an HTMLImageElement
       setImageSaved(image.src);
@@ -625,13 +638,14 @@ const exportData = async () => {
       setError('Failed to generate image. Please try again.');
       console.error(err);
       
-      setImageUrl(null);
-      // setImageSaved(null);
+      // setImageUrl(null);
+      setImageSaved(null);
     } finally {
       setLoading(false);
     }
   };
-
+  
+  // Checking for my puter account usage
   async function checkimageUsage() {
     console.log("image file: ", imageSaved ? (imageSaved!.split(",")[0]) : "No imagefile");
     const month = puter.auth.getMonthlyUsage()
@@ -639,6 +653,28 @@ const exportData = async () => {
     
     console.log("appID", appid);
     console.log("motht", month);
+  }
+
+  // CONVERT UPLOADED IMAGE TO AN HTML IMAGE ELEMENT TO DISPLAY
+  async function convertUploadedImage(imageFile: any) {
+    if (!imageFile) return;
+
+    // Initialize FileReader function
+    const reader = new FileReader();
+
+    reader.onload = () => {
+    const base64Image = reader.result;
+
+    if (typeof base64Image === "string") {
+      console.log("Converted image:", base64Image);
+
+      // Call saveImage to save to db.
+      saveImage(base64Image);
+    }
+  };
+
+    // Convert the uploaded image to an html Image element/base64
+    reader.readAsDataURL(imageFile); 
   }
 
   // SAVE IMAGE INSIDE DB
@@ -668,6 +704,8 @@ const exportData = async () => {
     setImageUrl(null);
     setcharPrompt("");
     setImageSaved(null);
+    setImageFile(null);
+    setPreviewUrl(null);
 
     //PROMPT: A young man, 18 years old. Black and white hair, sharp golden eyes, chiseled face. quite cold and handsome.
 
@@ -721,9 +759,6 @@ const notesContent = "";
 const [draftNote, setDraftNote] = useState<Notes | null>(null);
 const [draftNoteState, setDraftstate] = useState(false);
 
-// EDITING NOTES
-// const [editingNote, setEditingNote] = useState<Notes | null>(null);
-
 async function addDraftNotes() {
   if (draftNote) return;
   
@@ -750,6 +785,7 @@ async function addDraftNotes() {
 async function saveNote(note: any) {
   if (!note.content.trim()) return;
 
+  // GOES HERE IF THE NOTE IS A NEW NOTE
   if (note.isDraft) {
     // first time saving
     const { isDraft, ...noteData } = note;
@@ -828,6 +864,7 @@ function autoResize(e: React.ChangeEvent<HTMLTextAreaElement>) {
 // CREATING NEW NOTES WILL FOCUS AND SCROLL
 const draftTextareaRef = useRef<HTMLTextAreaElement | null>(null);
 
+// INTERACTION WITH THE TEXT AREA AND NOTES
 useEffect(() => {
   if (draftNote && draftTextareaRef.current) {
     draftTextareaRef.current?.focus({ 
@@ -846,6 +883,7 @@ const [showStatePopup, setStatePopup] = useState(false);
 const [alertMessage, setAlert] = useState("");
 
 const [deletedNote, setDeletedNote] = useState<Notes | null>(null);
+const [noteToDelete, setNoteToDelete] = useState<Notes | null>(null);
 const deleteTimeoutRef = useRef<number | null>(null);
 
 // DELETE NOTES/DRAFT
@@ -858,11 +896,14 @@ async function deleteNotes(id: number) {
 
 function handleDeleteNote(note: Notes) {
    if (draftNote && note.id === draftNote.id) {
+    setNoteToDelete(null)
     setDraftNote(null);
+    
   } else {
     // Save to temporary deleted state
     setDeletedNote(note);
-
+    
+    setNoteToDelete(null);
     // Show undo popup
     setShowUndoPopup(true);
 
@@ -918,18 +959,7 @@ function handleUndo() {
   setDeletedNote(null);
 }
 
-const [uploadCharImage, showUploadCharImage] = useState(false);
-
-const [imageFile, setImageFile] = useState<File | null>(null);
-const [previewUrl, setPreviewUrl] = useState<string | null>(null);
-
-useEffect(() => {
-  if (imageFile) {
-    const objectUrl = URL.createObjectURL(imageFile);
-    setPreviewUrl(objectUrl);
-  }
-},[imageFile]);
-
+// const [noteToDelete, setNoteToDelete] = useState<Notes | null>(null);
 
   // HTML/TAILWIND CSS | INDEX
   return (
@@ -1456,7 +1486,7 @@ useEffect(() => {
                   )}
 
                   {/* Display Character Card Block */}
-                  <div className="grid gap-4 pb-4 sm:grid-cols-2 md:grid-cols-3 items-stretch place-items-center">
+                  <div className="grid gap-4 pb-4 sm:grid-cols-3 md:grid-cols-4 items-stretch place-items-center">
                       {character.map(char => (
 
                       // CHARACTER CARDS w/ image... //
@@ -1464,17 +1494,18 @@ useEffect(() => {
                       key={char.id} 
                       title="Open character sheet."
                       className="
-                        h-[300px] w-full max-w-sm
+                        h-[250px] w-full max-w-sm
                         cursor-pointer bg-white shadow-lg rounded-md
                         transition-all duration-300
                         hover:-translate-y-2 hover:shadow-2xl
                         group animate-fadeDown
                         flex flex-col
                         dark:bg-gray-950"
-                      onClick={() => openEditCharacter(char)}>
+                      onClick={() => openEditCharacter(char)}
+                      >
 
                           {/* IMAGE */}
-                          <div className="h-60 w-full overflow-hidden rounded-t-xl">
+                          <div className="h-100 w-full overflow-hidden rounded-t-xl">
                             <a href="#">
                                 <img 
                                 className="h-full w-full object-cover group-hover:scale-105 transition" 
@@ -1676,7 +1707,7 @@ useEffect(() => {
                       >
                         {[ ...(draftNote ? [draftNote] : []), ...userNotes ].map(notes => (
                           <div 
-                            className={`${colorMap[notes.color]} p-1 rounded-md shadow-md mb-2 bg-gray-100 dark:bg-gray-900 cursor-pointer animate-fadeDown`}
+                            className={`${colorMap[notes.color]} relative p-1 rounded-md shadow-md mb-2 bg-gray-100 dark:bg-gray-900 cursor-pointer animate-fadeDown`}
                             key={notes.id ?? notes.notesId}
                             data-id={notes.id}
                           >
@@ -1693,22 +1724,20 @@ useEffect(() => {
                                 })}
                               </span>
 
-                              {!deletedNote && (
-                                <button 
-                                  className="hover:bg-neutral-300/50 rounded-2xl group"
-                                  onClick={() => handleDeleteNote(notes)}>
-                                  <svg
-                                    xmlns="http://www.w3.org/2000/svg"
-                                    className="h-5 w-5 text-gray-700 dark:text-gray-400 group-hover:text-red-500"
-                                    fill="none"
-                                    viewBox="0 0 24 24"
-                                    stroke="currentColor"
-                                    strokeWidth={2}
-                                  >
-                                    <path strokeLinecap="round" strokeLinejoin="round" d="M6 6l12 12M6 18L18 6" />
-                                  </svg>
-                                </button>
-                              )}
+                              <button 
+                                className="hover:bg-neutral-300/50 rounded-2xl group"
+                                onClick={() => {setNoteToDelete(notes);}}>
+                                <svg
+                                  xmlns="http://www.w3.org/2000/svg"
+                                  className="h-5 w-5 text-gray-700 dark:text-gray-400 group-hover:text-red-500"
+                                  fill="none"
+                                  viewBox="0 0 24 24"
+                                  stroke="currentColor"
+                                  strokeWidth={2}
+                                >
+                                  <path strokeLinecap="round" strokeLinejoin="round" d="M6 6l12 12M6 18L18 6" />
+                                </svg>
+                              </button>
 
                             </div>
                             
@@ -1782,7 +1811,29 @@ useEffect(() => {
                                   onClick={() => {saveNote(notes);}}
                                 >
                                   Save 
-                                </button> 
+                                </button>
+                              </div>
+                            )}
+
+                            {noteToDelete && noteToDelete.id === notes.id && (
+                              <div className="absolute inset-0 bg-black/40 backdrop-blur-sm flex items-center justify-center rounded-md z-10">
+                                <div className="bg-white dark:bg-gray-800 p-3 rounded-md shadow-lg text-center w-40">
+                                  <p className="text-sm mb-2">Delete this note?</p>
+                                  <div className="flex justify-between">
+                                    <button
+                                      onClick={() => handleDeleteNote(noteToDelete!)}
+                                      className="text-red-500 text-sm hover:scale-105"
+                                    >
+                                      Delete
+                                    </button>
+                                    <button
+                                      onClick={() => setNoteToDelete(null)}
+                                      className="text-gray-500 text-sm"
+                                    >
+                                      Cancel
+                                    </button>
+                                  </div>
+                                </div>
                               </div>
                             )}
 
@@ -1796,7 +1847,7 @@ useEffect(() => {
                       <div className="">
                         {[ ...(draftNote ? [draftNote] : []), ...bookNotes ].map(notes => (
                           <div 
-                            className={`${colorMap[notes.color]} p-1 rounded-md shadow-md mb-2 bg-gray-100 dark:bg-gray-900 cursor-pointer animate-fadeDown`}
+                            className={`${colorMap[notes.color]} relative p-1 rounded-md shadow-md mb-2 bg-gray-100 dark:bg-gray-900 cursor-pointer animate-fadeDown`}
                             key={notes.id ?? notes.notesId}
                             data-id={notes.id}
                           >
@@ -1813,22 +1864,20 @@ useEffect(() => {
                                 })}
                               </span>
 
-                              {!deletedNote && (
-                                <button 
-                                  className="hover:bg-neutral-300/50 rounded-2xl group"
-                                  onClick={() => handleDeleteNote(notes)}>
-                                  <svg
-                                    xmlns="http://www.w3.org/2000/svg"
-                                    className="h-5 w-5 text-gray-700 dark:text-gray-400 group-hover:text-red-500"
-                                    fill="none"
-                                    viewBox="0 0 24 24"
-                                    stroke="currentColor"
-                                    strokeWidth={2}
-                                  >
-                                    <path strokeLinecap="round" strokeLinejoin="round" d="M6 6l12 12M6 18L18 6" />
-                                  </svg>
-                                </button>
-                              )}
+                              <button 
+                                className="hover:bg-neutral-300/50 rounded-2xl group"
+                                onClick={() => setNoteToDelete(notes)}>
+                                <svg
+                                  xmlns="http://www.w3.org/2000/svg"
+                                  className="h-5 w-5 text-gray-700 dark:text-gray-400 group-hover:text-red-500"
+                                  fill="none"
+                                  viewBox="0 0 24 24"
+                                  stroke="currentColor"
+                                  strokeWidth={2}
+                                >
+                                  <path strokeLinecap="round" strokeLinejoin="round" d="M6 6l12 12M6 18L18 6" />
+                                </svg>
+                              </button>
 
                             </div>
                             
@@ -1905,6 +1954,28 @@ useEffect(() => {
                                 </button> 
                               </div>
                             )}
+
+                            {noteToDelete && noteToDelete.id === notes.id && (
+                              <div className="absolute inset-0 bg-black/40 backdrop-blur-sm flex items-center justify-center rounded-md z-10">
+                                <div className="bg-white dark:bg-gray-800 p-3 rounded-md shadow-lg text-center w-40">
+                                  <p className="text-sm mb-2">Delete this note?</p>
+                                  <div className="flex justify-between">
+                                    <button
+                                      onClick={() => handleDeleteNote(noteToDelete!)}
+                                      className="text-red-500 text-sm hover:scale-105"
+                                    >
+                                      Delete
+                                    </button>
+                                    <button
+                                      onClick={() => setNoteToDelete(null)}
+                                      className="text-gray-500 text-sm"
+                                    >
+                                      Cancel
+                                    </button>
+                                  </div>
+                                </div>
+                              </div>
+                            )}
                           </div>
                         ))}
                       </div>
@@ -1915,7 +1986,7 @@ useEffect(() => {
                       <div className="">
                         {[ ...(draftNote ? [draftNote] : []), ...charNotes ].map(notes => (
                           <div 
-                            className={`${colorMap[notes.color]} p-1 rounded-md shadow-md mb-2 bg-gray-100 dark:bg-gray-900 cursor-pointer animate-fadeDown`}
+                            className={`${colorMap[notes.color]} relative p-1 rounded-md shadow-md mb-2 bg-gray-100 dark:bg-gray-900 cursor-pointer animate-fadeDown`}
                             key={notes.id ?? notes.notesId}
                             data-id={notes.id}
                           >
@@ -1932,22 +2003,20 @@ useEffect(() => {
                                 })}
                               </span>
 
-                              {!deletedNote && (
-                                <button 
-                                  className="hover:bg-neutral-300/50 rounded-2xl group"
-                                  onClick={() => handleDeleteNote(notes)}>
-                                  <svg
-                                    xmlns="http://www.w3.org/2000/svg"
-                                    className="h-5 w-5 text-gray-700 dark:text-gray-400 group-hover:text-red-500"
-                                    fill="none"
-                                    viewBox="0 0 24 24"
-                                    stroke="currentColor"
-                                    strokeWidth={2}
-                                  >
-                                    <path strokeLinecap="round" strokeLinejoin="round" d="M6 6l12 12M6 18L18 6" />
-                                  </svg>
-                                </button>
-                              )}
+                              <button 
+                                className="hover:bg-neutral-300/50 rounded-2xl group"
+                                onClick={() => setNoteToDelete(notes)}>
+                                <svg
+                                  xmlns="http://www.w3.org/2000/svg"
+                                  className="h-5 w-5 text-gray-700 dark:text-gray-400 group-hover:text-red-500"
+                                  fill="none"
+                                  viewBox="0 0 24 24"
+                                  stroke="currentColor"
+                                  strokeWidth={2}
+                                >
+                                  <path strokeLinecap="round" strokeLinejoin="round" d="M6 6l12 12M6 18L18 6" />
+                                </svg>
+                              </button>
 
                             </div>
                             
@@ -2024,6 +2093,28 @@ useEffect(() => {
                                 </button> 
                               </div>
                             )}
+
+                            {noteToDelete && noteToDelete.id === notes.id && (
+                              <div className="absolute inset-0 bg-black/40 backdrop-blur-sm flex items-center justify-center rounded-md z-10">
+                                <div className="bg-white dark:bg-gray-800 p-3 rounded-md shadow-lg text-center w-40">
+                                  <p className="text-sm mb-2">Delete this note?</p>
+                                  <div className="flex justify-between">
+                                    <button
+                                      onClick={() => handleDeleteNote(noteToDelete!)}
+                                      className="text-red-500 text-sm hover:scale-105"
+                                    >
+                                      Delete
+                                    </button>
+                                    <button
+                                      onClick={() => setNoteToDelete(null)}
+                                      className="text-gray-500 text-sm"
+                                    >
+                                      Cancel
+                                    </button>
+                                  </div>
+                                </div>
+                              </div>
+                            )}
                           </div>
                         ))}
                       </div>
@@ -2053,6 +2144,7 @@ useEffect(() => {
                   setImageUrl(null);
                   setImageFile(null);
                   setPreviewUrl(null);
+                  showUploadCharImage(true);
                 }
               }}
             >
@@ -2065,7 +2157,7 @@ useEffect(() => {
                     onClick={() => showUploadCharImage(!uploadCharImage)}
                     className="px-1 hover:text-semibold hover:text-blue-500 hover:underline"
                   >
-                    {!uploadCharImage ? ('Upload?') : ('Generate?')}
+                    {uploadCharImage === true ? ('Generate?') : ('Upload?')}
                   </button>
 
                   <button 
@@ -2075,6 +2167,7 @@ useEffect(() => {
                       setImageUrl(null);
                       setImageFile(null);
                       setPreviewUrl(null);
+                      showUploadCharImage(true);
                     }}
                   >
                     <svg
@@ -2131,7 +2224,7 @@ useEffect(() => {
                           <div className="flex pt-3">
                             <button
                               disabled={!imageFile}
-                              onClick={() => saveImage(imageFile)}
+                              onClick={() => convertUploadedImage(imageFile)}
                               className="border w-full bg-blue-500 px-4 py-2 text-white rounded-md hover:border hover:border-blue-900
                               text-white"> 
                               Save image
@@ -2150,21 +2243,25 @@ useEffect(() => {
 
                           {/* ENTER PROMPT */}
                           <div className="flex flex-col sm:flex-row gap-3 mb-3">
-                            <input
-                              type="text"
-                              value={charprompt}
-                              onChange={(e) => setcharPrompt(e.target.value)}
-                              placeholder="e.g. A space pirate with a mechanical eye"
-                              className="flex-1 px-4 py-3 border rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500"
-                            />
+                            <form className="flex w-full gap-1">
+                              <input
+                                type="text"
+                                value={charprompt}
+                                required
+                                onChange={(e) => setcharPrompt(e.target.value)}
+                                placeholder="e.g. A space pirate with a mechanical eye"
+                                className="flex-1 px-4 py-3 border rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                              />
 
-                            <button
-                              onClick={generateImage}
-                              disabled={loading}
-                              className="px-6 py-3 bg-indigo-600 text-white rounded-md hover:bg-indigo-700 transition disabled:opacity-50"
-                            >
-                              {loading ? "Generating..." : "Generate"}
-                            </button>
+                              <button
+                                onClick={generateImage}
+                                disabled={loading}
+                                className="px-6 py-3 bg-indigo-600 text-white rounded-md hover:bg-indigo-700 transition disabled:opacity-50"
+                              >
+                              
+                                {loading ? "Generating..." : "Generate"}
+                              </button>
+                            </form>
                           </div>
 
                           {/* HANDLE ERROR */}
@@ -2210,7 +2307,7 @@ useEffect(() => {
                             </button>
                             
                           </div>
-                          <button onClick={checkimageUsage} className="rounded bg-blue-100 hover:bg-blue-300 p-4"> CHECK PLEASE </button>
+                          {/* <button onClick={checkimageUsage} className="rounded bg-blue-100 hover:bg-blue-300 p-4"> CHECK PLEASE </button> */}
 
                         </div>
                       )
