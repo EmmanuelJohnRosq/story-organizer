@@ -110,6 +110,8 @@ export default function StoryOrganizer() {
   const [charChapterAppearances, setCharChapterAppearances] = useState("");
   const [charCharacterArc, setcharCharacterArc] = useState("");
 
+  const [charTraits, setCharTraits] = useState<string[]>([]);
+
   // Relationships (complex object)
 const [charRelationships, setCharRelationships] = useState<
   { charId: number; type: string }[]
@@ -123,6 +125,15 @@ const [charDescription, setCharDescription] = useState<CharacterDescription>({
   body: { bodyType: "", height: "", skinTone: "" },
   extras: { distinguishingFeatures: "", accessories: "", clothingStyle: "" },
 });
+
+  // Description (nested object)
+  const defaultcharDescription: CharacterDescription = {
+    basic: { age: "", race: "", gender: "" },
+    face: { faceShape: "", eyeColor: "", eyeShape: "", noseShape: "", mouthSize: "" },
+    hair: { hairColor: "", hairStyle: "" },
+    body: { bodyType: "", height: "", skinTone: "" },
+    extras: { distinguishingFeatures: "", accessories: "", clothingStyle: "" },
+  };
 
   const currentBook = books.find(book => book.id === currentBookId);
 
@@ -186,9 +197,13 @@ const [charDescription, setCharDescription] = useState<CharacterDescription>({
 
   // Call db data when changes happen to currenBookId and selected character
   useEffect(() => {
+    if (mode === "user") {
+      setCharDescription({ ...defaultcharDescription });
+    }
     if (mode === "book" && currentBookId) {
       loadBookNotes(currentBookId); 
       loadChars(currentBookId);
+      setCharDescription({ ...defaultcharDescription });
     }
 
     if (mode === "character" && selectedCharacter) {
@@ -264,9 +279,10 @@ const exportData = async () => {
 
     const data = {
       app: "story-organizer",
-      version: "2.0",
+      version: "3.0",
       exportedAt: new Date().toISOString(),
       books,
+      character,
       images: imagesWithBase64,
       allNotes,
     }; 
@@ -296,10 +312,12 @@ const exportData = async () => {
       await db.books.clear();
       await db.images.clear();
       await db.notes.clear();
+      await db.characters.clear();
 
-      // Restore books
+      // Restore data from json
       await db.books.bulkAdd(parsed.books);
       await db.notes.bulkAdd(parsed.allNotes);
+      await db.characters.bulkAdd(parsed.characters);
 
       // Restore images (if they exist)
       if (parsed.images && parsed.images.length > 0) {
@@ -317,6 +335,7 @@ const exportData = async () => {
       loadUserNotes();
 
       alert("Import successful!");
+      setCurrentBookId(null);
     } catch (err) {
       console.error(err);
       alert("Invalid file format");
@@ -472,6 +491,15 @@ const exportData = async () => {
     await updateBookDetails( id, editedSummary, editedVolume, editedGenre);
   }
 
+  // CREATING CHARACTER DATA OF MORPH
+  // const [charDescription1, setCharDescription1] = useState<CharacterDescription>({
+  //     basic: { age: "18", race: "Human", gender: "Male" },
+  //     face: { faceShape: "Oval", eyeColor: "Silver", eyeShape: "Narrow", noseShape: "Straight", mouthSize: "Medium" },
+  //     hair: { hairColor: "Black", hairStyle: "Messy" },
+  //     body: { bodyType: "Athletic", height: "Tall", skinTone: "Fair" },
+  //     extras: { distinguishingFeatures: "", accessories: "One Silver Dot Earrings", clothingStyle: "Traveler" },
+  // });
+
   // create new character to save to db
   async function addCharacter() {
     if (!name || currentBookId === null) return;
@@ -502,7 +530,51 @@ const exportData = async () => {
       updatedAt: Date.now(),
     };
 
-    // console.log(newCharacter);
+
+    // CREATING CHARACTER DATA OF MORPH
+    // const newCharacter1: Character = {
+    //   id: Date.now(),
+    //   bookId: currentBookId,
+    //   name: "Morpheus",
+    //   role: "Protagonist",
+    //   notes: "Morph is a normal young man transmigrated in a game like fantasy world after dying from a large meteorite that might also cause Earth it's destruction.",
+    //   abilities: ["Perfect Shapeshift", "Mimic", "Memory Eater"],
+    //   chapters: "1",
+    //   status: "Alive",
+    //   importance: "Main Character",
+    //   occupation: "Territory Lord",
+    //   futureNotes: "He becomes the conqueror of the Kingdom...",
+    //   characterArc: "At first, Morph is new to the fantasy stuff, then after one year surviving without the system. He knew that he had to do his best to survive.",
+    //   netWorth: "150 gold",
+    //   powerLevel: "Tier 1: Human Level",
+    //   titles: ['Lord Morpheus', 'The Primorph', 'Baron', 'Lord Everform'],
+    //   personalityTraits: ['Observant', 'Calculated', 'Careful planner', 'Cautious', 'Deadpan', 'Aloof', 'Defiant', 'Adaptive', 'Perceptive', 'Transparent', 'Wary','Ruminative','Guarded'],
+    //   tags: ['Male', 'Commoner', 'Lord', 'Planner', 'Protagonist', 'Chaotic Neutral', 'Stealthy', 'Hidden Power'], //tags or alignment
+    //   setRace: ['Human','Doppelganger', 'Everform','God of Origins'],
+    //   chapterAppearances: ['1','2','3','4','5','6','7','8','9','10'],
+    //   relationships: 
+    //     [
+    //       { 
+    //         charId: 1771166152670,
+    //         type: "Friend/Brother-like",
+    //       },
+    //       {
+    //         charId: 1771166945604,
+    //         type: "Loyal Subordinate",
+    //       },
+    //       {
+    //         charId: 1771503708024,
+    //         type: "Pet",
+    //       },
+    //       {
+    //         charId: 1771503971863,
+    //         type: "Subordinate",
+    //       },
+    //     ],
+    //   description: charDescription1,
+    //   createdAt: Date.now(),
+    //   updatedAt: Date.now(),
+    // };
 
     await db.characters.add(newCharacter);
 
@@ -516,6 +588,25 @@ const exportData = async () => {
     setNotes("");
     setAbilities("");
     setChapterAppearance("");
+     setCharStatus("unknown");
+    setCharImportance("unknown");
+    setCharOccupation("");
+    setCharFutureNotes("");
+    setCharNetWorth("");
+    setCharPowerLevel("");
+
+    setCharTitles("");
+    setCharAbilities("");
+    setCharPersonalityTraits("");
+    setCharTags("");
+    setCharChapterAppearances("");
+    setcharCharacterArc("");
+
+    setCharSetRaces("");
+    setCharRelationships([]);
+
+    setCharDescription({ ...defaultcharDescription });
+
     setShowAddCharacter(false);
 
     setTimeout(() => {setStatePopup(false); setAlert("");}, 2000);
@@ -670,6 +761,69 @@ const exportData = async () => {
     }
   },[imageFile]);
 
+  function hydrateDescription(
+    description?: CharacterDescription
+  ): CharacterDescription {
+    return {
+      basic: {
+        age: description?.basic?.age ?? "",
+        race: description?.basic?.race ?? "",
+        gender: description?.basic?.gender ?? "",
+      },
+      face: {
+        faceShape: description?.face?.faceShape ?? "",
+        eyeColor: description?.face?.eyeColor ?? "",
+        eyeShape: description?.face?.eyeShape ?? "",
+        noseShape: description?.face?.noseShape ?? "",
+        mouthSize: description?.face?.mouthSize ?? "",
+      },
+      hair: {
+        hairColor: description?.hair?.hairColor ?? "",
+        hairStyle: description?.hair?.hairStyle ?? "",
+      },
+      body: {
+        bodyType: description?.body?.bodyType ?? "",
+        height: description?.body?.height ?? "",
+        skinTone: description?.body?.skinTone ?? "",
+      },
+      extras: {
+        distinguishingFeatures: description?.extras?.distinguishingFeatures ?? "",
+        accessories: description?.extras?.accessories ?? "",
+        clothingStyle: description?.extras?.clothingStyle ?? "",
+      }
+    };
+  }
+
+  useEffect(() => {
+    if (!originalCharacter) return;
+    setCharDescription(hydrateDescription(originalCharacter.description));
+    setCharTraits(originalCharacter.personalityTraits);
+  }, [originalCharacter]);
+
+  const traits = [
+    `${charDescription.basic.age}-year-old`,
+    charDescription.basic.race,
+    charDescription.basic.gender,
+    charDescription.body.height && `${charDescription.body.height} height`,
+    charDescription.body.bodyType && `${charDescription.body.bodyType} build`,
+    charDescription.body.skinTone && `${charDescription.body.skinTone} skin`,
+    charDescription.face.faceShape && `${charDescription.face.faceShape} face`,
+    charDescription.face.eyeShape && `${charDescription.face.eyeShape} ${charDescription.face.eyeColor} eyes`,
+    charDescription.hair.hairColor && `${charDescription.hair.hairColor} hair`,
+    charDescription.hair.hairStyle,
+    charDescription.extras.accessories,
+    charDescription.extras.clothingStyle && `wearing ${charDescription.extras.clothingStyle} style clothing`,
+    charTraits.length > 0 && `expression reflecting ${
+    Array.isArray(charTraits)
+    ? charTraits.join(", ")
+    : charTraits
+    } personality`
+    ].filter(Boolean);
+
+  useEffect(() => {
+    setcharPrompt(traits.join(", "));
+  },[showGenImage]);
+
   // IMAGE GENERATION - PUTER.JS
   const generateImage = async () => {
     if(!charprompt) return;
@@ -800,280 +954,280 @@ const exportData = async () => {
   };
 
 
-// COLOR PICKER
-const stickyColors = [
-  "yellow",
-  "pink",
-  "green",
-  "sky",
-  "purple",
-  "gray",
-];
+  // COLOR PICKER
+  const stickyColors = [
+    "yellow",
+    "pink",
+    "green",
+    "sky",
+    "purple",
+    "gray",
+  ];
 
-// COLOR MAP FOR RANDOM COLOR ASSIGNMENT OF NOTES
-const colorMap: Record<string, string> = {
-  yellow: "bg-yellow-200 dark:bg-yellow-800",
-  pink: "bg-pink-200 dark:bg-pink-800",
-  green: "bg-green-200 dark:bg-green-800",
-  sky: "bg-sky-200 dark:bg-sky-800",
-  purple: "bg-purple-200 dark:bg-purple-800",
-  gray: "bg-gray-200 dark:bg-gray-900"
-};
-  
-const notesSubject = "";
-const notesContent = "";
+  // COLOR MAP FOR RANDOM COLOR ASSIGNMENT OF NOTES
+  const colorMap: Record<string, string> = {
+    yellow: "bg-yellow-200 dark:bg-yellow-800",
+    pink: "bg-pink-200 dark:bg-pink-800",
+    green: "bg-green-200 dark:bg-green-800",
+    sky: "bg-sky-200 dark:bg-sky-800",
+    purple: "bg-purple-200 dark:bg-purple-800",
+    gray: "bg-gray-200 dark:bg-gray-900"
+  };
+    
+  const notesSubject = "";
+  const notesContent = "";
 
-// DRAFT NOTE/ Blank note for adding new notes
-const [draftNote, setDraftNote] = useState<Notes | null>(null);
-const [draftNoteState, setDraftstate] = useState(false);
+  // DRAFT NOTE/ Blank note for adding new notes
+  const [draftNote, setDraftNote] = useState<Notes | null>(null);
+  const [draftNoteState, setDraftstate] = useState(false);
 
-async function addDraftNotes() {
-  if (draftNote) return;
-  
-  const randomColor =
-    stickyColors[Math.floor(Math.random() * stickyColors.length)];
+  async function addDraftNotes() {
+    if (draftNote) return;
+    
+    const randomColor =
+      stickyColors[Math.floor(Math.random() * stickyColors.length)];
 
-  const newNotes = {
-      notesId: crypto.randomUUID(),
-      subject: notesSubject,
-      content: notesContent,
-      createdAt: Date.now(),
-      color: randomColor,
-      isDraft: true,
-      bookId: currentBookId ? currentBookId : "",
-      charId: selectedCharacter ? selectedCharacter : null,
-    };
+    const newNotes = {
+        notesId: crypto.randomUUID(),
+        subject: notesSubject,
+        content: notesContent,
+        createdAt: Date.now(),
+        color: randomColor,
+        isDraft: true,
+        bookId: currentBookId ? currentBookId : "",
+        charId: selectedCharacter ? selectedCharacter : null,
+      };
 
-  // Update React state
-  setDraftNote(newNotes);
-  setDraftstate(true);
-}
+    // Update React state
+    setDraftNote(newNotes);
+    setDraftstate(true);
+  }
 
-// SAVE NOTE AFTER UPDATING DRAFT NOTE TO DB
-async function saveNote(note: any) {
-  if (!note.content.trim()) return;
+  // SAVE NOTE AFTER UPDATING DRAFT NOTE TO DB
+  async function saveNote(note: any) {
+    if (!note.content.trim()) return;
 
-  // GOES HERE IF THE NOTE IS A NEW NOTE
-  if (note.isDraft) {
-    // first time saving
-    const { isDraft, ...noteData } = note;
+    // GOES HERE IF THE NOTE IS A NEW NOTE
+    if (note.isDraft) {
+      // first time saving
+      const { isDraft, ...noteData } = note;
 
-    const dbId = await db.notes.add(noteData);
+      const dbId = await db.notes.add(noteData);
 
-    if (mode === "user") {
-      setUserNotes(prev => [
-        { ...noteData, id: dbId }, ...prev
-      ]);
+      if (mode === "user") {
+        setUserNotes(prev => [
+          { ...noteData, id: dbId }, ...prev
+        ]);
+      }
+
+      else if (mode === "book") {
+        setBookNotes(prev => [
+          { ...noteData, id: dbId }, ...prev
+        ]);
+      }
+      else if (mode === "character") {
+        setCharNotes(prev => [
+          { ...noteData, id: dbId }, ...prev
+        ]);
+      }
+
+      setDraftNote(null);
+      setDraftstate(false);
+      setHideSave(false);
+    } else {
+      // update existing note
+      await db.notes.update(note.id, {
+        content: note.content,
+      });
+
+      setAlert("Changes Saved");
+      setStatePopup(true);
+      setHideSave(false);
+      setTimeout(() => {
+        setStatePopup(false);
+        setAlert("");
+      }, 2000);
     }
+  }
 
+  const [Addnewbooks, setAddnewBooks] = useState(false);
+  const [notesShowState, setNotesShowState] = useState(true);
+  const [addCharacterState, setAddCharState] = useState(true);
+
+  // SHOW/HIDE CREATE NEW BOOK FORM
+  const addBooksState = () => {
+      setAddnewBooks(!Addnewbooks);
+      setAddCharState(true);
+  };
+
+  // SHOW/HIDE ADD CHARACTER FORM
+  const addNewcharacter = () => {
+      setAddCharState(!addCharacterState);
+      setAddnewBooks(true);
+  };
+
+  // SHOW/HIDE NOTES DISPLAY
+  const displayNotes = () => {
+      setNotesShowState(!notesShowState);
+  };
+
+  const [hideSave, setHideSave] = useState(false);
+  // const [notSaved, setNotSaved] = useState(false);
+  const [onFocusId, setOnFocusId] = useState("");
+  const [noteContent ,setNoteContent] = useState("");
+
+  // MATCHES THE SIZE OF THE CONTENT INSIDE THE NOTE
+  function autoResize(e: React.ChangeEvent<HTMLTextAreaElement>) {
+    const el = e.target;
+    el.style.height = "auto";
+    el.style.height = el.scrollHeight + "px";
+  }
+
+  // CREATING NEW NOTES WILL FOCUS AND SCROLL
+  const draftTextareaRef = useRef<HTMLTextAreaElement | null>(null);
+
+  // INTERACTION WITH THE TEXT AREA AND NOTES
+  useEffect(() => {
+    if (draftNote && draftTextareaRef.current) {
+      draftTextareaRef.current?.focus({ 
+        preventScroll: true 
+      });
+      draftTextareaRef.current.scrollIntoView({
+        behavior: "smooth",
+        block: "center",
+      });
+    }
+  }, [draftNote]);
+
+  // POP UP VARIABLES
+  const [showUndoPopup, setShowUndoPopup] = useState(false);
+  const [showStatePopup, setStatePopup] = useState(false);
+  const [alertMessage, setAlert] = useState("");
+
+  const [deletedNote, setDeletedNote] = useState<Notes | null>(null);
+  const [noteToDelete, setNoteToDelete] = useState<Notes | null>(null);
+  const deleteTimeoutRef = useRef<number | null>(null);
+
+  // DELETE NOTES/DRAFT
+  // DELETE NOTES
+  async function deleteNotes(id: number) {
+    if(!id) return;
+    
+    await db.notes.delete(id);
+  }
+
+  function handleDeleteNote(note: Notes) {
+    if (draftNote && note.id === draftNote.id) {
+      setNoteToDelete(null)
+      setDraftNote(null);
+      
+    } else {
+      // Save to temporary deleted state
+      setDeletedNote(note);
+      
+      setNoteToDelete(null);
+      // Show undo popup
+      setShowUndoPopup(true);
+
+      // Remove from UI immediately
+      if (mode === "user") {
+        setUserNotes(prev => prev.filter(notes => notes.id !== note.id));
+      }
+      else if (mode === "book") {
+        setBookNotes(prev => prev.filter(notes => notes.id !== note.id));
+      }
+      else if (mode === "character") {
+        setCharNotes(prev => prev.filter(notes => notes.id !== note.id));
+      }
+      
+      // Clear any previous timeout (important if deleting fast)
+      if (deleteTimeoutRef.current) {
+        clearTimeout(deleteTimeoutRef.current);
+      }
+
+      deleteTimeoutRef.current = window.setTimeout(() => {
+        deleteNotes(note.id!);
+        setDeletedNote(null);
+        setShowUndoPopup(false);
+        deleteTimeoutRef.current = null;
+      }, 2000);
+    }
+  }
+
+  function handleUndo() {
+    if (!deletedNote) return;
+
+    // Restore note
+    if (mode === "user") {
+      setUserNotes(prev => [deletedNote!, ...prev]);
+    }
     else if (mode === "book") {
-      setBookNotes(prev => [
-        { ...noteData, id: dbId }, ...prev
-      ]);
+      setBookNotes(prev => [deletedNote!, ...prev]);
     }
     else if (mode === "character") {
-      setCharNotes(prev => [
-        { ...noteData, id: dbId }, ...prev
-      ]);
+      setCharNotes(prev => [deletedNote!, ...prev]);
     }
 
-    setDraftNote(null);
-    setDraftstate(false);
-    setHideSave(false);
-  } else {
-    // update existing note
-    await db.notes.update(note.id, {
-      content: note.content,
-    });
-
-    setAlert("Changes Saved");
-    setStatePopup(true);
-    setHideSave(false);
-    setTimeout(() => {
-      setStatePopup(false);
-      setAlert("");
-    }, 2000);
-  }
-}
-
-const [Addnewbooks, setAddnewBooks] = useState(false);
-const [notesShowState, setNotesShowState] = useState(true);
-const [addCharacterState, setAddCharState] = useState(true);
-
-// SHOW/HIDE CREATE NEW BOOK FORM
-const addBooksState = () => {
-    setAddnewBooks(!Addnewbooks);
-    setAddCharState(true);
-};
-
-// SHOW/HIDE ADD CHARACTER FORM
-const addNewcharacter = () => {
-    setAddCharState(!addCharacterState);
-    setAddnewBooks(true);
-};
-
-// SHOW/HIDE NOTES DISPLAY
-const displayNotes = () => {
-    setNotesShowState(!notesShowState);
-};
-
-const [hideSave, setHideSave] = useState(false);
-// const [notSaved, setNotSaved] = useState(false);
-const [onFocusId, setOnFocusId] = useState("");
-const [noteContent ,setNoteContent] = useState("");
-
-// MATCHES THE SIZE OF THE CONTENT INSIDE THE NOTE
-function autoResize(e: React.ChangeEvent<HTMLTextAreaElement>) {
-  const el = e.target;
-  el.style.height = "auto";
-  el.style.height = el.scrollHeight + "px";
-}
-
-// CREATING NEW NOTES WILL FOCUS AND SCROLL
-const draftTextareaRef = useRef<HTMLTextAreaElement | null>(null);
-
-// INTERACTION WITH THE TEXT AREA AND NOTES
-useEffect(() => {
-  if (draftNote && draftTextareaRef.current) {
-    draftTextareaRef.current?.focus({ 
-      preventScroll: true 
-    });
-    draftTextareaRef.current.scrollIntoView({
-      behavior: "smooth",
-      block: "center",
-    });
-  }
-}, [draftNote]);
-
-// POP UP VARIABLES
-const [showUndoPopup, setShowUndoPopup] = useState(false);
-const [showStatePopup, setStatePopup] = useState(false);
-const [alertMessage, setAlert] = useState("");
-
-const [deletedNote, setDeletedNote] = useState<Notes | null>(null);
-const [noteToDelete, setNoteToDelete] = useState<Notes | null>(null);
-const deleteTimeoutRef = useRef<number | null>(null);
-
-// DELETE NOTES/DRAFT
-// DELETE NOTES
-async function deleteNotes(id: number) {
-  if(!id) return;
-  
-  await db.notes.delete(id);
-}
-
-function handleDeleteNote(note: Notes) {
-   if (draftNote && note.id === draftNote.id) {
-    setNoteToDelete(null)
-    setDraftNote(null);
-    
-  } else {
-    // Save to temporary deleted state
-    setDeletedNote(note);
-    
-    setNoteToDelete(null);
-    // Show undo popup
-    setShowUndoPopup(true);
-
-    // Remove from UI immediately
-    if (mode === "user") {
-      setUserNotes(prev => prev.filter(notes => notes.id !== note.id));
-    }
-    else if (mode === "book") {
-      setBookNotes(prev => prev.filter(notes => notes.id !== note.id));
-    }
-    else if (mode === "character") {
-      setCharNotes(prev => prev.filter(notes => notes.id !== note.id));
-    }
-    
-    // Clear any previous timeout (important if deleting fast)
+    // Cancel scheduled deletion
     if (deleteTimeoutRef.current) {
       clearTimeout(deleteTimeoutRef.current);
+      deleteTimeoutRef.current = null;
     }
 
-    deleteTimeoutRef.current = window.setTimeout(() => {
-      deleteNotes(note.id!);
-      setDeletedNote(null);
-      setShowUndoPopup(false);
-      deleteTimeoutRef.current = null;
-    }, 2000);
-  }
-}
+    // Hide popup
+    setShowUndoPopup(false);
 
-function handleUndo() {
-  if (!deletedNote) return;
-
-  // Restore note
-  if (mode === "user") {
-    setUserNotes(prev => [deletedNote!, ...prev]);
-  }
-  else if (mode === "book") {
-    setBookNotes(prev => [deletedNote!, ...prev]);
-  }
-  else if (mode === "character") {
-    setCharNotes(prev => [deletedNote!, ...prev]);
+    // Cancel the permanent deletion
+    setDeletedNote(null);
   }
 
-  // Cancel scheduled deletion
-  if (deleteTimeoutRef.current) {
-    clearTimeout(deleteTimeoutRef.current);
-    deleteTimeoutRef.current = null;
-  }
+  // PAGINATION ON CHARACTTER CARDS DISPLAY
+  const [currentPage, setCurrentPage] = useState(1);
 
-  // Hide popup
-  setShowUndoPopup(false);
+  const charactersPerPage = 12;
 
-  // Cancel the permanent deletion
-  setDeletedNote(null);
-}
+  const indexOfLastChar = currentPage * charactersPerPage;
+  const indexOfFirstChar = indexOfLastChar - charactersPerPage;
 
-// PAGINATION ON CHARACTTER CARDS DISPLAY
-const [currentPage, setCurrentPage] = useState(1);
-
-const charactersPerPage = 12;
-
-const indexOfLastChar = currentPage * charactersPerPage;
-const indexOfFirstChar = indexOfLastChar - charactersPerPage;
-
-const currentCharacters = character.slice(
-  indexOfFirstChar,
-  indexOfLastChar
-);
-
-const totalPages = Math.ceil(character.length / charactersPerPage);
-
-const pageWindow = 3; // how many page numbers to show
-
-const getPageNumbers = () => {
-  const pages = [];
-
-  let startPage = Math.max(
-    1,
-    currentPage - Math.floor(pageWindow / 2)
+  const currentCharacters = character.slice(
+    indexOfFirstChar,
+    indexOfLastChar
   );
 
-  let endPage = startPage + pageWindow - 1;
+  const totalPages = Math.ceil(character.length / charactersPerPage);
 
-  if (endPage > totalPages) {
-    endPage = totalPages;
-    startPage = Math.max(1, endPage - pageWindow + 1);
+  const pageWindow = 3; // how many page numbers to show
+
+  const getPageNumbers = () => {
+    const pages = [];
+
+    let startPage = Math.max(
+      1,
+      currentPage - Math.floor(pageWindow / 2)
+    );
+
+    let endPage = startPage + pageWindow - 1;
+
+    if (endPage > totalPages) {
+      endPage = totalPages;
+      startPage = Math.max(1, endPage - pageWindow + 1);
+    }
+
+    for (let i = startPage; i <= endPage; i++) {
+      pages.push(i);
+    }
+
+    return pages;
+  };
+
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [currentBookId]);
+
+  const upcaseLetter = (word: string) => {
+    if (!word) return "";
+    return word.charAt(0).toUpperCase() + word.slice(1);
   }
-
-  for (let i = startPage; i <= endPage; i++) {
-    pages.push(i);
-  }
-
-  return pages;
-};
-
-useEffect(() => {
-  setCurrentPage(1);
-}, [currentBookId]);
-
-const upcaseLetter = (word: string) => {
-  if (!word) return "";
-  return word.charAt(0).toUpperCase() + word.slice(1);
-}
 
 // SCROLL BEHAVIOR AFTER CHANGES PAGES
 // useEffect(() => {
@@ -1465,15 +1619,15 @@ const upcaseLetter = (word: string) => {
             )}
 
             {/* CHARACTER CARD IN CHAR PAGE */}
-            {currentBook && selectedCharacter && (
+            {currentBook && selectedCharacter && originalCharacter && (
             <div className="sticky top-15 h-[calc(100vh-4rem)] overflow-y-auto overflow-x-hidden notes-scroll overflow-contain px-4 py-6 bg-[#0f172a] border-r border-slate-700">
-
+ 
               {/* IMAGE */}
               <div className="flex flex-col items-center">
                 <div className="w-40 h-56 rounded-xl overflow-hidden shadow-lg border border-slate-700">
                   <img
                         src={imageMap[selectedCharacter] || char_image}
-                        alt={selectedCharacter.name}
+                        alt={originalCharacter.name}
                         className="w-full h-full object-cover rounded"
                       />
                 </div>
@@ -1482,21 +1636,21 @@ const upcaseLetter = (word: string) => {
               {/* NAME + ROLE */}
               <div className="mt-6 text-center">
                 <h2 className="text-xl font-semibold text-white">
-                  {selectedCharacter.name}
+                  {originalCharacter.name}
                 </h2>
 
                 <p className="text-sm text-slate-400 mt-1">
-                  {selectedCharacter.role}
+                  {originalCharacter.role}
                 </p>
 
                 {/* STATUS + IMPORTANCE */}
                 <div className="flex justify-center gap-2 mt-3 flex-wrap">
                   <span className="px-3 py-1 text-xs rounded-full bg-emerald-600/20 text-emerald-400 border border-emerald-600/30">
-                    {selectedCharacter.status}
+                    {originalCharacter.status}
                   </span>
 
                   <span className="px-3 py-1 text-xs rounded-full bg-purple-600/20 text-purple-400 border border-purple-600/30">
-                    {selectedCharacter.importance}
+                    {originalCharacter.importance}
                   </span>
                 </div>
               </div>
@@ -1508,7 +1662,7 @@ const upcaseLetter = (word: string) => {
                 </h3>
 
                 <div className="flex flex-wrap gap-2">
-                  {selectedCharacter.setRaces?.map((race, i) => (
+                  {originalCharacter.setRace?.map((race, i) => (
                     <span
                       key={i}
                       className="px-2 py-1 text-xs bg-slate-700 text-slate-200 rounded-md"
@@ -1517,15 +1671,15 @@ const upcaseLetter = (word: string) => {
                     </span>
                   ))}
 
-                  {selectedCharacter.occupation && (
+                  {originalCharacter.occupation && (
                     <span className="px-2 py-1 text-xs bg-slate-700 text-slate-200 rounded-md">
-                      {selectedCharacter.occupation}
+                      {originalCharacter.occupation}
                     </span>
                   )}
 
-                  {selectedCharacter.powerLevel && (
+                  {originalCharacter.powerLevel && (
                     <span className="px-2 py-1 text-xs bg-slate-700 text-slate-200 rounded-md">
-                      {selectedCharacter.powerLevel}
+                      {originalCharacter.powerLevel}
                     </span>
                   )}
                 </div>
@@ -1541,21 +1695,29 @@ const upcaseLetter = (word: string) => {
                 </h3>
 
                 <div className="space-y-2">
-                  {selectedCharacter.relationships?.slice(0, 3).map((rel, i) => (
+                  {originalCharacter.relationships?.slice(0, 3).map((rel, i) => (
                     <div
                       key={i}
                       className="flex justify-between items-center px-3 py-2 rounded-md bg-slate-800 hover:bg-slate-700 transition cursor-pointer"
                     >
-                      <span className="text-sm text-white">
-                        {rel.name}
-                      </span>
+                      <div className="flex flex-col items-center">
+                        <div className="w-12 h-12 rounded-full overflow-hidden shadow-lg border border-slate-700">
+                          <img
+                            src={imageMap[rel.charId] || char_image}
+                            className="w-full h-full object-cover rounded"
+                          />
+                        </div>
+                      </div>
+                      {/* <span className="text-sm text-white">
+                        {rel.charId}
+                      </span> */}
                       <span className="text-xs text-slate-400">
                         {rel.type}
                       </span>
                     </div>
                   ))}
 
-                  {selectedCharacter.relationships?.length === 0 && (
+                  {originalCharacter.relationships?.length === 0 && (
                     <p className="text-xs text-slate-500">
                       No relationships added.
                     </p>
@@ -1678,7 +1840,7 @@ const upcaseLetter = (word: string) => {
                   {/* BACK BUTTON */}
                   <div className="">
                     <button 
-                      onClick={() => {setCurrentBookId(null); setMode("user"); setDraftNote(null); setBookSummary(""); setBookVolume(""); setCharacters([]);}} 
+                      onClick={() => {setCurrentBookId(null); setMode("user"); setDraftNote(null); setBookSummary(""); setBookVolume(""); setCharacters([]); setCharDescription({ ...defaultcharDescription });}} 
                     > <FontAwesomeIcon className="hover:text-blue-500 transition duration-300 hover:scale-105" icon={faArrowLeftLong} size="xl"/>
                     </button>
                   </div>
@@ -1845,14 +2007,14 @@ const upcaseLetter = (word: string) => {
             )}
 
             {/* CHARACTER DATA PAGE / EDIT CHAR DETAILS */}
-            {selectedCharacter !== null && editingCharacter && (
+            {selectedCharacter !== null && editingCharacter && originalCharacter &&(
               <div className="rounded-md shadow-lg pt-3 mb-3 bg-gray-100 dark:bg-gray-900">
 
                 {/* Buttons */}
                 <div className="flex justify-between pb-3 px-3">
 
                   <button 
-                    onClick={() => {setSelectedCharacter(null); setcharEditing(false); setMode("book"); setDraftNote(null);}} 
+                    onClick={() => {setSelectedCharacter(null); setcharEditing(false); setMode("book"); setDraftNote(null); setCharDescription({ ...defaultcharDescription });}} 
                     > <FontAwesomeIcon className="hover:text-blue-500 transition hover:scale-105" icon={faArrowLeftLong} size="xl"/>
                   </button>
 
@@ -1974,6 +2136,10 @@ const upcaseLetter = (word: string) => {
                         onChange={(e) => setEditingCharacter({ ...editingCharacter, chapters: e.target.value })} 
                       />
                     </div>   
+
+                    <div>
+                      {originalCharacter.personalityTraits}
+                    </div>
 
                   </div>
                 
