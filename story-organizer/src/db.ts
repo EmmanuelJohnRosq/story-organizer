@@ -3,13 +3,73 @@ import Dexie, { type Table } from "dexie";
 export type Character = {
   id: number;
   bookId: string;
+
   name: string;
-  role: string;
-  notes: string;
-  abilities: string[];
-  chapters: string;
-  relationships: { name: string; type: string }[];
-  // description: { race: string, age: string, }[];
+  role: string; // protagonist, antagonist, supporting, confidant, mentor, love interest, background character, etc.
+
+  status: string; // "alive" | "dead" | "undead" |"unknown"
+  importance: string; //"primary" | "secondary" | "tertiary" | "unknown"
+  occupation: string;
+  setRace: string[]; // adds other multiple races that the character may have/will have in the progression of the story
+
+  notes: string; // this is the background of the character
+  futureNotes: string; // Future progression/future plans for the character...
+
+  characterArc: string; // character development
+  netWorth: string; // character worth in assets, money, etc...
+
+  titles: string[]; // characters can have many titles, separated by comma
+  abilities: string[]; // abilities/skills
+  powerLevel: string; // depends on the author's story
+
+  personalityTraits: string[]; // "cold", "calculating", "loyal", "sarcastic", etc...
+  tags: string[]; // "mage", "royalty", "antagonist", "betrayer", etc... 
+
+  chapterAppearances: string[]; // I want to add it to search filter, when searching for chapters, then characters that appeared in certain chapters will show
+  chapters: string; // first chapter appearance of the character
+
+  relationships: {
+    charId: number; // save character id to easily filter
+    type: string; // family, friend, bestfriend, mentor, archnemesis, rival, love interest, lover, wife, husband, etc...
+  }[];
+
+  description: CharacterDescription;
+
+  createdAt: number;
+  updatedAt: number;
+};
+
+export type CharacterDescription = {
+  basic: {
+    age: string;
+    race: string; // current race of the character
+    gender: string;
+  };
+
+  face: {
+    faceShape: string;
+    eyeColor: string;
+    eyeShape: string;
+    noseShape: string;
+    mouthSize: string;
+  };
+
+  hair: {
+    hairColor: string;
+    hairStyle: string;
+  };
+
+  body: {
+    bodyType: string;
+    height: string;
+    skinTone: string;
+  };
+
+  extras: {
+    distinguishingFeatures: string;
+    accessories: string;
+    clothingStyle: string;
+  };
 };
 
 export type Book = {
@@ -17,15 +77,18 @@ export type Book = {
   title: string;
   summary: string;
   volume: number;
-  characters: Character[];
   createdAt: number;
+  tags: string[];
+  genre: string[];
+  chapterCount: number;
+  status: string; // completed | ongoing | hiatus | dropped
 };
 
 export type Images = {
-  imageId: string; //
-  charId: number;
+  imageId: string; // created string, use it for book covers or others.
+  charId: number; // character ids for matching characters
   createdAt: number;
-  imageBlob: Blob;
+  imageBlob: Blob; // convert and store the image file into a imageBlob
 }
 
 export type EditableCharacter = Character & {
@@ -52,34 +115,26 @@ class StoryDB extends Dexie {
   constructor() {
     super("StoryDB");
 
-    this.version(9).stores({
+    this.version(13).stores({
       books: "id, title", 
-      images: "imageId, charId, imageBlob",
+      images: "imageId, charId",
       notes: "++id, bookId, charId",
-      characters: "id, bookId, name, relationships, chapters"
+      characters: "id, bookId, name, *chapterAppearances, status, *setRaces",
       // ++id = auto increment
       // title = indexed (useful later for search)
     })
     
     .upgrade(async (tx) => {
-
       const books = await tx.table("books").toArray();
-
       for (const book of books) {
-        if (book.characters && book.characters.length > 0) {
-          
-          for (const character of book.characters) {
-            await tx.table("characters").add({
-              ...character,
-              bookId: book.id
-            });
-          }
-
-          // OPTIONAL: clear characters from book after migration
-          await tx.table("books").update(book.id, {
-            characters: []
-          });
-        }
+        await tx.table("books").put({
+          ...book,
+            genre: Array.isArray(book.genre)
+          ? book.genre
+          : book.genre
+            ? [book.genre]
+            : []
+        });
       }
     });
 
