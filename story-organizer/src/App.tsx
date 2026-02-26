@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback, useRef, use } from "react";
-import { db, type Book, type Character, type EditableCharacter, type Images, type Notes } from "./db";
+import { db, type Book, type Character, type EditableCharacter, type Images, type Notes, type CharacterDescription } from "./db";
 
 import { useDropzone } from "react-dropzone";
 import { FontAwesomeIcon} from "@fortawesome/react-fontawesome";
@@ -39,7 +39,7 @@ export default function StoryOrganizer() {
   const [imageMap, setImageMap] = useState<Record<string, string>>({});
 
   // CHARACTER UPLOAD IMAGE
-  const [uploadCharImage, showUploadCharImage] = useState(false);
+  const [uploadCharImage, showUploadCharImage] = useState(true);
 
   const [imageFile, setImageFile] = useState<File | null>(null);
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
@@ -77,14 +77,52 @@ export default function StoryOrganizer() {
     multiple: false,
   });
 
+  // BOOK DETAILS INITIALIZE
   const [bookTitle, setBookTitle] = useState("");
   const [bookSummary, setBookSummary] = useState("");
   const [bookVolume, setBookVolume] = useState<string>("0");
+  const [bookTags, setBookTags] = useState("");
+  const [bookGenre, setBookGenre] = useState("");
+  const [bookChapterCount, setBookChapterCount] = useState(0);
+  const [bookStatus, setBookStatus] = useState("ongoing"); // default
+
+  // CHARACTER DETAILS INITIALIZE
   const [name, setName] = useState("");
   const [role, setRole] = useState("");
   const [notes, setNotes] = useState("");
   const [abilities, setAbilities] = useState("");
   const [chapterAppearance, setChapterAppearance] = useState("");
+
+  //NEW CHARACTER SCHEMA INITIALIZE
+  const [charStatus, setCharStatus] = useState("unknown");
+  const [charImportance, setCharImportance] = useState("unknown");
+  const [charOccupation, setCharOccupation] = useState("");
+  const [charFutureNotes, setCharFutureNotes] = useState("");
+  const [charNetWorth, setCharNetWorth] = useState("");
+  const [charPowerLevel, setCharPowerLevel] = useState("");
+
+  // Arrays (comma-separated input)
+  const [charTitles, setCharTitles] = useState(""); // input as string -> array on save
+  const [charAbilities, setCharAbilities] = useState("");
+  const [charPersonalityTraits, setCharPersonalityTraits] = useState("");
+  const [charTags, setCharTags] = useState("");
+  const [charSetRaces, setCharSetRaces] = useState("");
+  const [charChapterAppearances, setCharChapterAppearances] = useState("");
+  const [charCharacterArc, setcharCharacterArc] = useState("");
+
+  // Relationships (complex object)
+const [charRelationships, setCharRelationships] = useState<
+  { charId: number; type: string }[]
+>([]);
+
+// Description (nested object)
+const [charDescription, setCharDescription] = useState<CharacterDescription>({
+  basic: { age: "", race: "", gender: "" },
+  face: { faceShape: "", eyeColor: "", eyeShape: "", noseShape: "", mouthSize: "" },
+  hair: { hairColor: "", hairStyle: "" },
+  body: { bodyType: "", height: "", skinTone: "" },
+  extras: { distinguishingFeatures: "", accessories: "", clothingStyle: "" },
+});
 
   const currentBook = books.find(book => book.id === currentBookId);
 
@@ -361,8 +399,11 @@ const exportData = async () => {
       title: normalizedTitle,
       summary: bookSummary,
       volume: Number(bookVolume) || 0,
-      characters: [],
       createdAt: Date.now(),
+      tags: bookTags.split(",").map(a => normalizeWhitespace(a)),
+      genre: bookGenre.split(",").map(a => normalizeWhitespace(a)),
+      chapterCount: bookChapterCount,
+      status: bookStatus,
     };
 
     // add new book to IndexedDB
@@ -389,19 +430,29 @@ const exportData = async () => {
     setDraftNote(null);
   }
 
+  // The main function that accepts a string and returns a processed array
+  const stringToArray = (inputString: string) => {
+    if (typeof inputString !== 'string') {
+      return [];
+    }
+    return inputString.split(",").map(a => normalizeWhitespace(a));
+  };
+
   // UPDATE BOOK DETAILS
-  async function updateBookDetails( bookId: string, updatedSummary: string, updatedVolume: number) {
+  async function updateBookDetails( bookId: string, updatedSummary: string, updatedVolume: number, updatedGenre: string) {
+    // if (updatedSummary.trim() === currentBook?.summary && updatedVolume === currentBook?.volume) return;
     try {
       await db.books.update(bookId, {
         summary: updatedSummary,
         volume: updatedVolume,
+        genre: stringToArray(updatedGenre),
       });
 
       // Update React state immediately (no reload needed)
       setBooks(prev =>
         prev.map(book =>
           book.id === bookId
-            ? { ...book, summary: updatedSummary, volume: updatedVolume }
+            ? { ...book, summary: updatedSummary, volume: updatedVolume, genre: stringToArray(updatedGenre), }
             : book
         )
       );
@@ -415,13 +466,13 @@ const exportData = async () => {
     }
   }
 
-  async function updateBook(id: string, editedSummary:string, editedVolume: number) {
+  async function updateBook(id: string, editedSummary:string, editedVolume: number, editedGenre: string) {
     if (editedSummary.trim() === currentBook?.summary && editedVolume === currentBook?.volume) return;
 
-    await updateBookDetails( id, editedSummary, editedVolume);
+    await updateBookDetails( id, editedSummary, editedVolume, editedGenre);
   }
 
-  // create new character block Dexie
+  // create new character to save to db
   async function addCharacter() {
     if (!name || currentBookId === null) return;
 
@@ -433,7 +484,22 @@ const exportData = async () => {
       notes: notes.trim().replace(/[^\S\r\n]+/g, " "),
       abilities: abilities.split(",").map(a => normalizeWhitespace(a)),
       chapters: normalizeWhitespace(chapterAppearance),
-      relationships: [],
+      status: normalizeWhitespace(charStatus),
+      importance: normalizeWhitespace(charImportance),
+      occupation: normalizeWhitespace(charOccupation),
+      futureNotes: charFutureNotes,
+      characterArc: charCharacterArc,
+      netWorth: charNetWorth,
+      powerLevel: normalizeWhitespace(charPowerLevel),
+      titles: charTitles.split(",").map(a => normalizeWhitespace(a)),
+      personalityTraits: charPersonalityTraits.split(",").map(a => normalizeWhitespace(a)),
+      tags: charTags.split(",").map(a => normalizeWhitespace(a)),
+      setRace: charSetRaces.split(",").map(a => normalizeWhitespace(a)),
+      chapterAppearances: charChapterAppearances.split(",").map(a => normalizeWhitespace(a)),
+      relationships: charRelationships,
+      description: charDescription,
+      createdAt: Date.now(),
+      updatedAt: Date.now(),
     };
 
     // console.log(newCharacter);
@@ -491,6 +557,7 @@ const exportData = async () => {
 
     setMode("character");
     setDraftNote(null);
+    showUploadCharImage(true);
 
     const selectedCharacter = { ...characters, abilitiesText: characters.abilities.join(", ")
     } as Character & { abilitiesText : string };
@@ -547,6 +614,7 @@ const exportData = async () => {
     if (currentBook) {
       setTitleDraft(currentBook.title);
       setBookSummary(currentBook.summary);
+      setBookGenre((currentBook.genre ?? []).join(", "));
       setBookVolume(String(currentBook.volume));
     }
   }, [currentBook]);
@@ -959,7 +1027,58 @@ function handleUndo() {
   setDeletedNote(null);
 }
 
-// const [noteToDelete, setNoteToDelete] = useState<Notes | null>(null);
+// PAGINATION ON CHARACTTER CARDS DISPLAY
+const [currentPage, setCurrentPage] = useState(1);
+
+const charactersPerPage = 12;
+
+const indexOfLastChar = currentPage * charactersPerPage;
+const indexOfFirstChar = indexOfLastChar - charactersPerPage;
+
+const currentCharacters = character.slice(
+  indexOfFirstChar,
+  indexOfLastChar
+);
+
+const totalPages = Math.ceil(character.length / charactersPerPage);
+
+const pageWindow = 3; // how many page numbers to show
+
+const getPageNumbers = () => {
+  const pages = [];
+
+  let startPage = Math.max(
+    1,
+    currentPage - Math.floor(pageWindow / 2)
+  );
+
+  let endPage = startPage + pageWindow - 1;
+
+  if (endPage > totalPages) {
+    endPage = totalPages;
+    startPage = Math.max(1, endPage - pageWindow + 1);
+  }
+
+  for (let i = startPage; i <= endPage; i++) {
+    pages.push(i);
+  }
+
+  return pages;
+};
+
+useEffect(() => {
+  setCurrentPage(1);
+}, [currentBookId]);
+
+const upcaseLetter = (word: string) => {
+  if (!word) return "";
+  return word.charAt(0).toUpperCase() + word.slice(1);
+}
+
+// SCROLL BEHAVIOR AFTER CHANGES PAGES
+// useEffect(() => {
+//   window.scrollTo({behavior: "smooth" });
+// }, [currentPage]);
 
   // HTML/TAILWIND CSS | INDEX
   return (
@@ -1184,6 +1303,19 @@ function handleUndo() {
                     />
                   </div>
 
+                  {/* SAMPLE GENRE */}
+                  <div>
+                    <label className="block text-sm font-medium mb-1">
+                      Book Genre
+                    </label>
+                    <input
+                      className="w-full border rounded-md px-4 py-2 focus:outline-none focus:ring-2 focus:ring-blue-400 placeholder-gray-400 dark:placeholder-gray-600"
+                      placeholder="Enter genre separated by comma"
+                      value={bookGenre}
+                      onChange={e => setBookGenre(e.target.value)}
+                    />
+                  </div>
+
                   {/* Current Volume */}
                   <div>
                     <label className="block text-sm font-medium mb-1">
@@ -1232,7 +1364,7 @@ function handleUndo() {
                 </div>
 
                 {/* BOOK SUMMARY FORM */}
-                {(!Addnewbooks &&
+                {!Addnewbooks && (
                 
                 // BOOK DETAILS
                 <div className="flex-1 rounded-md shadow-lg p-3 mb-2 bg-gray-100 dark:bg-gray-900 transition duration-300 animate-fadeDown">
@@ -1254,6 +1386,19 @@ function handleUndo() {
                       />
                     </div>
 
+                    {/* SAMPLE GENRE */}
+                  <div>
+                    <label className="block text-sm font-medium mb-1">
+                      Book Genre
+                    </label>
+                    <input
+                      className="w-full border rounded-md px-4 py-2 focus:outline-none focus:ring-2 focus:ring-blue-400 placeholder-gray-400 dark:placeholder-gray-600"
+                      placeholder="Enter genre separated by comma"
+                      value={bookGenre}
+                      onChange={e => setBookGenre(e.target.value)}
+                    />
+                  </div>
+
                     {/* Current Volume */}
                     <div>
                       <label className="block text-xs font-medium mb-1">
@@ -1271,7 +1416,7 @@ function handleUndo() {
                     <button
                       type="button"
                       className="w-full bg-blue-500 text-white py-2 rounded-md hover:bg-blue-600 transition"
-                      onClick={() => {updateBook(currentBookId, bookSummary, Number(bookVolume))}}
+                      onClick={() => {updateBookDetails(currentBookId, bookSummary, Number(bookVolume), bookGenre)}}
                     >
                       SAVE
                     </button>
@@ -1279,6 +1424,7 @@ function handleUndo() {
                 </div>
 
                 )}
+
 
                 {/* ADD CHARACTER TITLE  */}
                 <div className="flex-1 rounded-md shadow-lg bg-gray-100 dark:bg-gray-900 mb-2 p-3 flex justify-between transition duration-300">
@@ -1315,9 +1461,109 @@ function handleUndo() {
                   </div>
                 )}
 
-                
-                
               </div>
+            )}
+
+            {/* CHARACTER CARD IN CHAR PAGE */}
+            {currentBook && selectedCharacter && (
+            <div className="sticky top-15 h-[calc(100vh-4rem)] overflow-y-auto overflow-x-hidden notes-scroll overflow-contain px-4 py-6 bg-[#0f172a] border-r border-slate-700">
+
+              {/* IMAGE */}
+              <div className="flex flex-col items-center">
+                <div className="w-40 h-56 rounded-xl overflow-hidden shadow-lg border border-slate-700">
+                  <img
+                        src={imageMap[selectedCharacter] || char_image}
+                        alt={selectedCharacter.name}
+                        className="w-full h-full object-cover rounded"
+                      />
+                </div>
+              </div>
+
+              {/* NAME + ROLE */}
+              <div className="mt-6 text-center">
+                <h2 className="text-xl font-semibold text-white">
+                  {selectedCharacter.name}
+                </h2>
+
+                <p className="text-sm text-slate-400 mt-1">
+                  {selectedCharacter.role}
+                </p>
+
+                {/* STATUS + IMPORTANCE */}
+                <div className="flex justify-center gap-2 mt-3 flex-wrap">
+                  <span className="px-3 py-1 text-xs rounded-full bg-emerald-600/20 text-emerald-400 border border-emerald-600/30">
+                    {selectedCharacter.status}
+                  </span>
+
+                  <span className="px-3 py-1 text-xs rounded-full bg-purple-600/20 text-purple-400 border border-purple-600/30">
+                    {selectedCharacter.importance}
+                  </span>
+                </div>
+              </div>
+
+              {/* QUICK INFO */}
+              <div className="mt-8">
+                <h3 className="text-xs uppercase tracking-wider text-slate-500 mb-3">
+                  Quick Info
+                </h3>
+
+                <div className="flex flex-wrap gap-2">
+                  {selectedCharacter.setRaces?.map((race, i) => (
+                    <span
+                      key={i}
+                      className="px-2 py-1 text-xs bg-slate-700 text-slate-200 rounded-md"
+                    >
+                      {race}
+                    </span>
+                  ))}
+
+                  {selectedCharacter.occupation && (
+                    <span className="px-2 py-1 text-xs bg-slate-700 text-slate-200 rounded-md">
+                      {selectedCharacter.occupation}
+                    </span>
+                  )}
+
+                  {selectedCharacter.powerLevel && (
+                    <span className="px-2 py-1 text-xs bg-slate-700 text-slate-200 rounded-md">
+                      {selectedCharacter.powerLevel}
+                    </span>
+                  )}
+                </div>
+              </div>
+
+              {/* DIVIDER */}
+              <div className="my-8 border-t border-slate-700" />
+
+              {/* RELATIONSHIP PREVIEW */}
+              <div>
+                <h3 className="text-xs uppercase tracking-wider text-slate-500 mb-3">
+                  Relationships
+                </h3>
+
+                <div className="space-y-2">
+                  {selectedCharacter.relationships?.slice(0, 3).map((rel, i) => (
+                    <div
+                      key={i}
+                      className="flex justify-between items-center px-3 py-2 rounded-md bg-slate-800 hover:bg-slate-700 transition cursor-pointer"
+                    >
+                      <span className="text-sm text-white">
+                        {rel.name}
+                      </span>
+                      <span className="text-xs text-slate-400">
+                        {rel.type}
+                      </span>
+                    </div>
+                  ))}
+
+                  {selectedCharacter.relationships?.length === 0 && (
+                    <p className="text-xs text-slate-500">
+                      No relationships added.
+                    </p>
+                  )}
+                </div>
+              </div>
+
+            </div>
             )}
 
           </div>
@@ -1415,18 +1661,18 @@ function handleUndo() {
                           <span className="text-xs font-bold">{book.title}</span>
                         </div>
                       </div>
-                      {/* <p className="text-center">{book.characters.length} Characters</p> */}
+                      <p className="text-center text-sm">Status: {upcaseLetter(book.status)}</p>
                       
                     </div>
                     ))}
-                </div>
+                </div>  
                 
 
 
               </div>
             )}
 
-            {/* DETAILS / CHARACTERS */}
+            {/* DETAILS / CHARACTERS Display */}
             {currentBookId !== null && currentBook && selectedCharacter === null && (
                 <div className="px-3 pt-3 mb-3 rounded-md shadow-lg bg-gray-100 dark:bg-gray-900">
                   {/* BACK BUTTON */}
@@ -1486,45 +1732,114 @@ function handleUndo() {
                   )}
 
                   {/* Display Character Card Block */}
-                  <div className="grid gap-4 pb-4 sm:grid-cols-3 md:grid-cols-4 items-stretch place-items-center">
-                      {character.map(char => (
+                  <div className="grid gap-4 pb-4 grid-cols-2 sm:grid-cols-3 md:grid-cols-4 items-stretch place-items-center">
+                    {currentCharacters.map(char => (
 
-                      // CHARACTER CARDS w/ image... //
-                      <div 
-                      key={char.id} 
-                      title="Open character sheet."
-                      className="
-                        h-[250px] w-full max-w-sm
-                        cursor-pointer bg-white shadow-lg rounded-md
-                        transition-all duration-300
-                        hover:-translate-y-2 hover:shadow-2xl
-                        group animate-fadeDown
-                        flex flex-col
-                        dark:bg-gray-950"
-                      onClick={() => openEditCharacter(char)}
-                      >
+                    // CHARACTER CARDS w/ image... //
+                    <div 
+                    key={char.id} 
+                    title="Open character sheet."
+                    className="
+                      h-[230px] w-full max-w-sm
+                      cursor-pointer bg-white shadow-lg rounded-md
+                      transition-all duration-300
+                      hover:-translate-y-2 hover:shadow-2xl
+                      group animate-fadeDown
+                      flex flex-col
+                      dark:bg-gray-950"
+                    onClick={() => openEditCharacter(char)}
+                    >
 
-                          {/* IMAGE */}
-                          <div className="h-100 w-full overflow-hidden rounded-t-xl">
+                        {/* IMAGE */}
+                        <div className="h-100 w-full overflow-hidden rounded-t-xl">
+                          <a href="#">
+                              <img 
+                              className="h-full w-full object-cover group-hover:scale-105 transition" 
+                              src={imageMap[char.id] || char_image}
+                              alt="Default Character Image" />
+                          </a>
+                        </div>
+
+                        <div className="flex-1 p-2 text-center">
                             <a href="#">
-                                <img 
-                                className="h-full w-full object-cover group-hover:scale-105 transition" 
-                                src={imageMap[char.id] || char_image}
-                                alt="Default Character Image" />
+                                <h3 className="text-xl font-semibold tracking-tight line-clamp-1">{char.name}</h3>
+                                <p className="text-sm text-gray-400 line-clamp-1">{char.role || "Character Role"}</p>
+                                <p className="text-xs text-gray-400 line-clamp-1">Status: {char.status}</p>
                             </a>
-                          </div>
-
-                          <div className="flex-1 p-2 text-center">
-                              <a href="#">
-                                  <h3 className="text-xl font-semibold tracking-tight line-clamp-1">{char.name}</h3>
-                                  <p className="text-sm text-gray-400 mb-2 line-clamp-1">{char.role || "Character Role"}</p>
-                                  <p className="text-sm text-gray-400 mb-2 line-clamp-1">First Chapter Appearance: {char.chapters}</p>
-                              </a>
-                          </div>
-                      </div>
-                      ))}
+                        </div>
+                    </div>
+                    ))}
                   </div>
 
+                  {/* // PAGINATION   */}
+                  {character.length >= 13 && (
+                    <div className="flex items-center justify-between pb-2 flex-wrap">
+
+                      {/* Previous */}
+                      <button
+                        onClick={() => setCurrentPage(prev => Math.max(prev - 1, 1))}
+                        disabled={currentPage === 1}
+                        className="px-3 py-1 bg-gray-300 dark:bg-gray-500 rounded disabled:opacity-50"
+                      >
+                        Prev
+                      </button>
+
+                      <div className="flex items-center gap-2">
+                        {/* First page shortcut */}
+                        {currentPage > 3 && (
+                          <>
+                            <button
+                              onClick={() => setCurrentPage(1)}
+                              className="px-3 py-1 bg-gray-300 dark:bg-gray-500 rounded"
+                            >
+                              1
+                            </button>
+                            <span>...</span>
+                          </>
+                        )}
+
+                        {/* Page Numbers */}
+                        {getPageNumbers().map(page => (
+                          <button
+                            key={page}
+                            onClick={() => setCurrentPage(page)}
+                            className={`px-3 py-1 rounded ${
+                              currentPage === page
+                                ? "bg-blue-500 text-white"
+                                : "bg-gray-300 dark:bg-gray-500"
+                            }`}
+                          >
+                            {page}
+                          </button>
+                        ))}
+
+                        {/* Last page shortcut */}
+                        {currentPage < totalPages - 2 && (
+                          <>
+                            <span>...</span>
+                            <button
+                              onClick={() => setCurrentPage(totalPages)}
+                              className="px-3 py-1 bg-gray-300 dark:bg-gray-500 rounded"
+                            >
+                              {totalPages}
+                            </button>
+                          </>
+                        )}
+                      </div>
+
+                      {/* Next */}
+                      <button
+                        onClick={() =>
+                          setCurrentPage(prev => Math.min(prev + 1, totalPages))
+                        }
+                        disabled={currentPage === totalPages}
+                        className="px-3 py-1 bg-gray-300 dark:bg-gray-500 rounded disabled:opacity-50"
+                      >
+                        Next
+                      </button>
+
+                    </div>
+                  )}
 
                 </div>
             )}
@@ -1544,7 +1859,7 @@ function handleUndo() {
                   <div className="space-x-2">
                     <button 
                       title="Generate character image"
-                      onClick={() => setShowGenImage(true)}
+                      onClick={() => {setShowGenImage(true); showUploadCharImage(true);}}
                       className="border-gray-200 border-1 text-black rounded hover:bg-gray-300 hover:text-gray-950 p-1 transition dark:border-white dark:text-white"
                     >
                       <FontAwesomeIcon icon={faPlus} size="lg"/>
@@ -2155,9 +2470,9 @@ function handleUndo() {
                 <div id="Close modal" className="flex justify-between pl-1">
                   <button
                     onClick={() => showUploadCharImage(!uploadCharImage)}
-                    className="px-1 hover:text-semibold hover:text-blue-500 hover:underline"
+                    className="px-1 text-sm hover:text-semibold hover:text-blue-500 hover:underline"
                   >
-                    {uploadCharImage === true ? ('Generate?') : ('Upload?')}
+                    {uploadCharImage === true ? ('Generate...') : ('Upload')}
                   </button>
 
                   <button 
