@@ -492,13 +492,13 @@ const exportData = async () => {
   }
 
   // CREATING CHARACTER DATA OF MORPH
-  // const [charDescription1, setCharDescription1] = useState<CharacterDescription>({
-  //     basic: { age: "18", race: "Human", gender: "Male" },
-  //     face: { faceShape: "Oval", eyeColor: "Silver", eyeShape: "Narrow", noseShape: "Straight", mouthSize: "Medium" },
-  //     hair: { hairColor: "Black", hairStyle: "Messy" },
-  //     body: { bodyType: "Athletic", height: "Tall", skinTone: "Fair" },
-  //     extras: { distinguishingFeatures: "", accessories: "One Silver Dot Earrings", clothingStyle: "Traveler" },
-  // });
+  const [charDescription1, setCharDescription1] = useState<CharacterDescription>({
+      basic: { age: "18", race: "Human", gender: "Male" },
+      face: { faceShape: "Oval", eyeColor: "Silver", eyeShape: "Narrow", noseShape: "Straight", mouthSize: "Medium" },
+      hair: { hairColor: "Black", hairStyle: "Messy" },
+      body: { bodyType: "Athletic", height: "Tall", skinTone: "Fair" },
+      extras: { distinguishingFeatures: "", accessories: "One Silver Dot Earrings", clothingStyle: "Traveler" },
+  });
 
   // create new character to save to db
   async function addCharacter() {
@@ -529,52 +529,6 @@ const exportData = async () => {
       createdAt: Date.now(),
       updatedAt: Date.now(),
     };
-
-
-    // CREATING CHARACTER DATA OF MORPH
-    // const newCharacter1: Character = {
-    //   id: Date.now(),
-    //   bookId: currentBookId,
-    //   name: "Morpheus",
-    //   role: "Protagonist",
-    //   notes: "Morph is a normal young man transmigrated in a game like fantasy world after dying from a large meteorite that might also cause Earth it's destruction.",
-    //   abilities: ["Perfect Shapeshift", "Mimic", "Memory Eater"],
-    //   chapters: "1",
-    //   status: "Alive",
-    //   importance: "Main Character",
-    //   occupation: "Territory Lord",
-    //   futureNotes: "He becomes the conqueror of the Kingdom...",
-    //   characterArc: "At first, Morph is new to the fantasy stuff, then after one year surviving without the system. He knew that he had to do his best to survive.",
-    //   netWorth: "150 gold",
-    //   powerLevel: "Tier 1: Human Level",
-    //   titles: ['Lord Morpheus', 'The Primorph', 'Baron', 'Lord Everform'],
-    //   personalityTraits: ['Observant', 'Calculated', 'Careful planner', 'Cautious', 'Deadpan', 'Aloof', 'Defiant', 'Adaptive', 'Perceptive', 'Transparent', 'Wary','Ruminative','Guarded'],
-    //   tags: ['Male', 'Commoner', 'Lord', 'Planner', 'Protagonist', 'Chaotic Neutral', 'Stealthy', 'Hidden Power'], //tags or alignment
-    //   setRace: ['Human','Doppelganger', 'Everform','God of Origins'],
-    //   chapterAppearances: ['1','2','3','4','5','6','7','8','9','10'],
-    //   relationships: 
-    //     [
-    //       { 
-    //         charId: 1771166152670,
-    //         type: "Friend/Brother-like",
-    //       },
-    //       {
-    //         charId: 1771166945604,
-    //         type: "Loyal Subordinate",
-    //       },
-    //       {
-    //         charId: 1771503708024,
-    //         type: "Pet",
-    //       },
-    //       {
-    //         charId: 1771503971863,
-    //         type: "Subordinate",
-    //       },
-    //     ],
-    //   description: charDescription1,
-    //   createdAt: Date.now(),
-    //   updatedAt: Date.now(),
-    // };
 
     await db.characters.add(newCharacter);
 
@@ -642,6 +596,51 @@ const exportData = async () => {
 
     setSelectedCharacter(null);
   }
+
+  // CREATING CHARACTER DATA OF MORPH
+    // const newCharacter1: Character = {
+    //   id: selectedCharacter!,
+    //   bookId: currentBookId!,
+    //   name: "Morpheus",
+    //   role: "Protagonist",
+    //   notes: "Morph is a normal young man transmigrated in a game like fantasy world after dying from a large meteorite that might also cause Earth it's destruction.",
+    //   abilities: ["Perfect Shapeshift", "Mimic", "Memory Eater", "Origins Blood"],
+    //   chapters: "1",
+    //   status: "Alive",
+    //   importance: "Main Character",
+    //   occupation: "Territory Lord",
+    //   futureNotes: "He becomes the conqueror of the Kingdom...",
+    //   characterArc: "At first, Morph is new to the fantasy stuff, then after one year surviving without the system. He knew that he had to do his best to survive.",
+    //   netWorth: "150 gold",
+    //   powerLevel: "Tier 1: Human Level",
+    //   titles: ['Lord Morpheus', 'The Primorph', 'Baron', 'Lord Everform'],
+    //   personalityTraits: ['Observant', 'Calculated', 'Careful planner', 'Cautious', 'Deadpan', 'Aloof', 'Defiant', 'Adaptive', 'Perceptive', 'Transparent', 'Wary','Ruminative','Guarded'],
+    //   tags: ['Male', 'Commoner', 'Lord', 'Planner', 'Protagonist', 'Chaotic Neutral', 'Stealthy', 'Hidden Power'], //tags or alignment
+    //   setRace: ['Human','Doppelganger', 'Everform','God of Origins'],
+    //   chapterAppearances: ['1','2','3','4','5','6','7','8','9','10'],
+    //   relationships: 
+    //     [
+    //       { 
+    //         charId: 1771166152670,
+    //         type: "Friend/Brother-like",
+    //       },
+    //       {
+    //         charId: 1771166945604,
+    //         type: "Loyal Subordinate",
+    //       },
+    //       {
+    //         charId: 1771503708024,
+    //         type: "Pet",
+    //       },
+    //       {
+    //         charId: 1771503971863,
+    //         type: "Subordinate",
+    //       },
+    //     ],
+    //   description: charDescription1,
+    //   createdAt: originalCharacter?.createdAt!,
+    //   updatedAt: Date.now(),
+    // };
 
   // open edit Char Modal
   function openEditCharacter(characters: Character) {
@@ -1624,7 +1623,7 @@ const exportData = async () => {
  
               {/* IMAGE */}
               <div className="flex flex-col items-center">
-                <div className="w-40 h-56 rounded-xl overflow-hidden shadow-lg border border-slate-700">
+                <div onClick={() => console.log(originalCharacter)} className="w-40 h-56 rounded-xl overflow-hidden shadow-lg border border-slate-700">
                   <img
                         src={imageMap[selectedCharacter] || char_image}
                         alt={originalCharacter.name}
@@ -1694,14 +1693,17 @@ const exportData = async () => {
                   Relationships
                 </h3>
 
-                <div className="space-y-2">
-                  {originalCharacter.relationships?.slice(0, 3).map((rel, i) => (
+                <div className="space-y-5 grid grid-cols-2 xl:grid-cols-3 2xl:grid-cols-5">
+                  {originalCharacter.relationships?.slice(0, 6).map((rel, i) => (
                     <div
                       key={i}
-                      className="flex justify-between items-center px-3 py-2 rounded-md bg-slate-800 hover:bg-slate-700 transition cursor-pointer"
+                      className="cursor-pointer place-items-center"
                     >
-                      <div className="flex flex-col items-center">
-                        <div className="w-12 h-12 rounded-full overflow-hidden shadow-lg border border-slate-700">
+                      <div >
+                        <div 
+                          className="w-20 h-20 rounded-full overflow-hidden shadow-lg border border-slate-700 hover:scale-106 hover:border-slate-300 transition"
+                          onClick={() => {setSelectedCharacter(rel.charId)}}
+                        >
                           <img
                             src={imageMap[rel.charId] || char_image}
                             className="w-full h-full object-cover rounded"
@@ -1711,9 +1713,9 @@ const exportData = async () => {
                       {/* <span className="text-sm text-white">
                         {rel.charId}
                       </span> */}
-                      <span className="text-xs text-slate-400">
+                      {/* <span className="text-xs text-slate-400">
                         {rel.type}
-                      </span>
+                      </span> */}
                     </div>
                   ))}
 
