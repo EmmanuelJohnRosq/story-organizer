@@ -3,7 +3,9 @@ import { db, type Book, type Character, type EditableCharacter, type Images, typ
 
 import { useDropzone } from "react-dropzone";
 import { FontAwesomeIcon} from "@fortawesome/react-fontawesome";
-import { faFileImport, faTrashCan, faCheck, faArrowLeftLong, faSpinner, faPlus, faMinus } from "@fortawesome/free-solid-svg-icons";
+import { faFileImport, faTrashCan, faCheck, faArrowLeftLong, faSpinner, faPlus, faMinus, faGear } from "@fortawesome/free-solid-svg-icons";
+
+type CharacterDetailTab = "overview" | "background" | "abilities" | "relationships" | "appearance";
 
 
 export default function StoryOrganizer() {
@@ -29,6 +31,17 @@ export default function StoryOrganizer() {
   const [charEditing, setcharEditing] = useState(false);
   const [originalCharacter, setOriginalCharacter] = useState<Character | null>(null);
   const [onChange, setonChange ] = useState(false);
+
+  const [activeCharacterTab, setActiveCharacterTab] = useState<CharacterDetailTab>("overview");
+  const [showCharacterActions, setShowCharacterActions] = useState(false);
+  const [relationshipTypeFilter, setRelationshipTypeFilter] = useState("all");
+  const [openAppearanceSections, setOpenAppearanceSections] = useState<Record<string, boolean>>({
+    basic: true,
+    face: false,
+    hair: false,
+    body: false,
+    extras: false,
+  });
 
   // CHARACTER IMAGE GENERATION w/ PUTER.js
   const [charprompt, setcharPrompt] = useState("");
@@ -136,6 +149,14 @@ const [charDescription, setCharDescription] = useState<CharacterDescription>({
   };
 
   const currentBook = books.find(book => book.id === currentBookId);
+
+  const characterDetailTabs: { key: CharacterDetailTab; label: string }[] = [
+    { key: "overview", label: "Overview" },
+    { key: "background", label: "Background" },
+    { key: "abilities", label: "Abilities" },
+    { key: "relationships", label: "Relationships" },
+    { key: "appearance", label: "Appearance" },
+  ];
 
   // FUNCTION ON START - CONNETION TO DB
   const loadBooks = async () => {
@@ -657,6 +678,29 @@ const exportData = async () => {
     setOriginalCharacter({ ...selectedCharacter });
 
     setSelectedCharacter(characters.id);
+    setActiveCharacterTab("overview");
+    setShowCharacterActions(false);
+    setRelationshipTypeFilter("all");
+    setOpenAppearanceSections({
+      basic: true,
+      face: false,
+      hair: false,
+      body: false,
+      extras: false,
+    });
+  }
+
+  async function openCharacterById(charId: number) {
+    const localCharacter = character.find(char => char.id === charId);
+    if (localCharacter) {
+      openEditCharacter(localCharacter);
+      return;
+    }
+
+    const dbCharacter = await db.characters.get(charId);
+    if (dbCharacter) {
+      openEditCharacter(dbCharacter);
+    }
   }
 
   // update/edit Char details ? CHANGE THIS TO INSTANT CHANGE LIKE THE TITLE
@@ -1228,6 +1272,16 @@ const exportData = async () => {
     return word.charAt(0).toUpperCase() + word.slice(1);
   }
 
+  async function openCharacterRel(id: any) {
+    const relatedCharacter = character.find(char => char.id === id);
+    
+    if (relatedCharacter) {
+      openEditCharacter(relatedCharacter);
+    } else {
+      setSelectedCharacter(id);
+    }
+  }
+
 // SCROLL BEHAVIOR AFTER CHANGES PAGES
 // useEffect(() => {
 //   window.scrollTo({behavior: "smooth" });
@@ -1617,114 +1671,118 @@ const exportData = async () => {
               </div>
             )}
 
-            {/* CHARACTER CARD IN CHAR PAGE */}
+            {/* CHARACTER CARD IN CHAR PAGE, left side */}
             {currentBook && selectedCharacter && originalCharacter && (
-            <div className="sticky top-15 h-[calc(100vh-4rem)] overflow-y-auto overflow-x-hidden notes-scroll overflow-contain px-4 py-6 bg-[#0f172a] border-r border-slate-700">
+            <div className="sticky top-15 h-[calc(100vh-4rem)] overflow-y-auto overflow-x-hidden notes-scroll overflow-contain">
  
-              {/* IMAGE */}
-              <div className="flex flex-col items-center">
-                <div onClick={() => console.log(originalCharacter)} className="w-40 h-56 rounded-xl overflow-hidden shadow-lg border border-slate-700">
-                  <img
-                        src={imageMap[selectedCharacter] || char_image}
-                        alt={originalCharacter.name}
-                        className="w-full h-full object-cover rounded"
-                      />
+              <div className="px-4 py-6 bg-[#0f172a] border-r border-slate-700">
+
+                {/* IMAGE */}
+                <div className="flex flex-col items-center">
+                  <div onClick={() => console.log(originalCharacter)} className="w-40 h-56 rounded-xl overflow-hidden shadow-lg border border-slate-700">
+                    <img
+                          src={imageMap[selectedCharacter] || char_image}
+                          alt={originalCharacter.name}
+                          className="w-full h-full object-cover rounded"
+                        />
+                  </div>
                 </div>
-              </div>
 
-              {/* NAME + ROLE */}
-              <div className="mt-6 text-center">
-                <h2 className="text-xl font-semibold text-white">
-                  {originalCharacter.name}
-                </h2>
+                {/* NAME + ROLE */}
+                <div className="mt-6 text-center">
+                  <h2 className="text-xl font-semibold text-white">
+                    {originalCharacter.name}
+                  </h2>
 
-                <p className="text-sm text-slate-400 mt-1">
-                  {originalCharacter.role}
-                </p>
+                  <p className="text-sm text-slate-400 mt-1">
+                    {originalCharacter.role}
+                  </p>
 
-                {/* STATUS + IMPORTANCE */}
-                <div className="flex justify-center gap-2 mt-3 flex-wrap">
-                  <span className="px-3 py-1 text-xs rounded-full bg-emerald-600/20 text-emerald-400 border border-emerald-600/30">
-                    {originalCharacter.status}
-                  </span>
+                  {/* STATUS + IMPORTANCE */}
+                  <div className="flex justify-center gap-2 mt-3 flex-wrap">
+                    <span className="px-3 py-1 text-xs rounded-full bg-emerald-600/20 text-emerald-400 border border-emerald-600/30">
+                      {originalCharacter.status}
+                    </span>
 
-                  <span className="px-3 py-1 text-xs rounded-full bg-purple-600/20 text-purple-400 border border-purple-600/30">
-                    {originalCharacter.importance}
-                  </span>
+                    <span className="px-3 py-1 text-xs rounded-full bg-purple-600/20 text-purple-400 border border-purple-600/30">
+                      {originalCharacter.importance}
+                    </span>
+                  </div>
                 </div>
-              </div>
 
-              {/* QUICK INFO */}
-              <div className="mt-8">
-                <h3 className="text-xs uppercase tracking-wider text-slate-500 mb-3">
-                  Quick Info
-                </h3>
+                {/* QUICK INFO */}
+                <div className="mt-8">
+                  <h3 className="text-xs uppercase tracking-wider text-slate-500 mb-3">
+                    Quick Info
+                  </h3>
 
-                <div className="flex flex-wrap gap-2">
-                  {originalCharacter.setRace?.map((race, i) => (
-                    <span
-                      key={i}
-                      className="px-2 py-1 text-xs bg-slate-700 text-slate-200 rounded-md"
-                    >
-                      {race}
-                    </span>
-                  ))}
+                  <div className="flex flex-wrap gap-2">
+                    {originalCharacter.setRace?.map((race, i) => (
+                      <span
+                        key={i}
+                        className="px-2 py-1 text-xs bg-slate-700 text-slate-200 rounded-md"
+                      >
+                        {race}
+                      </span>
+                    ))}
 
-                  {originalCharacter.occupation && (
-                    <span className="px-2 py-1 text-xs bg-slate-700 text-slate-200 rounded-md">
-                      {originalCharacter.occupation}
-                    </span>
-                  )}
+                    {originalCharacter.occupation && (
+                      <span className="px-2 py-1 text-xs bg-slate-700 text-slate-200 rounded-md">
+                        {originalCharacter.occupation}
+                      </span>
+                    )}
 
-                  {originalCharacter.powerLevel && (
-                    <span className="px-2 py-1 text-xs bg-slate-700 text-slate-200 rounded-md">
-                      {originalCharacter.powerLevel}
-                    </span>
-                  )}
+                    {originalCharacter.powerLevel && (
+                      <span className="px-2 py-1 text-xs bg-slate-700 text-slate-200 rounded-md">
+                        {originalCharacter.powerLevel}
+                      </span>
+                    )}
+                  </div>
                 </div>
-              </div>
 
-              {/* DIVIDER */}
-              <div className="my-8 border-t border-slate-700" />
+                {/* DIVIDER */}
+                <div className="my-8 border-t border-slate-700" />
 
-              {/* RELATIONSHIP PREVIEW */}
-              <div>
-                <h3 className="text-xs uppercase tracking-wider text-slate-500 mb-3">
-                  Relationships
-                </h3>
+                {/* RELATIONSHIP PREVIEW */}
+                <div>
+                  <h3 className="text-xs uppercase tracking-wider text-slate-500 mb-3">
+                    Relationships
+                  </h3>
 
-                <div className="space-y-5 grid grid-cols-2 xl:grid-cols-3 2xl:grid-cols-5">
-                  {originalCharacter.relationships?.slice(0, 6).map((rel, i) => (
-                    <div
-                      key={i}
-                      className="cursor-pointer place-items-center"
-                    >
-                      <div >
-                        <div 
-                          className="w-20 h-20 rounded-full overflow-hidden shadow-lg border border-slate-700 hover:scale-106 hover:border-slate-300 transition"
-                          onClick={() => {setSelectedCharacter(rel.charId)}}
-                        >
-                          <img
-                            src={imageMap[rel.charId] || char_image}
-                            className="w-full h-full object-cover rounded"
-                          />
+                  <div className="space-y-5 grid grid-cols-2 xl:grid-cols-3 2xl:grid-cols-5">
+                    {originalCharacter.relationships?.slice(0, 6).map((rel, i) => (
+                      <div
+                        key={i}
+                        className="cursor-pointer place-items-center"
+                      >
+                        <div >
+                          <div 
+                            className="w-20 h-20 rounded-full overflow-hidden shadow-lg border border-slate-700 hover:scale-106 hover:border-slate-300 transition"
+                            onClick={() => { openCharacterRel(rel.charId); }}
+                          >
+                            <img
+                              src={imageMap[rel.charId] || char_image}
+                              className="w-full h-full object-cover rounded"
+                            />
+                          </div>
                         </div>
+                        {/* <span className="text-sm text-white">
+                          {rel.charId}
+                        </span> */}
+                        {/* <span className="text-xs text-slate-400">
+                          {rel.type}
+                        </span> */}
                       </div>
-                      {/* <span className="text-sm text-white">
-                        {rel.charId}
-                      </span> */}
-                      {/* <span className="text-xs text-slate-400">
-                        {rel.type}
-                      </span> */}
-                    </div>
-                  ))}
+                    ))}
 
-                  {originalCharacter.relationships?.length === 0 && (
-                    <p className="text-xs text-slate-500">
-                      No relationships added.
-                    </p>
-                  )}
+                    {originalCharacter.relationships?.length === 0 && (
+                      <p className="text-xs text-slate-500">
+                        No relationships added.
+                      </p>
+                    )}
+                  </div>
                 </div>
+
               </div>
 
             </div>
@@ -1733,7 +1791,7 @@ const exportData = async () => {
           </div>
           
           {/* CENTER CONTAINER */}
-          <div className="w-full max-w-3xl mx-auto ">
+          <div className="w-full max-w-3xl mx-auto">
 
             {/* BOOK LIST / HOMEPAGE */}
             {currentBookId === null && (
@@ -2010,52 +2068,65 @@ const exportData = async () => {
 
             {/* CHARACTER DATA PAGE / EDIT CHAR DETAILS */}
             {selectedCharacter !== null && editingCharacter && originalCharacter &&(
-              <div className="rounded-md shadow-lg pt-3 mb-3 bg-gray-100 dark:bg-gray-900">
-
-                {/* Buttons */}
-                <div className="flex justify-between pb-3 px-3">
-
-                  <button 
-                    onClick={() => {setSelectedCharacter(null); setcharEditing(false); setMode("book"); setDraftNote(null); setCharDescription({ ...defaultcharDescription });}} 
-                    > <FontAwesomeIcon className="hover:text-blue-500 transition hover:scale-105" icon={faArrowLeftLong} size="xl"/>
+              <div className="rounded-md shadow-lg pt-3 mb-3 bg-gray-100 dark:bg-gray-900 min-h-[calc(100vh-4rem)]">
+                
+                {/* FUNCTION SETTINGS */}
+                <div className="flex justify-between pb-3 px-3 relative">
+                  <button
+                    onClick={() => {setSelectedCharacter(null); setcharEditing(false); setMode("book"); setDraftNote(null); setCharDescription({ ...defaultcharDescription });}}
+                  >
+                    <FontAwesomeIcon className="hover:text-blue-500 transition hover:scale-105" icon={faArrowLeftLong} size="xl"/>
                   </button>
 
-                  <div className="space-x-2">
-                    <button 
-                      title="Generate character image"
-                      onClick={() => {setShowGenImage(true); showUploadCharImage(true);}}
-                      className="border-gray-200 border-1 text-black rounded hover:bg-gray-300 hover:text-gray-950 p-1 transition dark:border-white dark:text-white"
+                  <div className="flex items-center gap-3">
+                    {charEditing && <FontAwesomeIcon icon={faSpinner} size="xl" spin />}
+                    {!charEditing && <FontAwesomeIcon className="text-emerald-500" icon={faCheck} size="xl" />}
+
+                    <button
+                      title="Character actions"
+                      className="border-gray-300 border rounded p-2 hover:bg-gray-200 dark:border-gray-600 dark:hover:bg-gray-700"
+                      onClick={() => setShowCharacterActions(prev => !prev)}
                     >
-                      <FontAwesomeIcon icon={faPlus} size="lg"/>
+                      <FontAwesomeIcon icon={faGear} />
                     </button>
 
-                    <button 
-                      onClick={() => deleteCharacter(editingCharacter.id) }
-                      > <FontAwesomeIcon className="hover:text-red-500 transition hover:scale-105" icon={faTrashCan} size="xl"/>
-                    </button>
+                    {showCharacterActions && (
+                      <div className="absolute right-3 top-12 z-20 w-48 rounded-md border border-gray-200 bg-white shadow-lg dark:bg-gray-800 dark:border-gray-700 p-2 space-y-2">
+                        <button
+                          title="Generate character image"
+                          onClick={() => {setShowGenImage(true); showUploadCharImage(true); setShowCharacterActions(false);}}
+                          className="w-full text-left px-2 py-1 rounded hover:bg-gray-100 dark:hover:bg-gray-700"
+                        >
+                          <FontAwesomeIcon icon={faPlus} className="mr-2"/>Generate Image
+                        </button>
 
-                      {charEditing && <FontAwesomeIcon icon={faSpinner} size="xl" spin />}
-                      {!charEditing && <FontAwesomeIcon className="text-emerald-500" icon={faCheck} size="xl" />}
+                        <button
+                          onClick={() => {deleteCharacter(editingCharacter.id); setShowCharacterActions(false);}}
+                          className="w-full text-left px-2 py-1 rounded text-red-500 hover:bg-red-100 dark:hover:bg-red-900/40"
+                        >
+                          <FontAwesomeIcon icon={faTrashCan} className="mr-2"/>Delete Character
+                        </button>
+                      </div>
+                    )}
                   </div>
-
                 </div>
 
                 {/* CHARACTER CARD AND IMAGE FORMAT */}
-                <div  
-                className="space-y-2"
-                onFocus={() => setcharEditing(true)}
-                onChange={() => setonChange(true)}
-                onBlur={updateCharacter}
-                onKeyDown={(e) => {
-                  if (e.key === "Enter") {
-                    e.preventDefault();
-                    (e.target as HTMLElement).blur();
-                  }
-                }}
+                <div
+                  className="space-y-2"
+                  onFocus={() => setcharEditing(true)}
+                  onChange={() => setonChange(true)}
+                  onBlur={updateCharacter}
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter") {
+                      e.preventDefault();
+                      (e.target as HTMLElement).blur();
+                    }
+                  }}
                 >
 
                   {/* IMAGE + BASIC INFO */}
-                  <div className="grid grid-cols-1 sm:grid-cols-[160px_1fr] rounded-t-lg bg-gray-50 dark:bg-gray-950">
+                  {/* <div className="grid grid-cols-1 sm:grid-cols-[160px_1fr] rounded-t-lg bg-gray-50 dark:bg-gray-950">
                     
                     <div className="w-full h-50 sm:h-50 rounded-t-lg overflow-hidden p-1">
                       <img
@@ -2065,89 +2136,225 @@ const exportData = async () => {
                       />
                     </div>
 
-                    <div className="flex flex-col p-1">
-                      <div className="">
-                        <input 
-                          className="w-full text-xl font-semibold outline-none focus:border-b hover:border-b"
-                          value={editingCharacter.name} 
-                          onChange={e => setEditingCharacter({ ...editingCharacter, name: e.target.value })
-                          }
-                          placeholder="Character Name"
-                        />
-                      </div>
-
-                      <div className="">
+                    <div className="flex flex-col p-2 gap-2">
+                      <input
+                        className="w-full text-xl font-semibold outline-none focus:border-b hover:border-b"
+                        value={editingCharacter.name}
+                        onChange={e => setEditingCharacter({ ...editingCharacter, name: e.target.value })}
+                        placeholder="Character Name"
+                      />
+                      <div>
                         <label className="text-sm font-medium text-gray-500 dark:text-gray-400">Role</label>
-                        <input 
+                        <input
                           placeholder="Add Character Role"
                           className="w-full pl-3 outline-none focus:border-b hover:border-b"
-                          value={editingCharacter.role} 
-                          onChange={e => setEditingCharacter({ ...editingCharacter, role: e.target.value })} 
+                          value={editingCharacter.role}
+                          onChange={e => setEditingCharacter({ ...editingCharacter, role: e.target.value })}
                         />
                       </div>
+                    </div>
+                  </div> */}
 
-                      <div>
-                        <label className="text-sm font-medium text-gray-500 dark:text-gray-400">Description</label>
-                        <textarea 
-                        placeholder="Character Appearance/Personality"
-                        rows={3} 
-                        readOnly
-                        value={"He is a little boy with an ugliness inside and out. He is super ugly that an image of him will shatter any eyes and mirrors there is. Be careful of this boy..."}
-                        className="w-full resize-none pl-3 rounded-md outline-width-1 hover:border" />
-                      </div>
+                  <div className="px-2">
+                    <div className="flex flex-wrap gap-2 border-b border-gray-300 dark:border-gray-700 pb-2">
+                      {characterDetailTabs.map(tab => (
+                        <button
+                          key={tab.key}
+                          onClick={() => setActiveCharacterTab(tab.key)}
+                          className={`px-3 py-1 rounded-full text-sm transition ${
+                            activeCharacterTab === tab.key
+                              ? "bg-blue-600 text-white"
+                              : "bg-gray-200 text-gray-700 hover:bg-gray-300 dark:bg-gray-800 dark:text-gray-300"
+                          }`}
+                        >
+                          {tab.label}
+                        </button>
+                      ))}
                     </div>
                   </div>
 
-                  {/* CONTENT BELOW THE IMAGE CARD */}
-                  <div className="pr-2 pl-2 pb-3 space-y-3"> 
-                    {/* NOTES */}
-                    <div className="space-y-1">
-                      <div className="flex items-center gap-2 text-sm font-semibold text-gray-700 dark:text-gray-500">
-                        <label><span>📝</span> Background</label>
-                      </div>
-                      <textarea 
-                      rows={5} 
-                      className="w-full rounded-md pl-3 hover:border"
-                      placeholder="Add Notes"
-                      value={editingCharacter.notes} 
-                      onChange={e => setEditingCharacter({ ...editingCharacter, notes: e.target.value })} />
-                    </div>
+                  <div className="pr-2 pl-2 pb-4">
+                    {activeCharacterTab === "overview" && (
+                      <div className="space-y-3">
+                        <div>
+                          <label className="text-sm font-medium text-gray-500 dark:text-gray-400">Short Description</label>
+                          <textarea
+                            rows={3}
+                            className="w-full rounded-md pl-3 hover:border"
+                            placeholder="Short character summary"
+                            value={editingCharacter.notes}
+                            onChange={e => setEditingCharacter({ ...editingCharacter, notes: e.target.value })}
+                          />
+                        </div>
 
-                    {/* ABILITIES */}
-                    <div className="space-y-1">
-                      <div className="flex items-center gap-2 text-sm font-semibold text-gray-700 dark:text-gray-500">
-                        <span className="text-indigo-500">✨</span> Abilities
-                      </div>
-                      <input 
-                        className="w-full outline-none focus:border-b pl-3 hover:border-b"
-                        value={editingCharacter.abilitiesText} 
-                        onChange={(e) => setEditingCharacter({ ...editingCharacter, abilitiesText: e.target.value })
-                        }
-                        placeholder="Add Abilities" />
-                    </div>
+                        <div>
+                          <label className="text-sm font-medium text-gray-500 dark:text-gray-400">Personality Traits</label>
+                          <p className="mt-1 text-sm text-gray-700 dark:text-gray-300">
+                            {originalCharacter.personalityTraits?.length > 0
+                              ? originalCharacter.personalityTraits.join(", ")
+                              : "No personality traits added."}
+                          </p>
+                        </div>
 
-                    {/* CHAPTER APPEARANCES */}
-                    <div className="space-y-1">
-                      <div className="flex items-center gap-2 text-sm font-semibold text-gray-700 dark:text-gray-500">
-                        <span className="text-indigo-500">📖</span> Chapter Appearances
-                      </div>
-                      <input 
-                        placeholder="Chapter Appearances"
-                        className="w-full outline-none focus:border-b pl-3 hover:border-b"
-                        value={editingCharacter.chapters} 
-                        onChange={(e) => setEditingCharacter({ ...editingCharacter, chapters: e.target.value })} 
-                      />
-                    </div>   
+                        <div>
+                          <label className="text-sm font-medium text-gray-500 dark:text-gray-400">Core Motivation</label>
+                          <p className="mt-1 text-sm text-gray-700 dark:text-gray-300">
+                            {originalCharacter.futureNotes || "No core motivation added yet."}
+                          </p>
+                        </div>
 
-                    <div>
-                      {originalCharacter.personalityTraits}
-                    </div>
+                        <div>
+                          <label className="text-sm font-medium text-gray-500 dark:text-gray-400">Character Arc Summary</label>
+                          <p className="mt-1 text-sm text-gray-700 dark:text-gray-300">
+                            {originalCharacter.characterArc || "No character arc summary added."}
+                          </p>
+                        </div>
+                      </div>
+                    )}
+
+                    {activeCharacterTab === "background" && (
+                      <div className="space-y-1">
+                        <label className="text-sm font-medium text-gray-500 dark:text-gray-400">Background</label>
+                        <textarea
+                          rows={10}
+                          className="w-full rounded-md pl-3 hover:border"
+                          placeholder="Full character backstory"
+                          value={editingCharacter.notes}
+                          onChange={e => setEditingCharacter({ ...editingCharacter, notes: e.target.value })}
+                        />
+                      </div>
+                    )}
+
+                    {activeCharacterTab === "abilities" && (
+                      <div className="space-y-3">
+                        <div>
+                          <label className="text-sm font-medium text-gray-500 dark:text-gray-400">Abilities List</label>
+                          <input
+                            className="w-full rounded-md pl-3 py-1 outline-none hover:border"
+                            value={editingCharacter.abilitiesText}
+                            onChange={(e) => setEditingCharacter({ ...editingCharacter, abilitiesText: e.target.value })}
+                            placeholder="Add abilities"
+                          />
+                        </div>
+
+                        <div>
+                          <label className="text-sm font-medium text-gray-500 dark:text-gray-400">Power System / Power Level</label>
+                          <p className="mt-1 text-sm text-gray-700 dark:text-gray-300">
+                            {originalCharacter.powerLevel || "No power system details added."}
+                          </p>
+                        </div>
+
+                        <div>
+                          <label className="text-sm font-medium text-gray-500 dark:text-gray-400">Strengths / Weaknesses</label>
+                          <p className="mt-1 text-sm text-gray-700 dark:text-gray-300">
+                            {originalCharacter.tags?.length > 0
+                              ? originalCharacter.tags.join(", ")
+                              : "No strengths/weaknesses tagged."}
+                          </p>
+                        </div>
+
+                        <div>
+                          <label className="text-sm font-medium text-gray-500 dark:text-gray-400">Chapter Appearances</label>
+                          <input
+                            placeholder="Chapter Appearances"
+                            className="w-full rounded-md pl-3 py-1 outline-none hover:border"
+                            value={editingCharacter.chapters}
+                            onChange={(e) => setEditingCharacter({ ...editingCharacter, chapters: e.target.value })}
+                          />
+                        </div>
+                      </div>
+                    )}
+
+                    {activeCharacterTab === "relationships" && (
+                      <div className="space-y-3">
+                        <div className="flex items-center gap-2">
+                          <label className="text-sm font-medium text-gray-500 dark:text-gray-400">Filter by type</label>
+                          <select
+                            className="rounded border border-gray-300 dark:border-gray-700 bg-transparent px-2 py-1"
+                            value={relationshipTypeFilter}
+                            onChange={(e) => setRelationshipTypeFilter(e.target.value)}
+                          >
+                            <option value="all">All</option>
+                            {[...new Set((originalCharacter.relationships ?? []).map(rel => rel.type).filter(Boolean))].map(type => (
+                              <option key={type} value={type}>{type}</option>
+                            ))}
+                          </select>
+                        </div>
+
+                        <div className="space-y-2">
+                          {(originalCharacter.relationships ?? [])
+                            .filter(rel => relationshipTypeFilter === "all" || rel.type === relationshipTypeFilter)
+                            .map((rel, idx) => {
+                              const relatedCharacter = character.find(c => c.id === rel.charId);
+
+                              return (
+                                <button
+                                  key={`${rel.charId}-${idx}`}
+                                  className="w-full flex items-center justify-between p-2 rounded-md bg-gray-200/60 dark:bg-gray-800 hover:bg-gray-300 dark:hover:bg-gray-700"
+                                  onClick={() => {
+                                    if (relatedCharacter) {
+                                      openEditCharacter(relatedCharacter);
+                                      return;
+                                    }
+
+                                    void openCharacterById(rel.charId);
+                                  }}
+                                >
+                                  <span className="text-left">
+                                    <span className="block text-sm font-semibold">{relatedCharacter?.name ?? `Character #${rel.charId}`}</span>
+                                    <span className="block text-xs text-gray-600 dark:text-gray-400">{rel.type || "Unknown"}</span>
+                                  </span>
+                                  <span className="text-xs text-blue-500">Open</span>
+                                </button>
+                              );
+                            })}
+
+                          {(originalCharacter.relationships ?? []).length === 0 && (
+                            <p className="text-sm text-gray-600 dark:text-gray-400">No relationships added.</p>
+                          )}
+                        </div>
+                      </div>
+                    )}
+
+                    {activeCharacterTab === "appearance" && (
+                      <div className="space-y-2">
+                        {([
+                          ["basic", originalCharacter.description?.basic],
+                          ["face", originalCharacter.description?.face],
+                          ["hair", originalCharacter.description?.hair],
+                          ["body", originalCharacter.description?.body],
+                          ["extras", originalCharacter.description?.extras],
+                        ] as const).map(([section, values]) => (
+                          <div key={section} className="rounded-md border border-gray-300 dark:border-gray-700">
+                            <button
+                              className="w-full flex justify-between items-center px-3 py-2 text-left font-medium capitalize"
+                              onClick={() => setOpenAppearanceSections(prev => ({ ...prev, [section]: !prev[section] }))}
+                            >
+                              <span>{section}</span>
+                              <span>{openAppearanceSections[section] ? "−" : "+"}</span>
+                            </button>
+
+                            {openAppearanceSections[section] && (
+                              <div className="px-3 pb-3 text-sm text-gray-700 dark:text-gray-300 space-y-1">
+                                {Object.entries(values ?? {}).map(([key, value]) => (
+                                  <p key={key}>
+                                    <span className="font-semibold capitalize">{key.replace(/([A-Z])/g, " $1")}: </span>
+                                    {value || "—"}
+                                  </p>
+                                ))}
+                              </div>
+                            )}
+                          </div>
+                        ))}
+                      </div>
+                    )}
 
                   </div>
-                
-                </div>
+                </div>  
 
-              </div>
+
+              {/* CLOSER */}
+              </div>  
             )}
 
           </div>
