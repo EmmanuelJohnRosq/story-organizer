@@ -1,5 +1,5 @@
 import { useNavigate, useParams } from "react-router-dom";
-import { useState, useEffect, useCallback, useRef, use } from "react";
+import { useState, useEffect, useRef } from "react";
 
 import { db, type Book, type Character, type EditableCharacter, type Notes, type CharacterDescription } from "../db";
 
@@ -10,9 +10,9 @@ export default function BookPage() {
   const { currentBookId } = useParams();
   const navigate = useNavigate();
 
-  // DO THIS IN PAGE START
+    // DO THIS IN PAGE START
     useEffect(() => { 
-    const loadBook = async () => {
+      const loadBook = async () => {
         if (!currentBookId) {
         navigate("/", { replace: true });
         return;
@@ -29,11 +29,11 @@ export default function BookPage() {
         setCurrentBook(book);
         loadBookNotes(currentBookId); 
         loadChars(currentBookId);
-    };
+      };
 
-    loadBook();
-    setCharDescription({ ...defaultcharDescription });
-    setCurrentPage(1);
+      loadBook();
+      setCharDescription({ ...defaultcharDescription });
+      setCurrentPage(1);
     }, [currentBookId]);
 
     const [character, setCharacters] = useState<Character[]>([]);
@@ -284,7 +284,14 @@ export default function BookPage() {
   
       setOriginalCharacter({ ...selectedCharacter });
 
-      navigate(`/book/${currentBookId}/${characters.id}`);
+      const charName = characters.name
+      .toLowerCase()
+      .replace(/[^a-z0-9]+/g, "-")
+      .replace(/(^-|-$)/g, "");
+
+      const slug = upcaseLetter(charName);
+
+      navigate(`/book/${currentBookId}/${characters.id}-${slug}`);
     }
   
     // BOOK TITLE CHANGES - CHANGEABLE INPUT DATA
@@ -789,7 +796,7 @@ export default function BookPage() {
 
                     {/* IMAGE */}
                     <div className="h-100 w-full overflow-hidden rounded-t-xl">
-                    <a href="#">
+                    <a>
                         <img 
                         className="h-full w-full object-cover group-hover:scale-105 transition" 
                         src={imageMap[char.id] || char_image}
@@ -798,7 +805,7 @@ export default function BookPage() {
                     </div>
 
                     <div className="flex-1 p-2 text-center">
-                        <a href="#">
+                        <a>
                             <h3 className="text-xl font-semibold tracking-tight line-clamp-1">{char.name}</h3>
                             <p className="text-sm text-gray-400 line-clamp-1">{char.role || "Character Role"}</p>
                             <p className="text-xs text-gray-400 line-clamp-1">Status: {char.status}</p>

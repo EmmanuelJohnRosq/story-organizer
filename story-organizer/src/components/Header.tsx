@@ -153,6 +153,7 @@ export default function Header() {
     const onDrop = useCallback((acceptedFiles: File[]) => {
         setSelectedFile(acceptedFiles[0]); // triggers re-render
     }, []);
+    
     // THIS IS FUNCTIONS FOR THE IMPORTING FILE
     const { getRootProps, getInputProps, isDragActive } = useDropzone({
         onDrop,

@@ -792,6 +792,7 @@ export default function UserPage() {
                 </span> */}
                 </div>
             )}
+            
             {/* Undo Popup */}
             {showUndoPopup && (
                 <div className="fixed top-14 left-1/2 bg-gray-300 py-4 px-8 transform -translate-x-1/2 rounded shadow-lg flex justify-center space-x-4 animate-fadeDown">
