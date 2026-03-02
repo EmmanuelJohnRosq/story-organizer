@@ -77,6 +77,21 @@ button:disabled {
   animation: fadeDown 0.3s ease-out;
 }
 
+@keyframes scaleIn {
+  from { 
+    opacity: 0; 
+    transform: scale(0.7); 
+  }
+  to { 
+    opacity: 1; 
+    transform: scale(1); 
+  }
+}
+
+.animate-scaleIn {
+  animation: scaleIn 0.3s ease-out forwards;
+}
+
 /* NEWEST BROWSERS SCROLLBAR SET */
 /* .notes-scroll {
   scrollbar-width: thin;

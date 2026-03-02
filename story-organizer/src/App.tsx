@@ -7,11 +7,13 @@ import CharacterPage from "./pages/CharacterPage";
 import { useEffect } from "react";
 
 import { useGoogleAuth} from "./context/GoogleAuthContext";
+import { findBackupFile } from "./services/driveService";
 
 export default function StoryOrganizer() {
 
   const { initialize } = useGoogleAuth();
 
+  // INITIALIZE CLIENT ID FOR GOOGLE AUTH CONNECTION
   useEffect(() => {
     const clientId = import.meta.env.VITE_GOOGLE_CLIENT_ID;
 
@@ -22,6 +24,25 @@ export default function StoryOrganizer() {
 
     initialize(clientId);
   }, []);
+
+  // THIS IS FOR SETTING FILE NAME OF SAVED JSON FROM GOOGLE DRIVE
+  useEffect(() => {
+  const checkBackup = async () => {
+    const token = localStorage.getItem("googleAccessToken");
+    if (!token) return;
+
+    try {
+      const file = await findBackupFile(token);
+      if (file) {
+        localStorage.setItem("googleFileID", file.id);
+      }
+    } catch (err) {
+      console.error("Drive check failed");
+    }
+  };
+
+  checkBackup();
+}, []);
 
   // ROUTING CODE
   return (

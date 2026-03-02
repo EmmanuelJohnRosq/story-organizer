@@ -1,5 +1,5 @@
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
-import { faFileImport, faCircleUser, faUpload } from "@fortawesome/free-solid-svg-icons";
+import { faFileImport, faCircleUser, faUpload, faSpinner, faDownload } from "@fortawesome/free-solid-svg-icons";
 import { useCallback, useEffect, useState } from "react";
 import { db } from "../db";
 import { useNavigate } from "react-router-dom";
@@ -7,6 +7,7 @@ import { useDropzone } from "react-dropzone";
 
 import { useGoogleAuth, type GoogleUser } from "../context/GoogleAuthContext";
 import { signOut } from "../services/googleAuth";
+import { deleteAllBackups, downloadDriveFile, findBackupFile, uploadJsonToDrive } from "../services/driveService";
 
 export default function Header() {
     const navigate = useNavigate();
@@ -17,6 +18,14 @@ export default function Header() {
     const { user, signIn } = useGoogleAuth();
 
     const [googleUser, setGoogleUser] = useState<GoogleUser | null>(null);
+
+    const [showGoogleSaveModal, setShowGoogleSaveModal] = useState(false);
+    const [isGoogleSaving, setIsGoogleSaving] = useState(false);
+
+    const [successGoogle, setSuccessGoogle] = useState(false);
+    const [errorGoogle, setErrorGoogle] = useState<string | null>(null);
+
+    const [backupFileId, setBackupFileId] = useState<string | null>(null);
 
 
     const toggleTheme = () => {
@@ -32,13 +41,33 @@ export default function Header() {
         const gUser = localStorage.getItem("googleConnected");
         const userObject = JSON.parse(gUser!);
         setGoogleUser(userObject);
-    }, []);
+    }, [googleUser]);
 
     useEffect(() => {
         if(!user) return;
 
         setGoogleUser(user);
     }, [user]);
+
+    useEffect(() => {
+      const checkBackup = async () => {
+        const token = localStorage.getItem("googleAccessToken");
+        if (!token) return;
+    
+        try {
+          const file = await findBackupFile(token);
+          if (file) {
+            setBackupFileId(file.id);
+            localStorage.setItem("googleFileID", file.id);
+          }
+        } catch (err) {
+          console.error("Drive check failed");
+        }
+      };
+
+    checkBackup();
+    }, [user]);
+    
 
     // DARK MODE EFFECT
     useEffect(() => {
@@ -58,6 +87,17 @@ export default function Header() {
     function showModalFile(state: boolean) {
         setShowFileModal(state);
         setSelectedFile(null);
+        document.body.classList.toggle('overflow-hidden', state);
+    }
+
+
+    // Show Google Save MODAL
+    function showSaveGoogleModal(state: boolean) {
+        if(!googleUser) {
+            alert("Sign in to an account first.");
+            return;
+        }
+        setShowGoogleSaveModal(state);
         document.body.classList.toggle('overflow-hidden', state);
     }
 
@@ -87,11 +127,8 @@ export default function Header() {
     return new Blob([u8arr], { type: mime });
     };
 
-    // EXPORT DATA/SAVE TO Json FILE
-    const exportData = async () => {
-        const name = prompt("Enter file name");
-        if (!name) return;
-
+    // TAKE ALL THE DATA FROM DATABASE AND SET IT TO DATA
+   async function getAllDB() {
         const imageRecords = await db.images.toArray();
         const allBooks = await db.books.toArray();
         const allCharacters = await db.characters.toArray();
@@ -117,6 +154,16 @@ export default function Header() {
             allNotes,
         }; 
 
+        return data;
+    }
+
+    // EXPORT DATA/SAVE TO Json FILE
+    const exportData = async () => {
+        const name = prompt("Enter file name");
+        if (!name) return;
+
+        const data = await getAllDB();
+
         const blob = new Blob(
             [JSON.stringify(data, null, 2)],
             { type: "application/json" }
@@ -134,39 +181,41 @@ export default function Header() {
     
     //   // IMPORT DATA/SAVE File
     const importData = async (file: File) => {
-    try {
-        const text = await file.text();
-        const parsed = JSON.parse(text);
+        try {
+            const text = await file.text();
+            const parsed = JSON.parse(text);
 
-        // Clear old data
-        await db.books.clear();
-        await db.images.clear();
-        await db.notes.clear();
-        await db.characters.clear();
+            // Clear old data
+            await db.books.clear();
+            await db.images.clear();
+            await db.notes.clear();
+            await db.characters.clear();
 
-        // Restore data from json
-        await db.books.bulkAdd(parsed.books);
-        await db.notes.bulkAdd(parsed.allNotes);
-        await db.characters.bulkAdd(parsed.characters);
+            // Restore data from json
+            await db.books.bulkAdd(parsed.books);
+            await db.notes.bulkAdd(parsed.allNotes);
+            await db.characters.bulkAdd(parsed.character);
 
-        // Restore images (if they exist)
-        if (parsed.images && parsed.images.length > 0) {
-        const restoredImages = parsed.images.map((img: any) => ({
-            imageId: img.imageId,
-            charId: img.charId,
-            createdAt: img.createdAt,
-            imageBlob: base64ToBlob(img.base64),
-        }));
+            // Restore images (if they exist)
+            if (parsed.images && parsed.images.length > 0) {
+            const restoredImages = parsed.images.map((img: any) => ({
+                imageId: img.imageId,
+                charId: img.charId,
+                bookId: img.bookId,
+                createdAt: img.createdAt,
+                imageBlob: base64ToBlob(img.base64),
+            }));
 
-        await db.images.bulkAdd(restoredImages);
+            await db.images.bulkAdd(restoredImages);
+            }
+
+            alert("Import successful!");
+            showModalFile(false);
+            window.location.reload();
+        } catch (err) {
+            console.error(err);
+            alert("Invalid file format");
         }
-
-        alert("Import successful!");
-        navigate('/UserPage')
-    } catch (err) {
-        console.error(err);
-        alert("Invalid file format");
-    }
     };
 
     // THIS IS FUNCTIONS FOR THE IMPORTING FILE
@@ -179,6 +228,67 @@ export default function Header() {
         onDrop,
         multiple: false,
     });
+
+    const name = "Story-Organizer-BackUp-Data"
+
+    // SAVE DATA DB TO GOOGLE DRIVE
+    async function backupData() {
+        const token = localStorage.getItem("googleAccessToken");
+        const existingFile = localStorage.getItem("googleFileID");
+
+        if(!token) {
+            alert("Connect to Google first.");
+            setGoogleUser(null);
+            return;
+        }
+        const data = await getAllDB();
+        
+
+        try {
+            setErrorGoogle(null);
+            setIsGoogleSaving(true);
+            await uploadJsonToDrive(name, data, token, existingFile ?? undefined);
+            setSuccessGoogle(true);
+
+            setTimeout(() => {
+                showSaveGoogleModal(false);
+                setSuccessGoogle(false);
+                setIsGoogleSaving(false);
+            }, 2000);
+        } catch (err) {
+            console.error(err);
+            alert("Upload failed. Try again");
+            showSaveGoogleModal(false);
+            setIsGoogleSaving(false);
+        }
+
+    }
+
+    // IMPORT DATA FROM GOOGLE DRIVE TO LOCAL DB
+    const handleRestoreFromDrive = async () => {
+        const token = localStorage.getItem("googleAccessToken");
+        if (!token || !backupFileId) return;
+
+        const isConfirmed = window.confirm("Download the saved file, it will overwrite the existing data if there are any.");
+        if (isConfirmed) {
+            try {
+                const file = await downloadDriveFile(backupFileId, token);
+                await importData(file);
+            } catch (err) {
+                console.error(err);
+                alert("Restore failed.");
+            }
+        }
+    };
+
+    // NUKES ALL THE EXISTING FILES IN GOOGLE DRIVE/DELETE ALL
+    // async function deleteAllGdrive() {
+    // const token = localStorage.getItem("googleAccessToken");
+    // if (token) {
+    //     await deleteAllBackups(token);
+    //     alert("All old backup files deleted!");
+    // }
+    // }
 
     async function googleLogout() {
         const isConfirmed = window.confirm("Are you sure you want to log out?");
@@ -205,6 +315,9 @@ export default function Header() {
                 </h1>
 
                 <p className="md:hidden flex items-center justify-center text-2xl">📖</p>
+
+                {/* THIS DELETES ALL EXISTING FILES IN GOOGLE DRIVE */}
+                {/* <button className="bg-red-500 p-10" onClick={() => deleteAllGdrive()}> NUKE IT ALL NOW</button> */}
 
                 <div className="flex gap-2">
                     
@@ -365,7 +478,7 @@ export default function Header() {
                         <button 
                             title="Back-up Data to Google Drive"
                             className="p-1 transition border border-white text-gray-200 rounded-md hover:bg-gray-300 hover:text-gray-950 transition" 
-                            // onClick={() => showModalFile(true)} 
+                            onClick={() => showSaveGoogleModal(true)} 
                         > 
                             <FontAwesomeIcon icon={faUpload} size="xl" />
                         </button>
@@ -383,6 +496,16 @@ export default function Header() {
                             Back-up Data to Google Drive
                         </div>
                     </div>
+
+                    {backupFileId && (
+                        <button
+                            onClick={handleRestoreFromDrive}
+                            className="p-1 transition border border-white text-gray-200 rounded-md hover:bg-gray-300 hover:text-gray-950 transition"
+                            title="Download and Import saved file."
+                        >
+                            <FontAwesomeIcon icon={faDownload} size="xl"/>
+                        </button>
+                    )}
 
                 </div>  
 
@@ -470,6 +593,104 @@ export default function Header() {
                 </div>
                 </div>
             )}
+
+
+            {showGoogleSaveModal && googleUser &&(
+            <div 
+                className="fixed inset-0 flex items-center justify-center bg-black/50 z-50"
+                onMouseDown={(e) => {
+                    if (isGoogleSaving === true) return;
+                    if (e.target === e.currentTarget) {
+                        setShowGoogleSaveModal(false);
+                    }
+                }}
+            >
+                <div 
+                    className="w-9/10 min-w-0 md:max-w-120 mx-auto bg-white dark:bg-gray-100 max-h-[90vh] overflow-y-auto p-4 rounded-md shadow-lg" onMouseDown={(e) => e.stopPropagation()}
+                >
+                    <h2 className="text-2xl font-bold">Backup data in Google Drive</h2>
+                    <p className="text-base text-gray-500">
+                        {googleUser.email} 
+                    </p>
+                    <p className="text-xl text-black text-center">
+                        {name}.json
+                    </p>
+
+                    {!successGoogle && !isGoogleSaving && (
+                    <>
+                        <p className="text-lg text-gray-600 px-5 pt-3">
+                            A file with this name already exists on the server. Saving will permanently overwrite the current version. This action is irreversible and previous data cannot be recovered.
+                        </p>
+
+                        <p className="text-lg text-gray-600 text-center px-5">
+                            Are you sure you want to proceed?
+                        </p>
+                    </>
+                    )}
+
+                    {!successGoogle && (
+                        <div className="">
+                            {errorGoogle && (
+                            <div className="mb-3 text-sm text-red-600 bg-red-50 p-2 rounded-lg">
+                                {errorGoogle}
+                            </div>
+                            )}
+                        
+                            <div className="flex justify-center gap-5 pt-5 px-3">
+                                <button
+                                    className="px-3 py-2 rounded-lg bg-red-400 w-full hover:bg-red-500 text-semibold"
+                                    onClick={() => !isGoogleSaving && showSaveGoogleModal(false)}
+                                    disabled={isGoogleSaving}
+                                >
+                                Cancel
+                                </button>
+
+                                <button
+                                    className="px-3 py-2 rounded-lg bg-emerald-400 w-full hover:bg-emerald-500 text-semibold"
+                                    onClick={() => backupData()}
+                                    disabled={isGoogleSaving}
+                                >
+                                {isGoogleSaving ? (
+                                    <>
+                                    <span> <FontAwesomeIcon icon={faSpinner} size="xl" spin /></span>
+                                    Saving...
+                                    </>
+                                ) : (
+                                    "Confirm"
+                                )}
+                                </button>
+                            </div>
+                        </div>
+                    )}
+
+                    {/* Success Animation */}
+                    {successGoogle && (
+                    <div className="flex flex-col items-center justify-center py-6">
+                        <div className="w-16 h-16 rounded-full bg-green-100 flex items-center justify-center mb-4 animate-scaleIn">
+                        <svg
+                            className="w-8 h-8 text-green-600"
+                            fill="none"
+                            stroke="currentColor"
+                            strokeWidth="3"
+                            viewBox="0 0 24 24"
+                        >
+                            <path
+                            strokeLinecap="round"
+                            strokeLinejoin="round"
+                            d="M5 13l4 4L19 7"
+                            />
+                        </svg>
+                        </div>
+                        <p className="text-green-600 font-semibold">
+                        Upload Successful!
+                        </p>
+                    </div>
+                    )}
+
+                </div>
+            </div>
+            )}
+
         </>
     );
 }

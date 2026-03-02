@@ -313,16 +313,16 @@ const [charDescription, setCharDescription] = useState<CharacterDescription>({
     const slug = upcaseLetter(charName);
 
     navigate(`/book/${currentBookId}/${characters.id}-${slug}`);
-    // setActiveCharacterTab("overview");
+    setActiveCharacterTab("overview");
     setShowCharacterActions(false);
-    // setRelationshipTypeFilter("all");
-    // setOpenAppearanceSections({
-    //   basic: true,
-    //   face: false,
-    //   hair: false,
-    //   body: false,
-    //   extras: false,
-    // });
+    setRelationshipTypeFilter("all");
+    setOpenAppearanceSections({
+      basic: true,
+      face: false,
+      hair: false,
+      body: false,
+      extras: false,
+    });
   }
 
   async function openCharacterById(charId: number) {

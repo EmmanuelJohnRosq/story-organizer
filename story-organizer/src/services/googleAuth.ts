@@ -13,6 +13,7 @@ export function initGoogleAuth(
         scope: "https://www.googleapis.com/auth/drive.file openid email profile",
         callback: async (tokenResponse: { access_token: any; }) => {
             accessToken = tokenResponse.access_token;
+            localStorage.setItem("googleAccessToken", tokenResponse.access_token);
             
             const res = await fetch(
                 "https://www.googleapis.com/oauth2/v3/userinfo",
@@ -26,6 +27,7 @@ export function initGoogleAuth(
             const userProfile = await res.json();
             onUserLoaded(userProfile);
             localStorage.setItem("googleConnected", JSON.stringify(userProfile)); // persist flag
+            
         },
     });
 }
