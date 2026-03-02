@@ -83,7 +83,6 @@ export default function BookPage() {
   
     // Arrays (comma-separated input)
     const [charTitles, setCharTitles] = useState(""); // input as string -> array on save
-    const [charAbilities, setCharAbilities] = useState("");
     const [charPersonalityTraits, setCharPersonalityTraits] = useState("");
     const [charTags, setCharTags] = useState("");
     const [charSetRaces, setCharSetRaces] = useState("");
@@ -91,6 +90,10 @@ export default function BookPage() {
     const [charCharacterArc, setcharCharacterArc] = useState("");
   
     const [charTraits, setCharTraits] = useState<string[]>([]);
+
+  const [charAbilities, setCharAbilities] = useState<
+    { ability: string; description: string }[]
+  >([]);
   
     // Relationships (complex object)
   const [charRelationships, setCharRelationships] = useState<
@@ -152,10 +155,6 @@ export default function BookPage() {
         role: normalizeWhitespace(char.role),
         notes: char.notes.replace(/[^\S\r\n]+/g, " "),
         chapters: normalizeWhitespace(char.chapters),
-        abilities: char.abilitiesText
-          .split(",")
-          .map(a => normalizeWhitespace(a),)
-          .filter(a => a.length > 0) // removes empty ones
       };
     }
   
@@ -216,7 +215,7 @@ export default function BookPage() {
         name: normalizeWhitespace(name),
         role: normalizeWhitespace(role),
         notes: notes.trim().replace(/[^\S\r\n]+/g, " "),
-        abilities: abilities.split(",").map(a => normalizeWhitespace(a)),
+        abilities: charAbilities,
         chapters: normalizeWhitespace(chapterAppearance),
         status: normalizeWhitespace(charStatus),
         importance: normalizeWhitespace(charImportance),
@@ -256,7 +255,7 @@ export default function BookPage() {
       setCharPowerLevel("");
   
       setCharTitles("");
-      setCharAbilities("");
+      setCharAbilities([]);
       setCharPersonalityTraits("");
       setCharTags("");
       setCharChapterAppearances("");

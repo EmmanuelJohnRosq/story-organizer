@@ -10,7 +10,7 @@ import { useDropzone } from "react-dropzone";
 import { FiEdit2, FiX } from "react-icons/fi"; // example pencil icon
 import { faPenToSquare } from "@fortawesome/free-regular-svg-icons";
 
-type CharacterDetailTab = "overview" | "background" | "abilities" | "relationships" | "appearance";
+type CharacterDetailTab = "overview" | "abilities" | "relationships" | "appearance";
 
 export default function CharacterPage() {
   const { currentBookId, characterSlug } = useParams();
@@ -108,7 +108,6 @@ export default function CharacterPage() {
 
   // Arrays (comma-separated input)
   const [charTitles, setCharTitles] = useState(""); // input as string -> array on save
-  const [charAbilities, setCharAbilities] = useState("");
   const [charPersonalityTraits, setCharPersonalityTraits] = useState("");
   const [charTags, setCharTags] = useState("");
   const [charSetRaces, setCharSetRaces] = useState("");
@@ -117,7 +116,12 @@ export default function CharacterPage() {
 
   const [charTraits, setCharTraits] = useState<string[]>([]);
 
-  // Relationships (complex object)
+  // ABILITIES WITH DESCRIPTION
+const [charAbilities, setCharAbilities] = useState<
+  { ability: string; description: string }[]
+>([]);
+
+  // CHARACTER Relationships with type
 const [charRelationships, setCharRelationships] = useState<
   { charId: number; type: string }[]
 >([]);
@@ -144,7 +148,6 @@ const [charDescription, setCharDescription] = useState<CharacterDescription>({
 
   const characterDetailTabs: { key: CharacterDetailTab; label: string }[] = [
     { key: "overview", label: "Overview" },
-    { key: "background", label: "Background" },
     { key: "abilities", label: "Abilities" },
     { key: "relationships", label: "Relationships" },
     { key: "appearance", label: "Appearance" },
@@ -185,10 +188,6 @@ const [charDescription, setCharDescription] = useState<CharacterDescription>({
       role: normalizeWhitespace(char.role),
       notes: char.notes.replace(/[^\S\r\n]+/g, " "),
       chapters: normalizeWhitespace(char.chapters),
-      abilities: char.abilitiesText
-        .split(",")
-        .map(a => normalizeWhitespace(a),)
-        .filter(a => a.length > 0) // removes empty ones
     };
   }
 
@@ -210,7 +209,7 @@ const [charDescription, setCharDescription] = useState<CharacterDescription>({
       name: normalizeWhitespace(name),
       role: normalizeWhitespace(role),
       notes: notes.trim().replace(/[^\S\r\n]+/g, " "),
-      abilities: abilities.split(",").map(a => normalizeWhitespace(a)),
+      abilities: charAbilities,
       chapters: normalizeWhitespace(chapterAppearance),
       status: normalizeWhitespace(charStatus),
       importance: normalizeWhitespace(charImportance),
@@ -250,7 +249,6 @@ const [charDescription, setCharDescription] = useState<CharacterDescription>({
     setCharPowerLevel("");
 
     setCharTitles("");
-    setCharAbilities("");
     setCharPersonalityTraits("");
     setCharTags("");
     setCharChapterAppearances("");
@@ -258,6 +256,7 @@ const [charDescription, setCharDescription] = useState<CharacterDescription>({
 
     setCharSetRaces("");
     setCharRelationships([]);
+    setCharAbilities([]);
 
     setCharDescription({ ...defaultcharDescription });
 
@@ -288,6 +287,9 @@ const [charDescription, setCharDescription] = useState<CharacterDescription>({
         c => c.id !== characterId)); // CONDITION TO KEEP ALL CHARACTERS THAT DOES NOT MATCH THE characterId
 
     setSelectedCharacter(null);
+    setOriginalCharacter(null);
+    setEditingCharacter(null);
+    navigate(`/book/${currentBookId}`);
   }
 
   // open edit Char Modal
@@ -549,6 +551,7 @@ const [charDescription, setCharDescription] = useState<CharacterDescription>({
     // 2️⃣ Save Blob to IndexedDB
     await db.images.add({
       imageId: crypto.randomUUID(),
+      bookId: "", //SAVING IMAGE IN DB WITHOUT BOOKID. BOOKID IS ONLY FOR BOOK COVERS
       charId: selectedCharacter!,
       imageBlob: blob,
       createdAt: Date.now()
@@ -804,11 +807,11 @@ const [charDescription, setCharDescription] = useState<CharacterDescription>({
         { originalCharacter && (
         <div className="sticky top-15 h-[calc(100vh-4rem)] overflow-y-auto overflow-x-hidden notes-scroll overflow-contain">
 
-          <div className="px-4 py-6 bg-[#0f172a] border-r border-slate-700">
+          <div className="px-4 py-6 dark:bg-[#0f172a] shadow-lg">
 
             {/* IMAGE */}
             <div className="flex flex-col items-center">
-              <div onClick={() => console.log(originalCharacter)} className="w-40 h-56 rounded-xl overflow-hidden shadow-lg border border-slate-700">
+              <div className="w-40 h-56 rounded-xl overflow-hidden shadow-lg border border-slate-700" onClick={() => console.log(originalCharacter)}>
                 <img
                       src={imageMap[selectedCharacterId] || char_image}
                       alt={originalCharacter.name}
@@ -862,20 +865,20 @@ const [charDescription, setCharDescription] = useState<CharacterDescription>({
 
               {/* STATUS + IMPORTANCE */}
               <div className="flex justify-center gap-2 mt-3 flex-wrap">
-                <span className="px-3 py-1 text-xs rounded-full bg-emerald-600/20 text-emerald-400 border border-emerald-600/30">
+                <span className="px-3 py-1 text-xs rounded-full bg-emerald-600/20 text-emerald-800 dark:text-emerald-400 border border-emerald-600/30">
                   {originalCharacter.status}
                 </span>
 
-                <span className="px-3 py-1 text-xs rounded-full bg-purple-600/20 text-purple-400 border border-purple-600/30">
+                <span className="px-3 py-1 text-xs rounded-full bg-sky-500/20 text-sky-800 dark:text-sky-300 border border-sky-700/30">
                   {originalCharacter.importance}
                 </span>
               </div>
             </div>
 
-            {/* QUICK INFO */}
+            {/* RACE */}
             <div className="mt-8">
               <h3 className="text-xs uppercase tracking-wider text-slate-500 mb-3">
-                Quick Info
+                RACE
               </h3>
 
               <div className="flex flex-wrap gap-2">
@@ -887,6 +890,21 @@ const [charDescription, setCharDescription] = useState<CharacterDescription>({
                     {race}
                   </span>
                 ))}
+              </div>
+            </div>
+
+            {/* QUICK INFO */}
+            <div className="mt-8">
+              <h3 className="text-xs uppercase tracking-wider text-slate-500 mb-3">
+                QUICK INFO
+              </h3>
+
+              <div className="flex flex-wrap gap-2">
+                {originalCharacter.powerLevel && (
+                  <span className="px-2 py-1 text-xs bg-slate-700 text-slate-200 rounded-md">
+                    {originalCharacter.powerLevel}
+                  </span>
+                )}
 
                 {originalCharacter.occupation && (
                   <span className="px-2 py-1 text-xs bg-slate-700 text-slate-200 rounded-md">
@@ -894,11 +912,14 @@ const [charDescription, setCharDescription] = useState<CharacterDescription>({
                   </span>
                 )}
 
-                {originalCharacter.powerLevel && (
-                  <span className="px-2 py-1 text-xs bg-slate-700 text-slate-200 rounded-md">
-                    {originalCharacter.powerLevel}
+                {originalCharacter.titles?.map((title, i) => (
+                  <span
+                    key={i}
+                    className="px-2 py-1 text-xs bg-slate-700 text-slate-200 rounded-md"
+                  >
+                    {title}
                   </span>
-                )}
+                ))}
               </div>
             </div>
 
@@ -908,7 +929,7 @@ const [charDescription, setCharDescription] = useState<CharacterDescription>({
             {/* RELATIONSHIP PREVIEW */}
             <div>
               <h3 className="text-xs uppercase tracking-wider text-slate-500 mb-3">
-                Relationships
+                Related Characters
               </h3>
 
               <div className="space-y-5 grid grid-cols-2 xl:grid-cols-3 2xl:grid-cols-5">
@@ -933,7 +954,7 @@ const [charDescription, setCharDescription] = useState<CharacterDescription>({
 
                 {originalCharacter.relationships?.length === 0 && (
                   <p className="text-xs text-slate-500">
-                    No relationships added.
+                    Add friends to your character...
                   </p>
                 )}
               </div>
@@ -952,51 +973,6 @@ const [charDescription, setCharDescription] = useState<CharacterDescription>({
         {/* CHARACTER DATA PAGE / EDIT CHAR DETAILS */}
         { originalCharacter && editingCharacter && (
         <div className="rounded-md shadow-lg pt-3 mb-3 bg-gray-100 dark:bg-gray-900 min-h-[calc(100vh-4rem)]">
-          
-          {/* FUNCTION SETTINGS */}
-          <div className="flex justify-end pb-3 px-3 relative">
-
-            <div className="flex items-center gap-3">
-              {charEditing && <FontAwesomeIcon icon={faSpinner} size="xl" spin />}
-              {!charEditing && <FontAwesomeIcon className="text-emerald-500" icon={faCheck} size="xl" />}
-
-              <button
-                title="Character actions"
-                className="px-2 py-1 border border-black dark:border-white text-gray-200 rounded-md dark:hover:bg-gray-300 transition group"
-                onClick={() => setShowCharacterActions(prev => !prev)}
-              >
-                <FontAwesomeIcon icon={faGear} className="text-black dark:text-white dark:group-hover:text-gray-800"/>
-              </button>
-
-              {showCharacterActions && (
-                <div 
-                  className="absolute right-3 top-12 z-20 w-48 rounded-md border border-gray-200 bg-white shadow-lg dark:bg-gray-800 dark:border-gray-700 p-2 space-y-2">
-                  <button
-                    title="Edit character data"
-                    onClick={() => {window.alert("EDIT CHARACTER");}}
-                    className="w-full text-left px-2 py-1 rounded hover:bg-gray-100 dark:hover:bg-emerald-700/50"
-                  >
-                    <FontAwesomeIcon icon={faPenToSquare} className="mr-2"/>Edit
-                  </button>
-                  
-                  <button
-                    title="Generate character image"
-                    onClick={() => {setShowGenImage(true); showUploadCharImage(true); setShowCharacterActions(false);}}
-                    className="w-full text-left px-2 py-1 rounded hover:bg-gray-100 dark:hover:bg-gray-700"
-                  >
-                    <FontAwesomeIcon icon={faPlus} className="mr-2"/>Generate Image
-                  </button>
-
-                  <button
-                    onClick={() => {deleteCharacter(editingCharacter.id); setShowCharacterActions(false);}}
-                    className="w-full text-left px-2 py-1 rounded text-red-500 hover:bg-red-100 dark:hover:bg-red-900/40"
-                  >
-                    <FontAwesomeIcon icon={faTrashCan} className="mr-2"/>Delete Character
-                  </button>
-                </div>
-              )}
-            </div>
-          </div>
 
           {/* CHARACTER CARD AND IMAGE FORMAT */}
           <div
@@ -1010,8 +986,8 @@ const [charDescription, setCharDescription] = useState<CharacterDescription>({
             }}
           >
 
-            <div className="px-2">
-              <div className="flex flex-wrap gap-2 border-b border-gray-300 dark:border-gray-700 pb-2">
+            <div className="flex justify-between pb-2 mx-2 border-b border-gray-300 dark:border-gray-700">
+              <div className="flex flex-wrap gap-2 pb-2">
                 {characterDetailTabs.map(tab => (
                   <button
                     key={tab.key}
@@ -1026,13 +1002,59 @@ const [charDescription, setCharDescription] = useState<CharacterDescription>({
                   </button>
                 ))}
               </div>
+
+              {/* FUNCTION SETTINGS */}
+              <div className="flex justify-end relative">
+
+                <div className="flex items-center gap-3">
+                  {charEditing && <FontAwesomeIcon icon={faSpinner} size="xl" spin />}
+                  {!charEditing && <FontAwesomeIcon className="text-emerald-500" icon={faCheck} size="xl" />}
+
+                  <button
+                    title="Character actions"
+                    className="px-2 py-1 border border-black dark:border-white text-gray-200 rounded-md dark:hover:bg-gray-300 transition group"
+                    onClick={() => setShowCharacterActions(prev => !prev)}
+                  >
+                    <FontAwesomeIcon icon={faGear} className="text-black dark:text-white dark:group-hover:text-gray-800"/>
+                  </button>
+
+                  {showCharacterActions && (
+                    <div 
+                      className="absolute right-0 top-12 z-20 w-48 rounded-md border border-gray-200 bg-white shadow-lg dark:bg-gray-800 dark:border-gray-700 p-2 space-y-2">
+                      <button
+                        title="Edit character data"
+                        onClick={() => {window.alert("EDIT CHARACTER");}}
+                        className="w-full text-left px-2 py-1 rounded hover:bg-gray-100 dark:hover:bg-emerald-700/50"
+                      >
+                        <FontAwesomeIcon icon={faPenToSquare} className="mr-2"/>Edit
+                      </button>
+                      
+                      <button
+                        title="Generate character image"
+                        onClick={() => {setShowGenImage(true); showUploadCharImage(true); setShowCharacterActions(false);}}
+                        className="w-full text-left px-2 py-1 rounded hover:bg-gray-100 dark:hover:bg-gray-700"
+                      >
+                        <FontAwesomeIcon icon={faPlus} className="mr-2"/>Generate Image
+                      </button>
+
+                      <button
+                        onClick={() => {deleteCharacter(editingCharacter.id); setShowCharacterActions(false);}}
+                        className="w-full text-left px-2 py-1 rounded text-red-500 hover:bg-red-100 dark:hover:bg-red-900/40"
+                      >
+                        <FontAwesomeIcon icon={faTrashCan} className="mr-2"/>Delete Character
+                      </button>
+                    </div>
+                  )}
+                </div>
+              </div>
+
             </div>
 
             <div className="pr-2 pl-2 pb-4">
               {activeCharacterTab === "overview" && (
                 <div className="space-y-3">
                   <div>
-                    <label className="text-sm font-medium text-gray-500 dark:text-gray-400">Short Description</label>
+                    <label className="text-sm font-medium text-gray-500 dark:text-gray-400">Background</label>
                     <textarea
                       rows={3}
                       className="w-full rounded-md pl-3 hover:border"
@@ -1067,29 +1089,21 @@ const [charDescription, setCharDescription] = useState<CharacterDescription>({
                 </div>
               )}
 
-              {activeCharacterTab === "background" && (
-                <div className="space-y-1">
-                  <label className="text-sm font-medium text-gray-500 dark:text-gray-400">Background</label>
-                  <textarea
-                    rows={10}
-                    className="w-full rounded-md pl-3 hover:border"
-                    placeholder="Full character backstory"
-                    value={editingCharacter.notes}
-                    onChange={e => setEditingCharacter({ ...editingCharacter, notes: e.target.value })}
-                  />
-                </div>
-              )}
-
               {activeCharacterTab === "abilities" && (
                 <div className="space-y-3">
                   <div>
-                    <label className="text-sm font-medium text-gray-500 dark:text-gray-400">Abilities List</label>
-                    <input
-                      className="w-full rounded-md pl-3 py-1 outline-none hover:border"
-                      value={editingCharacter.abilitiesText}
-                      onChange={(e) => setEditingCharacter({ ...editingCharacter, abilitiesText: e.target.value })}
-                      placeholder="Add abilities"
-                    />
+                    <label className="text-sm font-medium text-gray-500 dark:text-gray-400">Abilities/Skills</label>
+                    <div className="flex flex-wrap gap-2 pt-1">
+                      {originalCharacter.abilities?.map((ability, i) => (
+                        <span
+                          key={i}
+                          title={ability.description}
+                          className="px-2 py-1 text-sm bg-slate-700 text-slate-200 rounded-2xl hover:bg-sky-800 cursor-pointer"
+                        >
+                          {ability.ability}
+                        </span>
+                      ))}
+                    </div>
                   </div>
 
                   <div>
@@ -1100,22 +1114,37 @@ const [charDescription, setCharDescription] = useState<CharacterDescription>({
                   </div>
 
                   <div>
-                    <label className="text-sm font-medium text-gray-500 dark:text-gray-400">Strengths / Weaknesses</label>
+                    <label className="text-sm font-medium text-gray-500 dark:text-gray-400">Net Worth</label>
+                    <p className="mt-1 text-sm text-gray-700 dark:text-gray-300">
+                      {originalCharacter.netWorth || "The char is poor."}
+                    </p>
+                  </div>
+
+                  <div>
+                    <label className="text-sm font-medium text-gray-500 dark:text-gray-400">Character Tags</label>
                     <p className="mt-1 text-sm text-gray-700 dark:text-gray-300">
                       {originalCharacter.tags?.length > 0
-                        ? originalCharacter.tags.join(", ")
+                        ? originalCharacter.tags.join(",  ")
                         : "No strengths/weaknesses tagged."}
                     </p>
                   </div>
 
                   <div>
+                    <label className="text-sm font-medium text-gray-500 dark:text-gray-400">Character Titles</label>
+                    <p className="mt-1 text-sm text-gray-700 dark:text-gray-300">
+                      {originalCharacter.titles?.length > 0
+                        ? originalCharacter.titles.join(",  ")
+                        : "No titles added."}
+                    </p>
+                  </div>
+
+                  <div>
                     <label className="text-sm font-medium text-gray-500 dark:text-gray-400">Chapter Appearances</label>
-                    <input
-                      placeholder="Chapter Appearances"
-                      className="w-full rounded-md pl-3 py-1 outline-none hover:border"
-                      value={editingCharacter.chapters}
-                      onChange={(e) => setEditingCharacter({ ...editingCharacter, chapters: e.target.value })}
-                    />
+                    <p className="mt-1 text-sm text-gray-700 dark:text-gray-300">
+                      {originalCharacter.chapterAppearances?.length > 0
+                        ? originalCharacter.chapterAppearances.join(",  ")
+                        : "Add chapter appearances."}
+                    </p>
                   </div>
                 </div>
               )}
@@ -1125,7 +1154,7 @@ const [charDescription, setCharDescription] = useState<CharacterDescription>({
                   <div className="flex items-center gap-2">
                     <label className="text-sm font-medium text-gray-500 dark:text-gray-400">Filter by type</label>
                     <select
-                      className="rounded border border-gray-300 dark:border-gray-700 bg-transparent px-2 py-1"
+                      className="rounded border border-gray-300 dark:border-gray-700 dark:bg-gray-500 bg-transparent px-2 py-1"
                       value={relationshipTypeFilter}
                       onChange={(e) => setRelationshipTypeFilter(e.target.value)}
                     >

@@ -19,7 +19,6 @@ export type Character = {
   netWorth: string; // character worth in assets, money, etc...
 
   titles: string[]; // characters can have many titles, separated by comma
-  abilities: string[]; // abilities/skills
   powerLevel: string; // depends on the author's story
 
   personalityTraits: string[]; // "cold", "calculating", "loyal", "sarcastic", etc...
@@ -27,6 +26,11 @@ export type Character = {
 
   chapterAppearances: string[]; // I want to add it to search filter, when searching for chapters, then characters that appeared in certain chapters will show
   chapters: string; // first chapter appearance of the character
+  
+  abilities: {
+    ability: string; 
+    description: string;
+  }[]; // abilities/skills and description
 
   relationships: {
     charId: number; // save character id to easily filter
@@ -85,8 +89,9 @@ export type Book = {
 };
 
 export type Images = {
-  imageId: string; // created string, use it for book covers or others.
+  imageId: string; // created string crypto.UUID
   charId: number; // character ids for matching characters
+  bookId: string; // assign bookId for matching book covers
   createdAt: number;
   imageBlob: Blob; // convert and store the image file into a imageBlob
 }
@@ -115,9 +120,9 @@ class StoryDB extends Dexie {
   constructor() {
     super("StoryDB");
 
-    this.version(13).stores({
+    this.version(15).stores({
       books: "id, title", 
-      images: "imageId, charId",
+      images: "imageId, charId, bookId",
       notes: "++id, bookId, charId",
       characters: "id, bookId, name, *chapterAppearances, status, *setRaces",
       // ++id = auto increment
@@ -125,16 +130,25 @@ class StoryDB extends Dexie {
     })
     
     .upgrade(async (tx) => {
-      const books = await tx.table("books").toArray();
-      for (const book of books) {
-        await tx.table("books").put({
-          ...book,
-            genre: Array.isArray(book.genre)
-          ? book.genre
-          : book.genre
-            ? [book.genre]
-            : []
-        });
+      const characters = await tx.table("characters").toArray();
+
+      for (const char of characters) {
+
+        if (Array.isArray(char.abilities)) {
+
+          // Detect OLD format (string[])
+          if (char.abilities.length > 0 && typeof char.abilities[0] === "string") {
+
+            const newAbilities = char.abilities.map((ability: string) => ({
+              ability,
+              description: ""
+            }));
+
+            await tx.table("characters").update(char.id, {
+              abilities: newAbilities
+            });
+          }
+        }
       }
     });
 

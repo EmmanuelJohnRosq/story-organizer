@@ -1,16 +1,23 @@
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
-import { faFileImport } from "@fortawesome/free-solid-svg-icons";
+import { faFileImport, faCircleUser, faUpload } from "@fortawesome/free-solid-svg-icons";
 import { useCallback, useEffect, useState } from "react";
 import { db } from "../db";
 import { useNavigate } from "react-router-dom";
 import { useDropzone } from "react-dropzone";
 
+import { useGoogleAuth, type GoogleUser } from "../context/GoogleAuthContext";
+import { signOut } from "../services/googleAuth";
+
 export default function Header() {
     const navigate = useNavigate();
-
     const [openSearch, setOpenSearch] = useState(false);
     const [showFileModal, setShowFileModal] = useState(false);
     const [selectedFile, setSelectedFile] = useState<File | null>(null);
+
+    const { user, signIn } = useGoogleAuth();
+
+    const [googleUser, setGoogleUser] = useState<GoogleUser | null>(null);
+
 
     const toggleTheme = () => {
         setDarkTheme(prev => (prev === "dark" ? "light" : "dark"));
@@ -19,6 +26,19 @@ export default function Header() {
     const [darkTheme, setDarkTheme] = useState(
         localStorage.getItem("theme") || "dark"
     );
+
+    useEffect(() => {
+        if(googleUser) return;
+        const gUser = localStorage.getItem("googleConnected");
+        const userObject = JSON.parse(gUser!);
+        setGoogleUser(userObject);
+    }, []);
+
+    useEffect(() => {
+        if(!user) return;
+
+        setGoogleUser(user);
+    }, [user]);
 
     // DARK MODE EFFECT
     useEffect(() => {
@@ -160,6 +180,14 @@ export default function Header() {
         multiple: false,
     });
 
+    async function googleLogout() {
+        const isConfirmed = window.confirm("Are you sure you want to log out?");
+        if (isConfirmed) {
+            signOut();
+            setGoogleUser(null); // Call the actual logout function passed as a prop
+        }
+    }
+    
     return (
         <>
             {/* //Title/Menu/HEADER */}
@@ -286,27 +314,74 @@ export default function Header() {
                     </button>
                     </div>
 
+                    {googleUser ? (
+                    <>
+                        <div 
+                            className="w-9 h-9 rounded-full overflow-hidden shadow-lg border border-slate-700 transition hover:border-white cursor-pointer"
+                            onClick={() => googleLogout()}
+                        >
+                        <img
+                            src={googleUser.picture}
+                            className="w-full h-full object-cover rounded"
+                            title={`Account: ${googleUser.name}\n(${googleUser.email})`}
+                        />
+                        </div>
+                    </>
+                    ) : (
+                    <button
+                        className="p-1 transition border border-white text-gray-200 rounded-md hover:bg-gray-300 hover:text-gray-950 transition"
+                        onClick={() => signIn()} 
+                        title="Sign in to your Google Account"
+                    >
+                        <FontAwesomeIcon icon={faCircleUser} size="xl" />
+                    </button>
+                    )}
+
                     {/* EXPORT/IMPORT BUTTON */}
                     <div className="relative group inline-block group">
-                    <button 
-                        title="IMPORT/EXPORT FILE"
-                        className="p-1 transition border border-white text-gray-200 rounded-md hover:bg-gray-300 hover:text-gray-950 transition" 
-                        onClick={() => showModalFile(true)} > 
-                        <FontAwesomeIcon icon={faFileImport} size="xl" />
-                    </button>
+                        <button 
+                            title="IMPORT/EXPORT FILE"
+                            className="p-1 transition border border-white text-gray-200 rounded-md hover:bg-gray-300 hover:text-gray-950 transition" 
+                            onClick={() => showModalFile(true)} > 
+                            <FontAwesomeIcon icon={faFileImport} size="xl" />
+                        </button>
 
-                    {/* TOOLTIP IN PROGRESS */}
-                    <div
-                        className="
-                        top-full left-1/2 -translate-x-1/2 mt-2 z-50
-                        hidden
-                        pointer-events-none
-                        transition-opacity duration-200
-                        bg-black/80 text-white text-xs px-2 py-1 rounded-md
-                        whitespace-nowrap
-                        ">
-                        Import/Export File
+                        {/* TOOLTIP IN PROGRESS */}
+                        <div
+                            className="
+                            top-full left-1/2 -translate-x-1/2 mt-2 z-50
+                            hidden
+                            pointer-events-none
+                            transition-opacity duration-200
+                            bg-black/80 text-white text-xs px-2 py-1 rounded-md
+                            whitespace-nowrap
+                            ">
+                            Import/Export File
+                        </div>
                     </div>
+
+                    {/* THIS IS FOR SAVING TO GOOGLE DRIVE */}
+                    <div className="relative group inline-block group">
+                        <button 
+                            title="Back-up Data to Google Drive"
+                            className="p-1 transition border border-white text-gray-200 rounded-md hover:bg-gray-300 hover:text-gray-950 transition" 
+                            // onClick={() => showModalFile(true)} 
+                        > 
+                            <FontAwesomeIcon icon={faUpload} size="xl" />
+                        </button>
+
+                        {/* TOOLTIP IN PROGRESS */}
+                        <div
+                            className="
+                            top-full left-1/2 -translate-x-1/2 mt-2 z-50
+                            hidden
+                            pointer-events-none
+                            transition-opacity duration-200
+                            bg-black/80 text-white text-xs px-2 py-1 rounded-md
+                            whitespace-nowrap
+                            ">
+                            Back-up Data to Google Drive
+                        </div>
                     </div>
 
                 </div>  
