@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useParams } from "react-router-dom";
 
-import { db, type Book, type Notes } from "../db";
+import { db, type Book, type Notes, type Character } from "../db";
 
 import { FontAwesomeIcon} from "@fortawesome/react-fontawesome";
 import { faPlus, faMinus, faTrashCan} from "@fortawesome/free-solid-svg-icons";
@@ -26,11 +26,14 @@ export default function UserPage() {
 
     const [userNotes, setUserNotes] = useState<Notes[]>([]);
 
+    const [recentCharacter, setRecentCharacter] = useState<Character | null>(null);
+    const [tipIndex, setTipIndex] = useState(0);
+
     // USER DRAGGIN STATE
     const [setDrag, setIsDragOver] = useState(false);
     const [isDraggingBook, setIsDraggingBook] = useState(false)
 
-    const [Addnewbooks, setAddnewBooks] = useState(false);
+    const [Addnewbooks, setAddnewBooks] = useState(true);
 
     const notesSubject = "";
     const notesContent = "";
@@ -51,11 +54,84 @@ export default function UserPage() {
         return word.charAt(0).toUpperCase() + word.slice(1);
     }
 
+    const dashboardTips = [
+        "Tip: Add at least 3 tags per book so searching later is easier.",
+        "Story Tip: Give each main character a clear want and fear.",
+        "App Tip: Use quick notes for scene ideas before they disappear.",
+        "Story Tip: If a scene feels flat, raise the conflict or stakes.",
+        "App Tip: Back up your data regularly using the header upload button.",
+        "Story Tip: End chapters with a hook to pull readers forward.",
+
+        // Story Structure
+        "Story Tip: Every scene should change something—emotion, information, or power.",
+        "Story Tip: Introduce conflict early. Calm beginnings can still hide tension.",
+        "Story Tip: If your villain feels weak, strengthen their motivation, not just their power.",
+        "Story Tip: Let characters make mistakes. Perfect characters are forgettable.",
+        "Story Tip: Raise stakes gradually—don’t peak too early in your story.",
+        "Story Tip: Subplots should mirror or challenge the main theme.",
+
+        // Character Development
+        "Character Tip: Give each major character a contradiction.",
+        "Character Tip: Track how your character changes from Chapter 1 to the final chapter.",
+        "Character Tip: Strong backstories influence decisions, not just personality.",
+        "Character Tip: Relationships create tension—update connections as the story evolves.",
+        "Character Tip: A flaw should actively cause problems in the plot.",
+        "Character Tip: Side characters should want something too.",
+
+        // Worldbuilding
+        "World Tip: Define 3 rules of your world before expanding it.",
+        "World Tip: Culture affects dialogue, behavior, and conflict.",
+        "World Tip: Limitations make magic systems more interesting.",
+        "World Tip: Show the world through character perspective, not exposition.",
+        "World Tip: Track locations to avoid continuity errors.",
+
+        // Organization
+        "Organizer Tip: Use consistent naming for chapters and arcs.",
+        "Organizer Tip: Review your character list monthly to remove unused ones.",
+        "Organizer Tip: Keep timeline notes to prevent plot holes.",
+        "Organizer Tip: Tag scenes by emotion or tension level.",
+        "Organizer Tip: Store unused ideas instead of deleting them—you might reuse them.",
+        "Organizer Tip: Group characters by faction, family, or role for clarity.",
+
+        // Productivity
+        "Focus Tip: Write messy first, organize later.",
+        "Focus Tip: Set a small daily word goal to stay consistent.",
+        "Focus Tip: If stuck, write the next conflict instead of the next event.",
+        "Focus Tip: Take short breaks—burnout kills creativity.",
+        "Focus Tip: Re-read your last scene before starting a new one.",
+        "Focus Tip: Progress over perfection.",
+
+        // App-Specific
+        "App Tip: Keep character descriptions updated as the story progresses.",
+        "App Tip: Use notes to track unresolved plot threads.",
+        "App Tip: Assign clear roles to characters—mentor, rival, love interest, etc.",
+        "App Tip: Regularly export your data as a backup.",
+        "App Tip: Update your book cover to stay visually inspired.",
+        "App Tip: Use tags to track themes like betrayal, redemption, or revenge.",
+    ];
+
+    const mostRecentBook = books.length > 0 ? books[books.length - 1] : null;
+
+    const getCharacterSlug = (character: Character) => {
+        const charName = character.name
+            .toLowerCase()
+            .replace(/[^a-z0-9]+/g, "-")
+            .replace(/(^-|-$)/g, "");
+
+        return `${character.id}-${upcaseLetter(charName)}`;
+    };
+
     const loadBooks = async () => {
         const allBooks = await db.books.toArray();
         allBooks.sort((a, b) => a.createdAt - b.createdAt);
         setBooks(allBooks);
     }
+
+    const loadRecentCharacter = async () => {
+        const allCharacters = await db.characters.toArray();
+        allCharacters.sort((a, b) => b.updatedAt - a.updatedAt);
+        setRecentCharacter(allCharacters[0] ?? null);
+    };
 
     // FILTERS USER NOTES FOR USER PAGE
     const loadUserNotes = async () => {
@@ -72,7 +148,16 @@ export default function UserPage() {
     useEffect(() => {
         loadBooks();
         loadUserNotes();
+        loadRecentCharacter();
     }, []);
+
+    useEffect(() => {
+        const interval = window.setInterval(() => {
+            setTipIndex(Math.floor(Math.random() * dashboardTips.length));
+        }, 45000);
+
+        return () => window.clearInterval(interval);
+    }, [dashboardTips.length]);
 
     // DRAG AND DROP TO DELETE BOOK CARDS
     const handleDragStart = (e: React.DragEvent<HTMLDivElement>) => {
@@ -179,6 +264,12 @@ export default function UserPage() {
     function selectBook(id: string) {
         navigate(`/book/${id}`);
         setDraftNote(null);
+    }
+
+     function openRecentCharacter() {
+        if (!recentCharacter) return;
+
+        navigate(`/book/${recentCharacter.bookId}/${getCharacterSlug(recentCharacter)}`);
     }
 
     // COLOR PICKER
@@ -355,9 +446,20 @@ export default function UserPage() {
 
     // Cancel the permanent deletion
     setDeletedNote(null);
-  }
+    }
+
+    const titleRef = useRef<HTMLInputElement>(null);
+
+    // SCROLL BEHAVIOR AFTER opening create book form
+    useEffect(() => {
+        if (!Addnewbooks && titleRef.current) {
+            titleRef.current?.scrollIntoView({behavior: "smooth" });
+            titleRef.current.focus();
+        }
+    }, [Addnewbooks]);
     
     return (
+
     // MAIN PARENT CONTAINER DIV CLOSER
     <div className="w-full mx-auto flex justify-center gap-2 pt-15">
     
@@ -367,95 +469,163 @@ export default function UserPage() {
             {/* ADD BOOK FORM SUBMIT */}
             <div className="sticky top-15">
 
-                <div className="flex-1 rounded-md shadow-lg bg-gray-100 dark:bg-gray-900 mb-2 p-3 flex justify-between transition duration-300">
+                <div className="overflow-y-auto overflow-x-hidden notes-scroll overflow-contain">
+                    {/* TOP DASHBOARD SECTION */}
+                    <section className="rounded-md shadow-lg bg-gray-100 dark:bg-gray-900 p-3 space-y-3 mb-2">
+                        <div className="flex flex-wrap items-center justify-between gap-2">
+                            <h2 className="text-xl font-semibold">Dashboard</h2>
+                            <p className="text-xs text-gray-500 dark:text-gray-400">Welcome back — keep your story momentum.</p>
+                        </div>
 
-                <h3 className="text-2xl font-semibold">Create New Book</h3>
+                        {/* Stats Row */}
+                        <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
+                            <div className="rounded-md border border-gray-200 dark:border-gray-700 p-3">
+                                <p className="text-xs text-gray-500">Books</p>
+                                <p className="text-2xl font-bold">{books.length}</p>
+                            </div>
+                            <div className="rounded-md border border-gray-200 dark:border-gray-700 p-3">
+                                <p className="text-xs text-gray-500">User Notes</p>
+                                <p className="text-2xl font-bold">{userNotes.length}</p>
+                            </div>
+                            <div className="rounded-md border border-gray-200 dark:border-gray-700 p-3">
+                                <p className="text-xs text-gray-500">Draft Note</p>
+                                <p className="text-sm font-semibold mt-1">{draftNote ? "In progress" : "No active draft"}</p>
+                            </div>
+                        </div>
 
-                <div className="flex justify-center">
-                    <button 
-                    value={bookTitle}
-                    className="border-gray-500 border-1 text-black rounded hover:bg-gray-300 hover:text-gray-950 px-2 dark:border-white dark:text-white"
-                    onClick={addBooksState}>
-                        {Addnewbooks ? <FontAwesomeIcon icon={faPlus} size="xs" className="transition duration-500"/> : <FontAwesomeIcon icon={faMinus} size="xs"/>}
-                    </button>
-                </div>
+                        {/* Quick Actions + Continue Writing */}
+                        <div className="grid grid-cols-1 lg:grid-cols-1 gap-2">
+                            <div className="rounded-md border border-gray-200 dark:border-gray-700 p-3">
+                                <h3 className="font-semibold mb-2">Continue Writing</h3>
+                                <div className="space-y-2">
+                                    <div className="flex items-center justify-between gap-2">
+                                        <p className="text-sm truncate">Recent book: <span className="font-semibold">{mostRecentBook?.title ?? "No books yet"}</span></p>
+                                        {mostRecentBook && (
+                                            <button
+                                                type="button"
+                                                className="px-2 py-1 text-xs rounded-md bg-gray-800 text-white hover:bg-gray-700 transition"
+                                                onClick={() => selectBook(mostRecentBook.id)}
+                                            >
+                                                Open
+                                            </button>
+                                        )}
+                                    </div>
+                                    <div className="flex items-center justify-between gap-2">
+                                        <p className="text-sm truncate">Recent character: <span className="font-semibold">{recentCharacter?.name ?? "No characters yet"}</span></p>
+                                        {recentCharacter && (
+                                            <button
+                                                type="button"
+                                                className="px-2 py-1 text-xs rounded-md bg-gray-800 text-white hover:bg-gray-700 transition"
+                                                onClick={openRecentCharacter}
+                                            >
+                                                Open
+                                            </button>
+                                        )}
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
 
-                </div>
+                        {/* Rotating Tip Card */}
+                        <div className="rounded-md border border-emerald-300 dark:border-emerald-700 bg-emerald-50/80 dark:bg-emerald-900/20 p-3">
+                            <p className="text-xs font-semibold text-emerald-700 dark:text-emerald-300 mb-1">Tips for StoryDreamer. Creating stories from imagination.</p>
+                            <p className="text-sm min-h-6 transition-all duration-300">{dashboardTips[tipIndex]}</p>
+                        </div>
 
-                {/* CREATE NEW BOOK FORM */}
-                {(!Addnewbooks && 
-                
-                <div className="flex-1 rounded-md shadow-lg p-3 bg-gray-100 dark:bg-gray-900 transition duration-300 animate-fadeDown">
-                <form className="space-y-2">
-                
-                {/* Title */}
-                <div>
-                    <label className="block text-sm font-medium mb-1">
-                    Title
-                    </label>
-                    <input
-                    className="w-full border rounded-md px-4 py-2 focus:outline-none focus:ring-2 focus:ring-blue-400 placeholder-gray-400 dark:placeholder-gray-600"
-                    value={bookTitle}
-                    onChange={e => setBookTitle(e.target.value)}
-                    onKeyDown={(e) => {
-                        if (e.key === "Enter") addBook();
-                        }}
-                    title="Add new book"
-                    placeholder="Enter book title"
-                    />
-                </div>
+                        {/* CREATE BOOK FORM TITLE */}
+                        <div className="flex justify-between rounded-md border border-gray-200 dark:border-gray-700 p-3">
+                            <h3 className="text-2xl font-semibold">Create New Book</h3>
 
-                {/* Summary */}
-                <div>
-                    <label className="block text-sm font-medium mb-1">
-                    Summary
-                    </label>
-                    <textarea
-                    rows={4}
-                    className="w-full border rounded-md px-4 py-2 focus:outline-none focus:ring-2 focus:ring-blue-400 placeholder-gray-400 dark:placeholder-gray-600"
-                    placeholder="Enter book summary"
-                    onFocus={(e) => autoResize(e)}
-                    value={bookSummary}
-                    onChange={e => setBookSummary(e.target.value)}
-                    onBlur={(e) => { e.currentTarget.style.height = "auto";}}
-                    />
-                </div>
+                            <div className="flex justify-center">
+                                <button 
+                                    value={bookTitle}
+                                    className="border-gray-500 border-1 text-black rounded hover:bg-gray-300 hover:text-gray-950 px-2 dark:border-white dark:text-white"
+                                    onClick={addBooksState}
+                                    title="Add a book"
+                                >
+                                    {Addnewbooks ? <FontAwesomeIcon icon={faPlus} size="xs" className="transition duration-500"/> : <FontAwesomeIcon icon={faMinus} size="xs"/>}
+                                </button>
+                            </div>
+                        </div>
 
-                {/* SAMPLE GENRE */}
-                <div>
-                    <label className="block text-sm font-medium mb-1">
-                    Book Genre
-                    </label>
-                    <input
+                    </section>
+
+                    {/* CREATE NEW BOOK FORM */}
+                    {(!Addnewbooks && 
+                    
+                    <div className="flex-1 rounded-md shadow-lg p-3 mb-2 bg-gray-100 dark:bg-gray-900 transition duration-300 animate-fadeDown">
+                    <form className="space-y-2">
+                    
+                    {/* Title */}
+                    <div>
+                        <label className="block text-sm font-medium mb-1">
+                        Title
+                        </label>
+                        <input
+                        ref={titleRef}
                         className="w-full border rounded-md px-4 py-2 focus:outline-none focus:ring-2 focus:ring-blue-400 placeholder-gray-400 dark:placeholder-gray-600"
-                        placeholder="Enter genre separated by comma"
-                        value={bookGenre}
-                        onChange={e => setBookGenre(e.target.value)}
-                    />
-                </div>
+                        value={bookTitle}
+                        onChange={e => setBookTitle(e.target.value)}
+                        onKeyDown={(e) => {
+                            if (e.key === "Enter") addBook();
+                            }}
+                        title="Add new book"
+                        placeholder="Enter book title"
+                        />
+                    </div>
 
-                {/* Current Volume */}
-                <div>
-                    <label className="block text-sm font-medium mb-1">
-                    Current Volume
-                    </label>
-                    <input
-                    type="number"
-                    className="w-full border rounded-md px-4 py-2 focus:outline-none focus:ring-2 focus:ring-blue-400 placeholder-gray-400 dark:placeholder-gray-600"
-                    placeholder="0"
-                    onChange={e => setBookVolume(e.target.value)}
-                    />
-                </div>
+                    {/* Summary */}
+                    <div>
+                        <label className="block text-sm font-medium mb-1">
+                        Summary
+                        </label>
+                        <textarea
+                        rows={4}
+                        className="w-full border rounded-md px-4 py-2 focus:outline-none focus:ring-2 focus:ring-blue-400 placeholder-gray-400 dark:placeholder-gray-600"
+                        placeholder="Enter book summary"
+                        onFocus={(e) => autoResize(e)}
+                        value={bookSummary}
+                        onChange={e => setBookSummary(e.target.value)}
+                        onBlur={(e) => { e.currentTarget.style.height = "auto";}}
+                        />
+                    </div>
 
-                <button
-                    type="button"
-                    className="w-full bg-blue-500 text-white py-2 rounded-md hover:bg-blue-600 transition"
-                    onClick={addBook}
-                >
-                    SAVE
-                </button>
-                </form>
-                </div>)}
+                    {/* SAMPLE GENRE */}
+                    <div>
+                        <label className="block text-sm font-medium mb-1">
+                        Book Genre
+                        </label>
+                        <input
+                            className="w-full border rounded-md px-4 py-2 focus:outline-none focus:ring-2 focus:ring-blue-400 placeholder-gray-400 dark:placeholder-gray-600"
+                            placeholder="Enter genre separated by comma"
+                            value={bookGenre}
+                            onChange={e => setBookGenre(e.target.value)}
+                        />
+                    </div>
+
+                    {/* Current Volume */}
+                    <div>
+                        <label className="block text-sm font-medium mb-1">
+                        Current Volume
+                        </label>
+                        <input
+                        type="number"
+                        className="w-full border rounded-md px-4 py-2 focus:outline-none focus:ring-2 focus:ring-blue-400 placeholder-gray-400 dark:placeholder-gray-600"
+                        placeholder="0"
+                        onChange={e => setBookVolume(e.target.value)}
+                        />
+                    </div>
+
+                    <button
+                        type="button"
+                        className="w-full bg-blue-500 text-white py-2 rounded-md hover:bg-blue-600 transition"
+                        onClick={addBook}
+                    >
+                        SAVE
+                    </button>
+                    </form>
+                    </div>)}
+                </div>
                 
             </div>
 
@@ -463,8 +633,8 @@ export default function UserPage() {
         
         {/* CENTER CONTAINER */}
         <div className="w-full max-w-3xl mx-auto">
-
-            {/* BOOK LIST / HOMEPAGE */}
+            
+            {/* LIBRARY SECTION BOOK LIST / HOMEPAGE */}
             <div className="p-3 mb-3 rounded-md shadow-lg bg-gray-100 dark:bg-gray-900">
                 
                 <div className="py-4 gap-2 flex xs:hidden">
@@ -501,12 +671,12 @@ export default function UserPage() {
 
                 {/* SHOW BOOK LIST */}
                 {/* BOOK CARDS */}
-                <h2 className="text-2xl font-semibold">My Books</h2>
+                <h2 className="text-2xl font-semibold">Library</h2>
 
                 {!books.length && (
                 <div className="w-full flex justify-center items-center py-20 px-10"> 
                     <h1 className="text-3xl font-bold text-gray-400 text-center">
-                    PLEASE ADD BOOKS HERE. INSTEAD OF JUST LETTING THEM GATHER DUST IN YOUR INSANE MIND...
+                        PLEASE ADD BOOKS HERE. INSTEAD OF JUST LETTING THEM GATHER DUST IN YOUR INSANE MIND...
                     </h1>
                 </div>
                 )}
@@ -566,177 +736,177 @@ export default function UserPage() {
 
         {/* RIGHT SIDE CONTAINER */}
         <div className="hidden xs:block flex-1 flex flex-col relative">
-            
+
             {/* NOTES CONTAINER */}
             <div className="PARENT CONTAINER FOR THE NOTES PANEL sticky top-15">
 
-            {/* NOTES TITLE */}
-            <div className="flex-1 rounded-md shadow-lg p-3 bg-gray-100 dark:bg-gray-900 mb-2 flex justify-between">
+                {/* NOTES TITLE */}
+                <div className="flex-1 rounded-md shadow-lg p-3 bg-gray-100 dark:bg-gray-900 mb-2 flex justify-between">
 
-                <h3 
-                onClick={displayNotes}
-                className="text-2xl font-semibold cursor-pointer hover:text-blue-400 select-none"
-                title="Click to minimize notes"
-                role="button"
-                >Notes</h3>
+                    <h3 
+                    onClick={displayNotes}
+                    className="text-2xl font-semibold cursor-pointer hover:text-blue-400 select-none"
+                    title="Click to minimize notes"
+                    role="button"
+                    >Notes</h3>
 
-                <div className="flex justify-center">
-                <button 
-                    value={bookTitle}
-                    className="border-gray-500 border-1 text-black rounded hover:bg-gray-300 hover:text-gray-950 px-2 transition dark:border-white dark:text-white"
-                    onClick={addDraftNotes}>
-                    <FontAwesomeIcon icon={faPlus} size="xs"/>
-                </button>
+                    <div className="flex justify-center">
+                    <button 
+                        value={bookTitle}
+                        className="border-gray-500 border-1 text-black rounded hover:bg-gray-300 hover:text-gray-950 px-2 transition dark:border-white dark:text-white"
+                        onClick={addDraftNotes}>
+                        <FontAwesomeIcon icon={faPlus} size="xs"/>
+                    </button>
+                    </div>
+
                 </div>
 
-            </div>
-
-                {/* NOTES CONTENTS */}
-                <div className="h-[calc(100vh-8rem)] overflow-y-auto overflow-x-hidden notes-scroll overflow-contain">
-                    
-                    {/* THIS IS FOR THE USER NOTES */}
-                    { notesShowState && (
-                    <div 
-                        className=""
-                    >
-                        {[ ...(draftNote ? [draftNote] : []), ...userNotes ].map(notes => (
+                    {/* NOTES CONTENTS */}
+                    <div className="h-[calc(100vh-8rem)] overflow-y-auto overflow-x-hidden notes-scroll overflow-contain">
+                        
+                        {/* THIS IS FOR THE USER NOTES */}
+                        { notesShowState && (
                         <div 
-                            className={`${colorMap[notes.color]} relative p-1 rounded-md shadow-md mb-2 bg-gray-100 dark:bg-gray-900 cursor-pointer animate-fadeDown`}
-                            key={notes.id ?? notes.notesId}
-                            data-id={notes.id}
+                            className=""
                         >
+                            {[ ...(draftNote ? [draftNote] : []), ...userNotes ].map(notes => (
+                            <div 
+                                className={`${colorMap[notes.color]} relative p-1 rounded-md shadow-md mb-2 bg-gray-100 dark:bg-gray-900 cursor-pointer animate-fadeDown`}
+                                key={notes.id ?? notes.notesId}
+                                data-id={notes.id}
+                            >
 
-                            <div className="flex justify-between pb-1"> 
-                            
-                            <span className="text-xs text-gray-800 dark:text-gray-400">
-                                {new Date(notes.createdAt).toLocaleString("en-US", {
-                                month: "short",
-                                day: "numeric",
-                                year: "numeric",
-                                hour: "2-digit",
-                                minute: "2-digit",
-                                })}
-                            </span>
-
-                            <button 
-                                className="hover:bg-neutral-300/50 rounded-2xl group"
-                                onClick={() => {setNoteToDelete(notes);}}>
-                                <svg
-                                xmlns="http://www.w3.org/2000/svg"
-                                className="h-5 w-5 text-gray-700 dark:text-gray-400 group-hover:text-red-500"
-                                fill="none"
-                                viewBox="0 0 24 24"
-                                stroke="currentColor"
-                                strokeWidth={2}
-                                >
-                                <path strokeLinecap="round" strokeLinejoin="round" d="M6 6l12 12M6 18L18 6" />
-                                </svg>
-                            </button>
-
-                            </div>
-                            
-                            <textarea
-                            className="
-                            w-full text-sm
-                            rounded-md 
-                            px-1
-                            focus:outline-none focus:ring-2 focus:ring-blue-400 
-                            hover:ring-blue-400 hover:ring-2
-                            placeholder-gray-400 dark:placeholder-gray-400 
-                            resize-none
-                            overflow-hidden
-                            transition-all duration-200
-                            "
-                            ref={!notes.id ? draftTextareaRef : null}
-                            placeholder="Enter Notes"
-                            onFocus={(e) => {autoResize(e); setOnFocusId(String(notes.id!)); setHideSave(true);
-                                if (notes.id) {
-                                setDraftstate(false);
-                                }
-                                else {
-                                setDraftstate(true);
-                                }
-                            }}
-                            rows={3}
-                            value={notes.content}
-                            onChange={(e) => {
-                                if (!notes.id) {
-                                // This is draft
-                                setDraftNote(prev =>
-                                    prev ? { ...prev, content: e.target.value } : prev
-                                );
-                                } 
-                                else {
-                                // This is saved note
-                                setUserNotes(prev =>
-                                    prev.map(note =>
-                                    note.id === notes.id
-                                        ? { ...note, content: e.target.value }
-                                        : note
-                                    )
-                                );
-                                }
-                            }}
-                            onKeyDown={(e) => {
-                                if (e.key === "Enter" && !e.shiftKey) {
-                                e.preventDefault();
-                                (e.target as HTMLElement).blur();
-                                (saveNote(notes));
-                                }
-                            }}
-                            onBlur={(e) => { e.currentTarget.style.height = "auto";}}
-                            />
-
-                            {(hideSave && (notes.id ? Number(onFocusId) === notes.id : draftNoteState) &&
-                            <div className="flex justify-end gap-1">
-                                {/* {(notSaved &&
-                                <span>Not saved</span>
-                                )} */}
+                                <div className="flex justify-between pb-1"> 
+                                
+                                <span className="text-xs text-gray-800 dark:text-gray-400">
+                                    {new Date(notes.createdAt).toLocaleString("en-US", {
+                                    month: "short",
+                                    day: "numeric",
+                                    year: "numeric",
+                                    hour: "2-digit",
+                                    minute: "2-digit",
+                                    })}
+                                </span>
 
                                 <button 
-                                className="flex px-4 py-1 bg-neutral-500 rounded-xl hover:bg-neutral-600"
-                                onClick={() => {setHideSave(false); setDraftNote(null);}}
-                                >
-                                Cancel
-                                </button>
-
-                                <button 
-                                className="flex px-4 py-1 bg-blue-700 rounded-xl hover:bg-blue-800"
-                                onClick={() => {saveNote(notes);}}
-                                >
-                                Save 
-                                </button>
-                            </div>
-                            )}
-
-                            {noteToDelete && noteToDelete.id === notes.id && (
-                            <div className="absolute inset-0 bg-black/40 backdrop-blur-sm flex items-center justify-center rounded-md z-10">
-                                <div className="bg-white dark:bg-gray-800 p-3 rounded-md shadow-lg text-center w-40">
-                                <p className="text-sm mb-2">Delete this note?</p>
-                                <div className="flex justify-between">
-                                    <button
-                                    onClick={() => handleDeleteNote(noteToDelete!)}
-                                    className="text-red-500 text-sm hover:scale-105"
+                                    className="hover:bg-neutral-300/50 rounded-2xl group"
+                                    onClick={() => {setNoteToDelete(notes);}}>
+                                    <svg
+                                    xmlns="http://www.w3.org/2000/svg"
+                                    className="h-5 w-5 text-gray-700 dark:text-gray-400 group-hover:text-red-500"
+                                    fill="none"
+                                    viewBox="0 0 24 24"
+                                    stroke="currentColor"
+                                    strokeWidth={2}
                                     >
-                                    Delete
-                                    </button>
-                                    <button
-                                    onClick={() => setNoteToDelete(null)}
-                                    className="text-gray-500 text-sm"
+                                    <path strokeLinecap="round" strokeLinejoin="round" d="M6 6l12 12M6 18L18 6" />
+                                    </svg>
+                                </button>
+
+                                </div>
+                                
+                                <textarea
+                                className="
+                                w-full text-sm
+                                rounded-md 
+                                px-1
+                                focus:outline-none focus:ring-2 focus:ring-blue-400 
+                                hover:ring-blue-400 hover:ring-2
+                                placeholder-gray-400 dark:placeholder-gray-400 
+                                resize-none
+                                overflow-hidden
+                                transition-all duration-200
+                                "
+                                ref={!notes.id ? draftTextareaRef : null}
+                                placeholder="Enter Notes"
+                                onFocus={(e) => {autoResize(e); setOnFocusId(String(notes.id!)); setHideSave(true);
+                                    if (notes.id) {
+                                    setDraftstate(false);
+                                    }
+                                    else {
+                                    setDraftstate(true);
+                                    }
+                                }}
+                                rows={3}
+                                value={notes.content}
+                                onChange={(e) => {
+                                    if (!notes.id) {
+                                    // This is draft
+                                    setDraftNote(prev =>
+                                        prev ? { ...prev, content: e.target.value } : prev
+                                    );
+                                    } 
+                                    else {
+                                    // This is saved note
+                                    setUserNotes(prev =>
+                                        prev.map(note =>
+                                        note.id === notes.id
+                                            ? { ...note, content: e.target.value }
+                                            : note
+                                        )
+                                    );
+                                    }
+                                }}
+                                onKeyDown={(e) => {
+                                    if (e.key === "Enter" && !e.shiftKey) {
+                                    e.preventDefault();
+                                    (e.target as HTMLElement).blur();
+                                    (saveNote(notes));
+                                    }
+                                }}
+                                onBlur={(e) => { e.currentTarget.style.height = "auto";}}
+                                />
+
+                                {(hideSave && (notes.id ? Number(onFocusId) === notes.id : draftNoteState) &&
+                                <div className="flex justify-end gap-1">
+                                    {/* {(notSaved &&
+                                    <span>Not saved</span>
+                                    )} */}
+
+                                    <button 
+                                    className="flex px-4 py-1 bg-neutral-500 rounded-xl hover:bg-neutral-600"
+                                    onClick={() => {setHideSave(false); setDraftNote(null);}}
                                     >
                                     Cancel
                                     </button>
+
+                                    <button 
+                                    className="flex px-4 py-1 bg-blue-700 rounded-xl hover:bg-blue-800"
+                                    onClick={() => {saveNote(notes);}}
+                                    >
+                                    Save 
+                                    </button>
                                 </div>
+                                )}
+
+                                {noteToDelete && noteToDelete.id === notes.id && (
+                                <div className="absolute inset-0 bg-black/40 backdrop-blur-sm flex items-center justify-center rounded-md z-10">
+                                    <div className="bg-white dark:bg-gray-800 p-3 rounded-md shadow-lg text-center w-40">
+                                    <p className="text-sm mb-2">Delete this note?</p>
+                                    <div className="flex justify-between">
+                                        <button
+                                        onClick={() => handleDeleteNote(noteToDelete!)}
+                                        className="text-red-500 text-sm hover:scale-105"
+                                        >
+                                        Delete
+                                        </button>
+                                        <button
+                                        onClick={() => setNoteToDelete(null)}
+                                        className="text-gray-500 text-sm"
+                                        >
+                                        Cancel
+                                        </button>
+                                    </div>
+                                    </div>
                                 </div>
+                                )}
+
                             </div>
-                            )}
-
+                            ))}
                         </div>
-                        ))}
-                    </div>
-                    )}
+                        )}
 
-                </div>
+                    </div>
 
             </div>
 

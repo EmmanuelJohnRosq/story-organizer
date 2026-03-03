@@ -1020,7 +1020,7 @@ const [charDescription, setCharDescription] = useState<CharacterDescription>({
 
                   {showCharacterActions && (
                     <div 
-                      className="absolute right-0 top-12 z-20 w-48 rounded-md border border-gray-200 bg-white shadow-lg dark:bg-gray-800 dark:border-gray-700 p-2 space-y-2">
+                      className="absolute right-0 top-10 z-20 w-48 rounded-md border border-gray-200 bg-white shadow-lg dark:bg-gray-800 dark:border-gray-700 p-2 space-y-2">
                       <button
                         title="Edit character data"
                         onClick={() => {window.alert("EDIT CHARACTER");}}
@@ -1030,8 +1030,16 @@ const [charDescription, setCharDescription] = useState<CharacterDescription>({
                       </button>
                       
                       <button
-                        title="Generate character image"
+                        title="upload character image"
                         onClick={() => {setShowGenImage(true); showUploadCharImage(true); setShowCharacterActions(false);}}
+                        className="w-full text-left px-2 py-1 rounded hover:bg-gray-100 dark:hover:bg-gray-700"
+                      >
+                        <FontAwesomeIcon icon={faPlus} className="mr-2"/>Upload Image
+                      </button>
+
+                      <button
+                        title="Generate character image"
+                        onClick={() => {setShowGenImage(true); showUploadCharImage(false); setShowCharacterActions(false);}}
                         className="w-full text-left px-2 py-1 rounded hover:bg-gray-100 dark:hover:bg-gray-700"
                       >
                         <FontAwesomeIcon icon={faPlus} className="mr-2"/>Generate Image
@@ -1466,13 +1474,7 @@ const [charDescription, setCharDescription] = useState<CharacterDescription>({
             <div className="dark:text-black w-9/10 min-w-0 md:max-w-120 mx-auto bg-white dark:bg-gray-100 max-h-screen overflow-y-auto rounded-md shadow-lg" onMouseDown={(e) => e.stopPropagation()}>
 
               {/* EXIT BUTTON AT THE TOP OF MODAL */}
-              <div id="Close modal" className="flex justify-between pl-1">
-                <button
-                  onClick={() => showUploadCharImage(!uploadCharImage)}
-                  className="px-1 text-sm hover:text-semibold hover:text-blue-500 hover:underline"
-                >
-                  {uploadCharImage === true ? ('Generate...') : ('Upload')}
-                </button>
+              <div id="Close modal" className="flex justify-end pl-1">
 
                 <button 
                   className="hover:bg-neutral-300/50 rounded-2xl group"

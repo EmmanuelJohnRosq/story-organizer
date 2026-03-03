@@ -1,5 +1,5 @@
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
-import { faFileImport, faCircleUser, faUpload, faSpinner, faDownload } from "@fortawesome/free-solid-svg-icons";
+import { faFileImport, faCircleUser, faUpload, faSpinner, faDownload, faArrowLeft, faPenToSquare, faPlus, faTrashCan, faGear, faUser } from "@fortawesome/free-solid-svg-icons";
 import { useCallback, useEffect, useState } from "react";
 import { db } from "../db";
 import { useNavigate, useParams } from "react-router-dom";
@@ -11,38 +11,53 @@ import { deleteAllBackups, downloadDriveFile, findBackupFile, uploadJsonToDrive 
 
 export default function Header() {
     const navigate = useNavigate();
-     const check = useParams();
-     const userPage = !check;
-     const bookPage = check.currentBookId;
-     const characterPage = check.characterSlug;
+
+    const { currentBookId, characterSlug } = useParams();
+
+    const [bookTitle, setBookTitle] = useState("");
+    const [characterName, setCharacterName] = useState("");
+
+    const [showAccountSettings, setShowAccountSettings] = useState(false);
+
+    const isBookContext = Boolean(currentBookId);
+
+    const formatCharacterName = (slug: string) => {
+        const [, slugName = ""] = slug.split(/-(.+)/);
+
+        return slugName
+            .split("-")
+            .filter(Boolean)
+            .map(word => word.charAt(0).toUpperCase() + word.slice(1))
+            .join(" ");
+    };
 
     useEffect(() => {
-        if(userPage) {
-            const backtoUser = async () => {
-                setBookTitle("");
-                setCharacterName("");
-            }
-        backtoUser();
+        if (!currentBookId) {
+            setBookTitle("");
+            setCharacterName("");
+            return;
         }
-        if(!bookPage) return;
-        const fetchBookTitle = async () => {
-            const response = await db.books.get(bookPage);
-            const result = await response!.title;
-            setBookTitle(result);
-        };
-        if(characterPage) {
-            const fetchCharName = async () => {
-                const [id, ...rest] = characterPage.split("-");
-                const result = rest.join("-");
-                setCharacterName(result); 
-            }
-        fetchCharName();
-        }
-        fetchBookTitle();
-    }, [navigate]);
+        let ignore = false;
 
-9;  const [bookTitle, setBookTitle] = useState("");
-    const [characterName, setCharacterName] = useState("");
+        const fetchBookTitle = async () => {
+            const response = await db.books.get(currentBookId);
+
+            if (!ignore) {
+                setBookTitle(response?.title ?? "");
+            }
+        };
+
+        if (characterSlug) {
+            setCharacterName(formatCharacterName(characterSlug));
+        } else {
+            setCharacterName("");
+        }
+
+        fetchBookTitle();
+        return () => {
+            ignore = true;
+        };
+    }, [currentBookId, characterSlug]);
 
     const [openSearch, setOpenSearch] = useState(false);
     const [showFileModal, setShowFileModal] = useState(false);
@@ -290,7 +305,7 @@ export default function Header() {
             }, 2000);
         } catch (err) {
             console.error(err);
-            alert("Upload failed. Try again");
+            alert("Upload failed. Try to login again.");
             showSaveGoogleModal(false);
             setIsGoogleSaving(false);
         }
@@ -314,6 +329,15 @@ export default function Header() {
         }
     };
 
+    async function googleLogout() {
+        const isConfirmed = window.confirm("Are you sure you want to log out?");
+        if (isConfirmed) {
+            setGoogleUser(null);
+            signOut(); // Call the actual logout function passed as a prop
+            setShowAccountSettings(false);
+        }
+    }
+
     // NUKES ALL THE EXISTING FILES IN GOOGLE DRIVE/DELETE ALL
     // async function deleteAllGdrive() {
     // const token = localStorage.getItem("googleAccessToken");
@@ -322,227 +346,278 @@ export default function Header() {
     //     alert("All old backup files deleted!");
     // }
     // }
-
-    async function googleLogout() {
-        const isConfirmed = window.confirm("Are you sure you want to log out?");
-        if (isConfirmed) {
-            signOut(); // Call the actual logout function passed as a prop
-            setGoogleUser(null); 
-        }
-    }
     
     return (
         <>
             {/* //Title/Menu/HEADER */}
             <header 
                 className={`
-                fixed top-0 left-0 w-full z-50
+                fixed top-0 left-0 w-full h-13 z-50
                 bg-gray-950 backdrop-blur-md
                 transition-transform duration-300 ease-in-out
                 `}>
                 <div className="flex justify-between place-items-center py-2 px-1 md:py-2 md:px-5 w-full sm:w-full mx-auto">
                 
-                <h1 
-                    className="text-white cursor-pointer hidden md:flex md:text-2xl sm:text-lg" 
-                    onClick={() => {navigate("/")}}
-                >
-                    📖StoryDreamer | {bookTitle} | {characterName}
-                </h1>
+                    {isBookContext ? (
+                        <div className="flex items-center text-white min-w-0">
+                            <button
+                                type="button"
+                                onClick={() => navigate(characterSlug ? `/book/${currentBookId}` : "/")}
+                                className="px-2 py-1 rounded-l-md hover:bg-white/10 transition"
+                                title={characterSlug ? "Back to book" : "Back to library"}
+                            >
+                                <FontAwesomeIcon icon={faArrowLeft} size="lg"/>
+                            </button>
 
-                <p className="md:hidden flex items-center justify-center text-2xl">📖</p>
-
-                {/* THIS DELETES ALL EXISTING FILES IN GOOGLE DRIVE */}
-                {/* <button className="bg-red-500 p-10" onClick={() => deleteAllGdrive()}> NUKE IT ALL NOW</button> */}
-
-                <div className="flex gap-2">
-                    
-                    {/* SEARCH INPUT FIELD... IN PROGRESS */}
-                    <div className="hidden md:flex text-white bg-gray-950">   
-                        <label className="block text-sm font-medium text-heading sr-only ">Search</label>
-                        <div className="relative">
-                            <div className="absolute inset-y-0 start-0 flex items-center ps-3 pointer-events-none">
-                                <svg 
-                                className="w-4 h-4 text-gray-200"
-                                fill="none" 
-                                viewBox="0 0 24 24"
-                                strokeWidth={2}
-                                stroke="currentColor">
-                                    <path 
-                                    stroke="currentColor" 
-                                    d="m21 21-4.35-4.35M10.5 18a7.5 7.5 0 1 1 0-15 7.5 7.5 0 0 1 0 15Z"
-                                    />
-                                </svg>
+                            <div className="hidden sm:flex border-l border-slate-700 pl-2 place-items-center">
+                                <h2 onClick={() => navigate('/')} className="text-xl text-gray-400 cursor-pointer hover:text-white">
+                                    library/
+                                </h2>
+                                <h2 className="text-xl truncate pr-2">
+                                    {bookTitle || "Book"}
+                                </h2>
+                                <p className="text-lg truncate border-l border-slate-700 pl-2">
+                                    {characterName && <span className="text-gray-300">{characterName}</span>}
+                                </p>
                             </div>
-                            <input 
-                            className="w-full px-0 mt-1 py-1 ps-9 border-b 
-                            outline-none text-heading text-sm shadow-xs 
-                            focus:border-gray-200
-                            placeholder:text-body" 
-                            placeholder="Search" 
-                            title="Currently in development..." />
                         </div>
-                    </div>
-
-                    {/* MOBILE ICON BUTTON */}
-                    <button
-                    onClick={() => setOpenSearch(true)}
-                    className="
-                        md:hidden
-                        flex items-center justify-center
-                        w-10 h-9 group
-                        border rounded-md
-                        text-white bg-gray-950 
-                        hover:bg-gray-200
-                        transition
-                    "
-                    >
-                    <svg 
-                        className="w-4 h-4 text-gray-200 group-hover:text-gray-950"
-                        fill="none" 
-                        viewBox="0 0 24 24"
-                        strokeWidth={3}
-                        stroke="currentColor">
-                            <path 
-                            stroke="currentColor"
-                            d="m21 21-4.35-4.35M10.5 18a7.5 7.5 0 1 1 0-15 7.5 7.5 0 0 1 0 15Z"
-                            />
-                        </svg>
-                    </button>
-
-                    {/* MOBILE OVERLAY SEARCH */}
-                    {openSearch && (
-                    <div className="fixed top-0 left-0 w-full h-13 z-[60] bg-gray-950 px-4 flex items-center gap-3">
-                        <svg 
-                        className="w-4 h-4 text-gray-200"
-                        fill="none" 
-                        viewBox="0 0 24 24"
-                        strokeWidth={2}
-                        stroke="currentColor">
-                            <path 
-                            stroke="currentColor" 
-                            d="m21 21-4.35-4.35M10.5 18a7.5 7.5 0 1 1 0-15 7.5 7.5 0 0 1 0 15Z"
-                            />
-                        </svg>
-
-                        <input
-                        autoFocus
-                        type="text"
-                        placeholder="Search"
-                        required
-                        className="
-                            flex-1 bg-transparent
-                            border-0 border-b border-gray-600
-                            px-0 py-1
-                            text-sm text-gray-100
-                            placeholder-gray-500
-                            focus:outline-none focus:ring-0
-                            focus:border-indigo-400
-                        "
-                        />
-
-                        <button
-                        onClick={() => setOpenSearch(false)}
-                        className="text-gray-400 hover:text-gray-200 transition"
-                        >
-                        ✕
-                        </button>
-                    </div>
-                    )}
-
-                    <div onClick={toggleTheme} className="border border-white text-gray-200 rounded-md hover:bg-gray-300 hover:text-gray-950 transition">
-                    <button className="hidden dark:block">
-                    <span className="group inline-flex shrink-0 justify-center items-center size-8 stroke-2">
-                        <svg className="shrink-0 size-5" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M12 3a6 6 0 0 0 9 9 9 9 0 1 1-9-9Z"/></svg>
-                    </span>
-                    </button>
-                    <button className="block dark:hidden">
-                    <span className="group inline-flex shrink-0 justify-center items-center size-8 stroke-2">
-                        <svg className="shrink-0 size-5" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor"><circle cx="12" cy="12" r="4"/><path d="M12 2v2"/><path d="M12 20v2"/><path d="m4.93 4.93 1.41 1.41"/><path d="m17.66 17.66 1.41 1.41"/><path d="M2 12h2"/><path d="M20 12h2"/><path d="m6.34 17.66-1.41 1.41"/><path d="m19.07 4.93-1.41 1.41"/></svg>
-                    </span>
-                    </button>
-                    </div>
-
-                    {googleUser ? (
-                    <>
-                        <div 
-                            className="w-9 h-9 rounded-full overflow-hidden shadow-lg border border-slate-700 transition hover:border-white cursor-pointer"
-                            onClick={() => googleLogout()}
-                        >
-                        <img
-                            src={googleUser.picture}
-                            className="w-full h-full object-cover rounded"
-                            title={`Account: ${googleUser.name}\n(${googleUser.email})`}
-                        />
-                        </div>
-                    </>
                     ) : (
-                    <button
-                        className="p-1 transition border border-white text-gray-200 rounded-md hover:bg-gray-300 hover:text-gray-950 transition"
-                        onClick={() => signIn()} 
-                        title="Sign in to your Google Account"
-                    >
-                        <FontAwesomeIcon icon={faCircleUser} size="xl" />
-                    </button>
+                        <>
+                            <h1
+                                className="text-white cursor-pointer hidden md:flex md:text-2xl sm:text-lg"
+                                onClick={() => {navigate("/")}}
+                            >
+                                📖StoryDreamer
+                            </h1>
+
+                            <p className="md:hidden flex items-center justify-center text-2xl">📖</p>
+                        </>
                     )}
 
-                    {/* EXPORT/IMPORT BUTTON */}
-                    <div className="relative group inline-block group">
-                        <button 
-                            title="IMPORT/EXPORT FILE"
-                            className="p-1 transition border border-white text-gray-200 rounded-md hover:bg-gray-300 hover:text-gray-950 transition" 
-                            onClick={() => showModalFile(true)} > 
-                            <FontAwesomeIcon icon={faFileImport} size="xl" />
-                        </button>
+                    {/* THIS DELETES ALL EXISTING FILES IN GOOGLE DRIVE */}
+                    {/* <button className="bg-red-500 p-10" onClick={() => deleteAllGdrive()}> NUKE IT ALL NOW</button> */}
 
-                        {/* TOOLTIP IN PROGRESS */}
-                        <div
-                            className="
-                            top-full left-1/2 -translate-x-1/2 mt-2 z-50
-                            hidden
-                            pointer-events-none
-                            transition-opacity duration-200
-                            bg-black/80 text-white text-xs px-2 py-1 rounded-md
-                            whitespace-nowrap
-                            ">
-                            Import/Export File
+                    <div className="flex gap-2">
+                    
+                        {/* SEARCH INPUT FIELD... IN PROGRESS */}
+                        <div className="hidden md:flex text-white bg-gray-950">   
+                            <label className="block text-sm font-medium text-heading sr-only ">Search</label>
+                            <div className="relative">
+                                <div className="absolute inset-y-0 start-0 flex items-center ps-3 pointer-events-none">
+                                    <svg 
+                                    className="w-4 h-4 text-gray-200"
+                                    fill="none" 
+                                    viewBox="0 0 24 24"
+                                    strokeWidth={2}
+                                    stroke="currentColor">
+                                        <path 
+                                        stroke="currentColor" 
+                                        d="m21 21-4.35-4.35M10.5 18a7.5 7.5 0 1 1 0-15 7.5 7.5 0 0 1 0 15Z"
+                                        />
+                                    </svg>
+                                </div>
+                                <input 
+                                className="w-full px-0 mt-1 py-1 ps-9 border-b 
+                                outline-none text-heading text-sm shadow-xs 
+                                focus:border-gray-200
+                                placeholder:text-body" 
+                                placeholder="Search" 
+                                title="Currently in development..." />
+                            </div>
                         </div>
-                    </div>
 
-                    {/* THIS IS FOR SAVING TO GOOGLE DRIVE */}
-                    <div className="relative group inline-block group">
-                        <button 
-                            title="Back-up Data to Google Drive"
-                            className="p-1 transition border border-white text-gray-200 rounded-md hover:bg-gray-300 hover:text-gray-950 transition" 
-                            onClick={() => showSaveGoogleModal(true)} 
-                        > 
-                            <FontAwesomeIcon icon={faUpload} size="xl" />
-                        </button>
-
-                        {/* TOOLTIP IN PROGRESS */}
-                        <div
-                            className="
-                            top-full left-1/2 -translate-x-1/2 mt-2 z-50
-                            hidden
-                            pointer-events-none
-                            transition-opacity duration-200
-                            bg-black/80 text-white text-xs px-2 py-1 rounded-md
-                            whitespace-nowrap
-                            ">
-                            Back-up Data to Google Drive
-                        </div>
-                    </div>
-
-                    {backupFileId && (
+                        {/* MOBILE ICON BUTTON */}
                         <button
-                            onClick={handleRestoreFromDrive}
-                            className="p-1 transition border border-white text-gray-200 rounded-md hover:bg-gray-300 hover:text-gray-950 transition"
-                            title="Download and Import saved file."
+                        onClick={() => setOpenSearch(true)}
+                        className="
+                            md:hidden
+                            flex items-center justify-center
+                            w-10 h-9 group
+                            border rounded-md
+                            text-white bg-gray-950 
+                            hover:bg-gray-200
+                            transition
+                        "
                         >
-                            <FontAwesomeIcon icon={faDownload} size="xl"/>
+                        <svg 
+                            className="w-4 h-4 text-gray-200 group-hover:text-gray-950"
+                            fill="none" 
+                            viewBox="0 0 24 24"
+                            strokeWidth={3}
+                            stroke="currentColor">
+                                <path 
+                                stroke="currentColor"
+                                d="m21 21-4.35-4.35M10.5 18a7.5 7.5 0 1 1 0-15 7.5 7.5 0 0 1 0 15Z"
+                                />
+                            </svg>
                         </button>
-                    )}
 
-                </div>  
+                        {/* MOBILE OVERLAY SEARCH */}
+                        {openSearch && (
+                        <div className="fixed top-0 left-0 w-full h-13 z-[60] bg-gray-950 px-4 flex items-center gap-3">
+                            <svg 
+                            className="w-4 h-4 text-gray-200"
+                            fill="none" 
+                            viewBox="0 0 24 24"
+                            strokeWidth={2}
+                            stroke="currentColor">
+                                <path 
+                                stroke="currentColor" 
+                                d="m21 21-4.35-4.35M10.5 18a7.5 7.5 0 1 1 0-15 7.5 7.5 0 0 1 0 15Z"
+                                />
+                            </svg>
+
+                            <input
+                            autoFocus
+                            type="text"
+                            placeholder="Search"
+                            required
+                            className="
+                                flex-1 bg-transparent
+                                border-0 border-b border-gray-600
+                                px-0 py-1
+                                text-sm text-gray-100
+                                placeholder-gray-500
+                                focus:outline-none focus:ring-0
+                                focus:border-indigo-400
+                            "
+                            />
+
+                            <button
+                            onClick={() => setOpenSearch(false)}
+                            className="text-gray-400 hover:text-gray-200 transition"
+                            >
+                            ✕
+                            </button>
+                        </div>
+                        )}
+
+                        <div onClick={toggleTheme} className="h-9 border border-white text-gray-200 rounded-md hover:bg-gray-300 hover:text-gray-950 transition">
+                            <button className="hidden dark:block">
+                                <span className="group inline-flex shrink-0 justify-center items-center size-8 stroke-2">
+                                    <svg className="shrink-0 size-5" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M12 3a6 6 0 0 0 9 9 9 9 0 1 1-9-9Z"/></svg>
+                                </span>
+                            </button>
+                            <button className="block dark:hidden">
+                                <span className="group inline-flex shrink-0 justify-center items-center size-8 stroke-2">
+                                    <svg className="shrink-0 size-5" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor"><circle cx="12" cy="12" r="4"/><path d="M12 2v2"/><path d="M12 20v2"/><path d="m4.93 4.93 1.41 1.41"/><path d="m17.66 17.66 1.41 1.41"/><path d="M2 12h2"/><path d="M20 12h2"/><path d="m6.34 17.66-1.41 1.41"/><path d="m19.07 4.93-1.41 1.41"/></svg>
+                                </span>
+                            </button>
+                        </div>
+
+                        {/* CONNECT GOOGLE ACCOUNT FOR BACKUP SAVE */}
+                        {googleUser ? (
+                        <>
+                            <div 
+                                className="w-9 h-9 rounded-full overflow-hidden shadow-lg border border-slate-700 transition hover:border-white cursor-pointer"
+                                onClick={() => setShowAccountSettings(prev => !prev)}
+                            >
+                            <img
+                                src={googleUser.picture}
+                                className="w-full h-full object-cover rounded"
+                                title={`Account: ${googleUser.name}\n(${googleUser.email})`}
+                            />
+                            </div>
+                        </>
+                        ) : (
+                            <button
+                                onClick={() => setShowAccountSettings(prev => !prev)}
+                                className="p-1 transition border border-white text-gray-200 rounded-md hover:bg-gray-300 hover:text-gray-950 transition"
+                            >   
+                                <FontAwesomeIcon icon={faCircleUser} size="xl" />
+                            </button>
+                        )}
+
+                        {/* THIS IS THE DROPDOWN WHEN CLICKING SYSTEM FUNCTIONS */}
+                        {showAccountSettings && (
+                        <div 
+                            className="absolute right-5 top-12 z-20 w-63 rounded-md border border-gray-200 bg-white shadow-lg dark:text-white dark:bg-gray-900 dark:border-gray-700 p-2 space-y-2"
+                        >
+                            {googleUser && (
+                                <div className="flex flex-col gap-1 p-1">
+                                    <p className="text-xs font-semibold uppercase tracking-wider text-gray-400">
+                                        Account
+                                    </p> 
+                                    
+                                    <div className="flex items-center gap-3">
+                                        {/* Avatar with improved border and hover effect */}
+                                        <div className="group relative w-9 h-9 rounded-full overflow-hidden shadow-md border-2 border-slate-700 transition-all hover:border-blue-500 cursor-pointer">
+                                            <img
+                                                src={googleUser.picture}
+                                                alt={googleUser.name}
+                                                className="w-full h-full object-cover"
+                                                title={`Account: ${googleUser.name}\n(${googleUser.email})`}
+                                            />
+                                        </div>
+
+                                        {/* Text stack for better hierarchy */}
+                                        <div className="flex flex-col">
+                                            <p className="text-sm font-medium text-slate-100 leading-none">
+                                                {googleUser.name}
+                                            </p>
+                                            <p className="text-xs text-gray-500 mt-1">
+                                                {googleUser.email}
+                                            </p>
+                                        </div>
+                                    </div>
+                                </div>
+                            )}
+                            
+                            {/* EXPORT/IMPORT BUTTON */}
+                            <button
+                                title="IMPORT/EXPORT FILE"
+                                onClick={() => showModalFile(true)}
+                                className="w-full text-left px-2 py-1 rounded hover:bg-gray-100 dark:hover:bg-gray-700"
+                            >
+                                <FontAwesomeIcon icon={faFileImport} className="mr-2"/>Download Data
+                            </button>
+
+                            {/* THIS IS FOR SAVING TO GOOGLE DRIVE */}
+                            <button
+                                title="Save data to Gdrive"
+                                onClick={() => showSaveGoogleModal(true)}
+                                className="w-full text-left px-2 py-1 rounded hover:bg-green-100 dark:hover:bg-gray-700"
+                            >
+                                <FontAwesomeIcon icon={faUpload} className="mr-2"/>Backup Data
+                            </button>
+
+                            {/* DOWNLOAD THE BACKUP FILE FOR DATA UPDATES */}
+                            {backupFileId && (
+                            <button
+                                onClick={() => handleRestoreFromDrive()}
+                                title="Import Saved files from gDrive"
+                                className="w-full text-left px-2 py-1 rounded hover:bg-blue-100 dark:hover:bg-blue-900/40"
+                            >
+                                <FontAwesomeIcon icon={faDownload} className="mr-2"/>Import Saved
+                            </button>
+                            )}
+
+                            {googleUser ? 
+                                (
+                                <>
+                                <button
+                                    onClick={() => {googleLogout();}}
+                                    className="w-full text-left px-2 py-1 rounded text-red-500 hover:bg-red-100 dark:hover:bg-red-900/40"
+                                >   <FontAwesomeIcon icon={faUser} className="mr-2"/>Sign Out
+                                </button>
+                                </>
+                                )
+                                :
+                                (
+                                <>
+                                <button
+                                    onClick={() => signIn()} 
+                                    title="Sign in to your Google Account"
+                                    className="w-full text-left px-2 py-1 rounded hover:bg-emerald-100 dark:hover:bg-emerald-900/40"
+                                >   <FontAwesomeIcon icon={faUser} className="mr-2"/>Sign In
+                                </button>
+                                </>
+                                )
+                            }       
+                        </div>
+                        )}
+
+                    </div>
 
                 </div>
             </header>

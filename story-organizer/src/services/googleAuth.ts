@@ -49,4 +49,5 @@ export function signOut() {
   accessToken = null;
   userProfile = null;
   localStorage.removeItem("googleConnected");
+  localStorage.removeItem("googleAccessToken");
 }
