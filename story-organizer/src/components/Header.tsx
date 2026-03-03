@@ -2,7 +2,7 @@ import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { faFileImport, faCircleUser, faUpload, faSpinner, faDownload } from "@fortawesome/free-solid-svg-icons";
 import { useCallback, useEffect, useState } from "react";
 import { db } from "../db";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useParams } from "react-router-dom";
 import { useDropzone } from "react-dropzone";
 
 import { useGoogleAuth, type GoogleUser } from "../context/GoogleAuthContext";
@@ -11,6 +11,39 @@ import { deleteAllBackups, downloadDriveFile, findBackupFile, uploadJsonToDrive 
 
 export default function Header() {
     const navigate = useNavigate();
+     const check = useParams();
+     const userPage = !check;
+     const bookPage = check.currentBookId;
+     const characterPage = check.characterSlug;
+
+    useEffect(() => {
+        if(userPage) {
+            const backtoUser = async () => {
+                setBookTitle("");
+                setCharacterName("");
+            }
+        backtoUser();
+        }
+        if(!bookPage) return;
+        const fetchBookTitle = async () => {
+            const response = await db.books.get(bookPage);
+            const result = await response!.title;
+            setBookTitle(result);
+        };
+        if(characterPage) {
+            const fetchCharName = async () => {
+                const [id, ...rest] = characterPage.split("-");
+                const result = rest.join("-");
+                setCharacterName(result); 
+            }
+        fetchCharName();
+        }
+        fetchBookTitle();
+    }, [navigate]);
+
+9;  const [bookTitle, setBookTitle] = useState("");
+    const [characterName, setCharacterName] = useState("");
+
     const [openSearch, setOpenSearch] = useState(false);
     const [showFileModal, setShowFileModal] = useState(false);
     const [selectedFile, setSelectedFile] = useState<File | null>(null);
@@ -293,8 +326,8 @@ export default function Header() {
     async function googleLogout() {
         const isConfirmed = window.confirm("Are you sure you want to log out?");
         if (isConfirmed) {
-            signOut();
-            setGoogleUser(null); // Call the actual logout function passed as a prop
+            signOut(); // Call the actual logout function passed as a prop
+            setGoogleUser(null); 
         }
     }
     
@@ -308,10 +341,12 @@ export default function Header() {
                 transition-transform duration-300 ease-in-out
                 `}>
                 <div className="flex justify-between place-items-center py-2 px-1 md:py-2 md:px-5 w-full sm:w-full mx-auto">
+                
                 <h1 
                     className="text-white cursor-pointer hidden md:flex md:text-2xl sm:text-lg" 
-                  onClick={() => {navigate("/")}}
-                    >📖STORY ORGANIZER
+                    onClick={() => {navigate("/")}}
+                >
+                    📖StoryDreamer | {bookTitle} | {characterName}
                 </h1>
 
                 <p className="md:hidden flex items-center justify-center text-2xl">📖</p>
