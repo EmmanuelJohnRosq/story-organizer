@@ -7,7 +7,7 @@ import { FontAwesomeIcon} from "@fortawesome/react-fontawesome";
 import { faTrashCan, faCheck, faSpinner, faPlus, faGear } from "@fortawesome/free-solid-svg-icons";
 import { useDropzone } from "react-dropzone";
 
-import { FiEdit2, FiX } from "react-icons/fi"; // example pencil icon
+import { FiEdit2, FiX } from "react-icons/fi"; // example pencil icon from react
 import { faPenToSquare } from "@fortawesome/free-regular-svg-icons";
 
 type CharacterDetailTab = "overview" | "abilities" | "relationships" | "appearance";

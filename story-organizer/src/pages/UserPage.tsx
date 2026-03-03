@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from "react";
-import { useNavigate, useParams } from "react-router-dom";
+import { useNavigate } from "react-router-dom";
 
 import { db, type Book, type Notes, type Character } from "../db";
 
@@ -26,14 +26,20 @@ export default function UserPage() {
 
     const [userNotes, setUserNotes] = useState<Notes[]>([]);
 
-    const [recentCharacter, setRecentCharacter] = useState<Character | null>(null);
+    const [characters, setCharacters] = useState<Character[]>([])
     const [tipIndex, setTipIndex] = useState(0);
+
+    const [calendarMonth, setCalendarMonth] = useState(() => {
+        const now = new Date();
+        return new Date(now.getFullYear(), now.getMonth(), 1);
+    });
+    const [selectedDate, setSelectedDate] = useState(() => new Date());
 
     // USER DRAGGIN STATE
     const [setDrag, setIsDragOver] = useState(false);
     const [isDraggingBook, setIsDraggingBook] = useState(false)
 
-    const [Addnewbooks, setAddnewBooks] = useState(true);
+    const [Addnewbooks, setAddnewBooks] = useState(false);
 
     const notesSubject = "";
     const notesContent = "";
@@ -110,16 +116,35 @@ export default function UserPage() {
         "App Tip: Use tags to track themes like betrayal, redemption, or revenge.",
     ];
 
-    const mostRecentBook = books.length > 0 ? books[books.length - 1] : null;
+    const calendarLabel = calendarMonth.toLocaleDateString("en-US", {
+        month: "long",
+        year: "numeric",
+    });
 
-    const getCharacterSlug = (character: Character) => {
-        const charName = character.name
-            .toLowerCase()
-            .replace(/[^a-z0-9]+/g, "-")
-            .replace(/(^-|-$)/g, "");
+    const weekDays = ["Su", "Mo", "Tu", "We", "Th", "Fr", "Sa"];
 
-        return `${character.id}-${upcaseLetter(charName)}`;
+    const firstWeekday = new Date(calendarMonth.getFullYear(), calendarMonth.getMonth(), 1).getDay();
+    const daysInMonth = new Date(calendarMonth.getFullYear(), calendarMonth.getMonth() + 1, 0).getDate();
+
+    const calendarCells = Array.from({ length: 42 }, (_, i) => {
+        const dayNumber = i - firstWeekday + 1;
+
+        if (dayNumber < 1 || dayNumber > daysInMonth) {
+            return null;
+        }
+
+        return new Date(calendarMonth.getFullYear(), calendarMonth.getMonth(), dayNumber);
+    });
+
+    const isSameDate = (a: Date, b: Date) => {
+        return (
+            a.getFullYear() === b.getFullYear() &&
+            a.getMonth() === b.getMonth() &&
+            a.getDate() === b.getDate()
+        );
     };
+
+    const today = new Date();
 
     const loadBooks = async () => {
         const allBooks = await db.books.toArray();
@@ -127,10 +152,9 @@ export default function UserPage() {
         setBooks(allBooks);
     }
 
-    const loadRecentCharacter = async () => {
+    const loadCharacter = async () => {
         const allCharacters = await db.characters.toArray();
-        allCharacters.sort((a, b) => b.updatedAt - a.updatedAt);
-        setRecentCharacter(allCharacters[0] ?? null);
+        setCharacters(allCharacters);
     };
 
     // FILTERS USER NOTES FOR USER PAGE
@@ -148,7 +172,7 @@ export default function UserPage() {
     useEffect(() => {
         loadBooks();
         loadUserNotes();
-        loadRecentCharacter();
+        loadCharacter();
     }, []);
 
     useEffect(() => {
@@ -266,10 +290,52 @@ export default function UserPage() {
         setDraftNote(null);
     }
 
-     function openRecentCharacter() {
+    const [recentCharacter, setRecentCharacter] = useState<string | null>(null);
+    const [recentBook, setRecentBook] = useState<string | null>(null);
+    const [recentCharName, setRecentCharName] = useState("");
+    const [recentBookTitle, setRecentBookTitle] = useState("");
+
+    useEffect(() => {
+        const recentBookRaw = localStorage.getItem("recentBook");
+        const recentCharRaw = localStorage.getItem("recentCharacter");
+
+        let recentBookId: string | null = null;
+        let recentCharId: number | null = null;
+        let recentCharBookId: string | null = null;
+
+        if (recentBookRaw) {
+            try {
+            const parsed = JSON.parse(recentBookRaw);
+            recentBookId = parsed.bookId ?? null;
+            } catch {}
+        }
+
+        if (recentCharRaw) {
+            try {
+            const parsed = JSON.parse(recentCharRaw);
+            recentCharId = Number(parsed.charId ?? NaN);
+            recentCharBookId = parsed.bookId ?? null;
+            } catch {}
+        }
+
+        const book = recentBookId ? books.find(b => b.id === recentBookId) : null;
+        setRecentBook(recentBookId ?? "");
+        setRecentBookTitle(book?.title ?? "");
+
+        const char =
+            Number.isFinite(recentCharId) && recentCharId !== null
+            ? characters.find(c => c.id === recentCharId)
+            : null;
+
+        setRecentCharacter(char ? `${recentCharBookId}/${char.id}` : "");
+        setRecentCharName(char?.name ?? "");
+    }, [books, characters]);
+    
+
+    function openRecentCharacter() {
         if (!recentCharacter) return;
 
-        navigate(`/book/${recentCharacter.bookId}/${getCharacterSlug(recentCharacter)}`);
+        navigate(`/book/${recentCharacter}`);
     }
 
     // COLOR PICKER
@@ -452,7 +518,7 @@ export default function UserPage() {
 
     // SCROLL BEHAVIOR AFTER opening create book form
     useEffect(() => {
-        if (!Addnewbooks && titleRef.current) {
+        if (Addnewbooks && titleRef.current) {
             titleRef.current?.scrollIntoView({behavior: "smooth" });
             titleRef.current.focus();
         }
@@ -466,71 +532,77 @@ export default function UserPage() {
         {/* LEFT SIDE CONTAINER */}
         <div className="hidden xs:block flex-1 relative">
 
-            {/* ADD BOOK FORM SUBMIT */}
-            <div className="sticky top-15">
+            {/* LEFT SIDE INNER CONTAINER */}
+            <div className="sticky top-15 space-y-2">
 
-                <div className="overflow-y-auto overflow-x-hidden notes-scroll overflow-contain">
+                <div className="h-[calc(100vh-4rem)] overflow-y-auto overflow-x-hidden notes-scroll overflow-contain">
                     {/* TOP DASHBOARD SECTION */}
                     <section className="rounded-md shadow-lg bg-gray-100 dark:bg-gray-900 p-3 space-y-3 mb-2">
-                        <div className="flex flex-wrap items-center justify-between gap-2">
-                            <h2 className="text-xl font-semibold">Dashboard</h2>
-                            <p className="text-xs text-gray-500 dark:text-gray-400">Welcome back — keep your story momentum.</p>
-                        </div>
+                        {!Addnewbooks && (
+                        <>
+                            <div className="flex flex-wrap items-center justify-between gap-2">
+                                <h2 className="text-xl font-semibold">Dashboard</h2>
+                                <p className="text-xs text-gray-500 dark:text-gray-400">Welcome back — keep your story momentum.</p>
+                            </div>
 
-                        {/* Stats Row */}
-                        <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
-                            <div className="rounded-md border border-gray-200 dark:border-gray-700 p-3">
-                                <p className="text-xs text-gray-500">Books</p>
-                                <p className="text-2xl font-bold">{books.length}</p>
+                            {/* Stats Row */}
+                            <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
+                                <div className="rounded-md border border-gray-200 dark:border-gray-700 p-3">
+                                    <p className="text-xs text-gray-500">Books</p>
+                                    <p className="text-xl font-bold">{books.length}</p>
+                                </div>
+                                <div className="rounded-md border border-gray-200 dark:border-gray-700 p-3">
+                                    <p className="text-xs text-gray-500">UserNotes</p>
+                                    <p className="text-xl font-bold">{userNotes.length}</p>
+                                </div>
+                                <div className="rounded-md border border-gray-200 dark:border-gray-700 p-3">
+                                    <p className="text-xs text-gray-500">Characters</p>
+                                    <p className="text-xl font-semibold">{characters.length}</p>
+                                </div>
                             </div>
-                            <div className="rounded-md border border-gray-200 dark:border-gray-700 p-3">
-                                <p className="text-xs text-gray-500">User Notes</p>
-                                <p className="text-2xl font-bold">{userNotes.length}</p>
-                            </div>
-                            <div className="rounded-md border border-gray-200 dark:border-gray-700 p-3">
-                                <p className="text-xs text-gray-500">Draft Note</p>
-                                <p className="text-sm font-semibold mt-1">{draftNote ? "In progress" : "No active draft"}</p>
-                            </div>
-                        </div>
 
-                        {/* Quick Actions + Continue Writing */}
-                        <div className="grid grid-cols-1 lg:grid-cols-1 gap-2">
-                            <div className="rounded-md border border-gray-200 dark:border-gray-700 p-3">
-                                <h3 className="font-semibold mb-2">Continue Writing</h3>
-                                <div className="space-y-2">
-                                    <div className="flex items-center justify-between gap-2">
-                                        <p className="text-sm truncate">Recent book: <span className="font-semibold">{mostRecentBook?.title ?? "No books yet"}</span></p>
-                                        {mostRecentBook && (
-                                            <button
-                                                type="button"
-                                                className="px-2 py-1 text-xs rounded-md bg-gray-800 text-white hover:bg-gray-700 transition"
-                                                onClick={() => selectBook(mostRecentBook.id)}
-                                            >
-                                                Open
-                                            </button>
-                                        )}
-                                    </div>
-                                    <div className="flex items-center justify-between gap-2">
-                                        <p className="text-sm truncate">Recent character: <span className="font-semibold">{recentCharacter?.name ?? "No characters yet"}</span></p>
-                                        {recentCharacter && (
-                                            <button
-                                                type="button"
-                                                className="px-2 py-1 text-xs rounded-md bg-gray-800 text-white hover:bg-gray-700 transition"
-                                                onClick={openRecentCharacter}
-                                            >
-                                                Open
-                                            </button>
-                                        )}
+                            {/* Quick Actions + Continue Writing */}
+                            <div className="grid grid-cols-1 lg:grid-cols-1 gap-2">
+                                <div className="rounded-md border border-gray-200 dark:border-gray-700 p-3">
+                                    <h3 className="font-semibold">Continue Writing</h3>
+                                    <div className="">
+                                        <label className="text-xs text-gray-400">Recent book:</label>
+                                        <div className="flex items-center justify-between gap-2">
+                                            <p className="text-sm truncate indent-2">{recentBookTitle ?? "No books yet"}</p>
+                                            {recentBook && (
+                                                <button
+                                                    type="button"
+                                                    className="px-2 py-1 text-xs rounded-md bg-gray-800 text-white hover:bg-gray-700 transition"
+                                                    onClick={() => selectBook(recentBook)}
+                                                >
+                                                    Open
+                                                </button>
+                                            )}
+                                        </div>
+                                        <label className="text-xs text-gray-400">Recent character:</label>
+                                        <div className="flex items-center justify-between gap-2">
+                                            <p className="text-sm truncate indent-2">{recentCharName ?? "No characters yet"}</p>
+                                            {recentCharacter && (
+                                                <button
+                                                    type="button"
+                                                    className="px-2 py-1 text-xs rounded-md bg-gray-800 text-white hover:bg-gray-700 transition"
+                                                    onClick={openRecentCharacter}
+                                                >
+                                                    Open
+                                                </button>
+                                            )}
+                                        </div>
                                     </div>
                                 </div>
                             </div>
-                        </div>
 
-                        {/* Rotating Tip Card */}
-                        <div className="rounded-md border border-emerald-300 dark:border-emerald-700 bg-emerald-50/80 dark:bg-emerald-900/20 p-3">
-                            <p className="text-xs font-semibold text-emerald-700 dark:text-emerald-300 mb-1">Tips for StoryDreamer. Creating stories from imagination.</p>
-                            <p className="text-sm min-h-6 transition-all duration-300">{dashboardTips[tipIndex]}</p>
-                        </div>
+                            {/* Rotating Tip Card */}
+                            <div className="rounded-md border border-emerald-300 dark:border-emerald-700 bg-emerald-50/80 dark:bg-emerald-900/20 p-3">
+                                <p className="text-xs font-semibold text-emerald-700 dark:text-emerald-300 mb-1">Tips from StoryDreamer.</p>
+                                <p className="text-sm min-h-6 transition-all duration-300">{dashboardTips[tipIndex]}</p>
+                            </div>
+                        </>
+                        )}
 
                         {/* CREATE BOOK FORM TITLE */}
                         <div className="flex justify-between rounded-md border border-gray-200 dark:border-gray-700 p-3">
@@ -543,7 +615,7 @@ export default function UserPage() {
                                     onClick={addBooksState}
                                     title="Add a book"
                                 >
-                                    {Addnewbooks ? <FontAwesomeIcon icon={faPlus} size="xs" className="transition duration-500"/> : <FontAwesomeIcon icon={faMinus} size="xs"/>}
+                                    {Addnewbooks ? <FontAwesomeIcon icon={faMinus} size="xs" className="transition duration-500"/> : <FontAwesomeIcon icon={faPlus} size="xs"/>}
                                 </button>
                             </div>
                         </div>
@@ -551,7 +623,7 @@ export default function UserPage() {
                     </section>
 
                     {/* CREATE NEW BOOK FORM */}
-                    {(!Addnewbooks && 
+                    {(Addnewbooks && 
                     
                     <div className="flex-1 rounded-md shadow-lg p-3 mb-2 bg-gray-100 dark:bg-gray-900 transition duration-300 animate-fadeDown">
                     <form className="space-y-2">
@@ -625,10 +697,73 @@ export default function UserPage() {
                     </button>
                     </form>
                     </div>)}
-                </div>
-                
-            </div>
 
+                    {/* SIMPLE INTERACTIVE CALENDAR */}
+                    <div className="rounded-md shadow-lg bg-gray-100 dark:bg-gray-900 p-3">
+                        <div className="flex items-center justify-between mb-1">
+                            <button
+                                type="button"
+                                onClick={() => setCalendarMonth(prev => new Date(prev.getFullYear(), prev.getMonth() - 1, 1))}
+                                className="px-2 text-center rounded-md border border-gray-300 dark:border-gray-600 hover:bg-gray-200 dark:hover:bg-gray-700 transition"
+                                title="Previous month"
+                            >
+                                ‹
+                            </button>
+
+                            <p className="text-sm font-semibold">{calendarLabel}</p>
+
+                            <button
+                                type="button"
+                                onClick={() => setCalendarMonth(prev => new Date(prev.getFullYear(), prev.getMonth() + 1, 1))}
+                                className="px-2 text-center rounded-md border border-gray-300 dark:border-gray-600 hover:bg-gray-200 dark:hover:bg-gray-700 transition"
+                                title="Next month"
+                            >
+                                ›
+                            </button>
+                        </div>
+
+                        <div className="grid grid-cols-7 text-center text-xs text-gray-500">
+                            {weekDays.map(day => (
+                                <span key={day}>{day}</span>
+                            ))}
+                        </div>
+
+                        <div className="grid grid-cols-7">
+                            {calendarCells.map((dateValue, index) => {
+                                if (!dateValue) {
+                                    return <div key={`empty-${index}`} />;
+                                }
+
+                                const selected = isSameDate(dateValue, selectedDate);
+                                const isToday = isSameDate(dateValue, today);
+
+                                return (
+                                    <button
+                                        key={dateValue.toISOString()}
+                                        type="button"
+                                        onClick={() => setSelectedDate(dateValue)}
+                                        className={`h-7 rounded-md text-xs transition ${selected
+                                            ? "bg-blue-600 text-white"
+                                            : isToday
+                                            ? "bg-blue-100 text-blue-900 dark:bg-blue-900/40 dark:text-blue-200"
+                                            : "hover:bg-gray-200 dark:hover:bg-gray-700"}`}
+                                    >
+                                        {dateValue.getDate()}
+                                    </button>
+                                );
+                            })}
+                        </div>
+
+                        <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">
+                            Selected date: {selectedDate.toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })}
+                        </p>
+                    </div>
+
+                </div>
+
+                
+
+            </div>
         </div>
         
         {/* CENTER CONTAINER */}
@@ -761,152 +896,152 @@ export default function UserPage() {
 
                 </div>
 
-                    {/* NOTES CONTENTS */}
-                    <div className="h-[calc(100vh-8rem)] overflow-y-auto overflow-x-hidden notes-scroll overflow-contain">
-                        
-                        {/* THIS IS FOR THE USER NOTES */}
-                        { notesShowState && (
+                {/* NOTES CONTENTS */}
+                <div className="h-[calc(100vh-8rem)] overflow-y-auto overflow-x-hidden notes-scroll overflow-contain">
+                    
+                    {/* THIS IS FOR THE USER NOTES */}
+                    { notesShowState && (
+                    <div 
+                        className=""
+                    >
+                        {[ ...(draftNote ? [draftNote] : []), ...userNotes ].map(notes => (
                         <div 
-                            className=""
+                            className={`${colorMap[notes.color]} relative p-1 rounded-md shadow-md mb-2 bg-gray-100 dark:bg-gray-900 cursor-pointer animate-fadeDown`}
+                            key={notes.id ?? notes.notesId}
+                            data-id={notes.id}
                         >
-                            {[ ...(draftNote ? [draftNote] : []), ...userNotes ].map(notes => (
-                            <div 
-                                className={`${colorMap[notes.color]} relative p-1 rounded-md shadow-md mb-2 bg-gray-100 dark:bg-gray-900 cursor-pointer animate-fadeDown`}
-                                key={notes.id ?? notes.notesId}
-                                data-id={notes.id}
-                            >
 
-                                <div className="flex justify-between pb-1"> 
-                                
-                                <span className="text-xs text-gray-800 dark:text-gray-400">
-                                    {new Date(notes.createdAt).toLocaleString("en-US", {
-                                    month: "short",
-                                    day: "numeric",
-                                    year: "numeric",
-                                    hour: "2-digit",
-                                    minute: "2-digit",
-                                    })}
-                                </span>
+                            <div className="flex justify-between pb-1"> 
+                            
+                            <span className="text-xs text-gray-800 dark:text-gray-400">
+                                {new Date(notes.createdAt).toLocaleString("en-US", {
+                                month: "short",
+                                day: "numeric",
+                                year: "numeric",
+                                hour: "2-digit",
+                                minute: "2-digit",
+                                })}
+                            </span>
+
+                            <button 
+                                className="hover:bg-neutral-300/50 rounded-2xl group"
+                                onClick={() => {setNoteToDelete(notes);}}>
+                                <svg
+                                xmlns="http://www.w3.org/2000/svg"
+                                className="h-5 w-5 text-gray-700 dark:text-gray-400 group-hover:text-red-500"
+                                fill="none"
+                                viewBox="0 0 24 24"
+                                stroke="currentColor"
+                                strokeWidth={2}
+                                >
+                                <path strokeLinecap="round" strokeLinejoin="round" d="M6 6l12 12M6 18L18 6" />
+                                </svg>
+                            </button>
+
+                            </div>
+                            
+                            <textarea
+                            className="
+                            w-full text-sm
+                            rounded-md 
+                            px-1
+                            focus:outline-none focus:ring-2 focus:ring-blue-400 
+                            hover:ring-blue-400 hover:ring-2
+                            placeholder-gray-400 dark:placeholder-gray-400 
+                            resize-none
+                            overflow-hidden
+                            transition-all duration-200
+                            "
+                            ref={!notes.id ? draftTextareaRef : null}
+                            placeholder="Enter Notes"
+                            onFocus={(e) => {autoResize(e); setOnFocusId(String(notes.id!)); setHideSave(true);
+                                if (notes.id) {
+                                setDraftstate(false);
+                                }
+                                else {
+                                setDraftstate(true);
+                                }
+                            }}
+                            rows={3}
+                            value={notes.content}
+                            onChange={(e) => {
+                                if (!notes.id) {
+                                // This is draft
+                                setDraftNote(prev =>
+                                    prev ? { ...prev, content: e.target.value } : prev
+                                );
+                                } 
+                                else {
+                                // This is saved note
+                                setUserNotes(prev =>
+                                    prev.map(note =>
+                                    note.id === notes.id
+                                        ? { ...note, content: e.target.value }
+                                        : note
+                                    )
+                                );
+                                }
+                            }}
+                            onKeyDown={(e) => {
+                                if (e.key === "Enter" && !e.shiftKey) {
+                                e.preventDefault();
+                                (e.target as HTMLElement).blur();
+                                (saveNote(notes));
+                                }
+                            }}
+                            onBlur={(e) => { e.currentTarget.style.height = "auto";}}
+                            />
+
+                            {(hideSave && (notes.id ? Number(onFocusId) === notes.id : draftNoteState) &&
+                            <div className="flex justify-end gap-1">
+                                {/* {(notSaved &&
+                                <span>Not saved</span>
+                                )} */}
 
                                 <button 
-                                    className="hover:bg-neutral-300/50 rounded-2xl group"
-                                    onClick={() => {setNoteToDelete(notes);}}>
-                                    <svg
-                                    xmlns="http://www.w3.org/2000/svg"
-                                    className="h-5 w-5 text-gray-700 dark:text-gray-400 group-hover:text-red-500"
-                                    fill="none"
-                                    viewBox="0 0 24 24"
-                                    stroke="currentColor"
-                                    strokeWidth={2}
-                                    >
-                                    <path strokeLinecap="round" strokeLinejoin="round" d="M6 6l12 12M6 18L18 6" />
-                                    </svg>
+                                className="flex px-4 py-1 bg-neutral-500 rounded-xl hover:bg-neutral-600"
+                                onClick={() => {setHideSave(false); setDraftNote(null);}}
+                                >
+                                Cancel
                                 </button>
 
-                                </div>
-                                
-                                <textarea
-                                className="
-                                w-full text-sm
-                                rounded-md 
-                                px-1
-                                focus:outline-none focus:ring-2 focus:ring-blue-400 
-                                hover:ring-blue-400 hover:ring-2
-                                placeholder-gray-400 dark:placeholder-gray-400 
-                                resize-none
-                                overflow-hidden
-                                transition-all duration-200
-                                "
-                                ref={!notes.id ? draftTextareaRef : null}
-                                placeholder="Enter Notes"
-                                onFocus={(e) => {autoResize(e); setOnFocusId(String(notes.id!)); setHideSave(true);
-                                    if (notes.id) {
-                                    setDraftstate(false);
-                                    }
-                                    else {
-                                    setDraftstate(true);
-                                    }
-                                }}
-                                rows={3}
-                                value={notes.content}
-                                onChange={(e) => {
-                                    if (!notes.id) {
-                                    // This is draft
-                                    setDraftNote(prev =>
-                                        prev ? { ...prev, content: e.target.value } : prev
-                                    );
-                                    } 
-                                    else {
-                                    // This is saved note
-                                    setUserNotes(prev =>
-                                        prev.map(note =>
-                                        note.id === notes.id
-                                            ? { ...note, content: e.target.value }
-                                            : note
-                                        )
-                                    );
-                                    }
-                                }}
-                                onKeyDown={(e) => {
-                                    if (e.key === "Enter" && !e.shiftKey) {
-                                    e.preventDefault();
-                                    (e.target as HTMLElement).blur();
-                                    (saveNote(notes));
-                                    }
-                                }}
-                                onBlur={(e) => { e.currentTarget.style.height = "auto";}}
-                                />
+                                <button 
+                                className="flex px-4 py-1 bg-blue-700 rounded-xl hover:bg-blue-800"
+                                onClick={() => {saveNote(notes);}}
+                                >
+                                Save 
+                                </button>
+                            </div>
+                            )}
 
-                                {(hideSave && (notes.id ? Number(onFocusId) === notes.id : draftNoteState) &&
-                                <div className="flex justify-end gap-1">
-                                    {/* {(notSaved &&
-                                    <span>Not saved</span>
-                                    )} */}
-
-                                    <button 
-                                    className="flex px-4 py-1 bg-neutral-500 rounded-xl hover:bg-neutral-600"
-                                    onClick={() => {setHideSave(false); setDraftNote(null);}}
+                            {noteToDelete && noteToDelete.id === notes.id && (
+                            <div className="absolute inset-0 bg-black/40 backdrop-blur-sm flex items-center justify-center rounded-md z-10">
+                                <div className="bg-white dark:bg-gray-800 p-3 rounded-md shadow-lg text-center w-40">
+                                <p className="text-sm mb-2">Delete this note?</p>
+                                <div className="flex justify-between">
+                                    <button
+                                    onClick={() => handleDeleteNote(noteToDelete!)}
+                                    className="text-red-500 text-sm hover:scale-105"
+                                    >
+                                    Delete
+                                    </button>
+                                    <button
+                                    onClick={() => setNoteToDelete(null)}
+                                    className="text-gray-500 text-sm"
                                     >
                                     Cancel
                                     </button>
-
-                                    <button 
-                                    className="flex px-4 py-1 bg-blue-700 rounded-xl hover:bg-blue-800"
-                                    onClick={() => {saveNote(notes);}}
-                                    >
-                                    Save 
-                                    </button>
                                 </div>
-                                )}
-
-                                {noteToDelete && noteToDelete.id === notes.id && (
-                                <div className="absolute inset-0 bg-black/40 backdrop-blur-sm flex items-center justify-center rounded-md z-10">
-                                    <div className="bg-white dark:bg-gray-800 p-3 rounded-md shadow-lg text-center w-40">
-                                    <p className="text-sm mb-2">Delete this note?</p>
-                                    <div className="flex justify-between">
-                                        <button
-                                        onClick={() => handleDeleteNote(noteToDelete!)}
-                                        className="text-red-500 text-sm hover:scale-105"
-                                        >
-                                        Delete
-                                        </button>
-                                        <button
-                                        onClick={() => setNoteToDelete(null)}
-                                        className="text-gray-500 text-sm"
-                                        >
-                                        Cancel
-                                        </button>
-                                    </div>
-                                    </div>
                                 </div>
-                                )}
-
                             </div>
-                            ))}
-                        </div>
-                        )}
+                            )}
 
+                        </div>
+                        ))}
                     </div>
+                    )}
+
+                </div>
 
             </div>
 

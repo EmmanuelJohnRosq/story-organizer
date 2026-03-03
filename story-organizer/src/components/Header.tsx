@@ -1,5 +1,5 @@
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
-import { faFileImport, faCircleUser, faUpload, faSpinner, faDownload, faArrowLeft, faPenToSquare, faPlus, faTrashCan, faGear, faUser } from "@fortawesome/free-solid-svg-icons";
+import { faFileImport, faCircleUser, faUpload, faSpinner, faDownload, faArrowLeft, faUser, faHouse } from "@fortawesome/free-solid-svg-icons";
 import { useCallback, useEffect, useState } from "react";
 import { db } from "../db";
 import { useNavigate, useParams } from "react-router-dom";
@@ -7,7 +7,7 @@ import { useDropzone } from "react-dropzone";
 
 import { useGoogleAuth, type GoogleUser } from "../context/GoogleAuthContext";
 import { signOut } from "../services/googleAuth";
-import { deleteAllBackups, downloadDriveFile, findBackupFile, uploadJsonToDrive } from "../services/driveService";
+import { downloadDriveFile, findBackupFile, uploadJsonToDrive } from "../services/driveService";
 
 export default function Header() {
     const navigate = useNavigate();
@@ -30,6 +30,28 @@ export default function Header() {
             .map(word => word.charAt(0).toUpperCase() + word.slice(1))
             .join(" ");
     };
+
+    useEffect(() => {
+        if (!currentBookId) return;
+        localStorage.setItem(
+            "recentBook",
+            JSON.stringify({ bookId: currentBookId, viewedAt: Date.now() })
+        );
+    }, [currentBookId]);
+
+    useEffect(() => {
+        if (!currentBookId || !characterSlug) return;
+        const charId = Number(characterSlug.split("-")[0]);
+        localStorage.setItem(
+            "recentCharacter",
+            JSON.stringify({
+            bookId: currentBookId,
+            charId,
+            characterSlug,
+            viewedAt: Date.now(),
+            })
+        );
+    }, [currentBookId, characterSlug]);
 
     useEffect(() => {
         if (!currentBookId) {
@@ -302,12 +324,14 @@ export default function Header() {
                 showSaveGoogleModal(false);
                 setSuccessGoogle(false);
                 setIsGoogleSaving(false);
+                setShowAccountSettings(false);
             }, 2000);
         } catch (err) {
             console.error(err);
             alert("Upload failed. Try to login again.");
             showSaveGoogleModal(false);
             setIsGoogleSaving(false);
+            signIn();
         }
 
     }
@@ -322,6 +346,7 @@ export default function Header() {
             try {
                 const file = await downloadDriveFile(backupFileId, token);
                 await importData(file);
+                setShowAccountSettings(false);
             } catch (err) {
                 console.error(err);
                 alert("Restore failed.");
@@ -369,11 +394,13 @@ export default function Header() {
                                 <FontAwesomeIcon icon={faArrowLeft} size="lg"/>
                             </button>
 
-                            <div className="hidden sm:flex border-l border-slate-700 pl-2 place-items-center">
-                                <h2 onClick={() => navigate('/')} className="text-xl text-gray-400 cursor-pointer hover:text-white">
-                                    library/
+                            <div className="hidden sm:flex border-l border-slate-700 place-items-center">
+                                {characterName && (
+                                <h2 onClick={() => navigate('/')} title="Back to library" className="text-xl text-gray-400 cursor-pointer hover:text-white border-r border-slate-700 px-1">
+                                    <FontAwesomeIcon icon={faHouse} />
                                 </h2>
-                                <h2 className="text-xl truncate pr-2">
+                                )}
+                                <h2 className="text-xl truncate px-2">
                                     {bookTitle || "Book"}
                                 </h2>
                                 <p className="text-lg truncate border-l border-slate-700 pl-2">
@@ -510,7 +537,7 @@ export default function Header() {
                         <>
                             <div 
                                 className="w-9 h-9 rounded-full overflow-hidden shadow-lg border border-slate-700 transition hover:border-white cursor-pointer"
-                                onClick={() => setShowAccountSettings(prev => !prev)}
+                                onClick={() => {setShowAccountSettings(prev => !prev); console.log(googleUser.picture);}}
                             >
                             <img
                                 src={googleUser.picture}
