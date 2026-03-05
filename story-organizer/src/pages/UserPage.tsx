@@ -327,7 +327,7 @@ export default function UserPage() {
             ? characters.find(c => c.id === recentCharId)
             : null;
 
-        setRecentCharacter(char ? `${recentCharBookId}/${char.id}` : "");
+        setRecentCharacter(char ? `${recentCharBookId}/${char.id}-${char.name}` : "");
         setRecentCharName(char?.name ?? "");
     }, [books, characters]);
     
