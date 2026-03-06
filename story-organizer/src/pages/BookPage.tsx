@@ -888,181 +888,187 @@ export default function BookPage() {
 
         </div>
 
-        {/* RIGHT SIDE CONTAINER */}
-        <div className="hidden xs:block flex-1 flex flex-col relative">
-            
-            {/* NOTES CONTAINER */}
-            <div className="PARENT CONTAINER FOR THE NOTES PANEL sticky top-15">
+        <button 
+          onClick={displayNotes}
+          className="bg-blue-800 fixed top-14 right-0 p-2 b rounded-l-2xl hover:bg-blue-700 transition sticky">
+          <span className="[writing-mode:vertical-rl] [text-orientation:upright] text-bold">NOTES</span>
+        </button>
 
-            {/* NOTES TITLE */}
-            <div className="flex-1 rounded-md shadow-lg p-3 bg-gray-100 dark:bg-gray-900 mb-2 flex justify-between">
+        {notesShowState && (
+          // {/* RIGHT SIDE CONTAINER */}
+          <div className="hidden xs:block flex-1 flex flex-col relative transition animate-fadeRight">
+              
+              {/* NOTES CONTAINER */}
+              <div className="PARENT CONTAINER FOR THE NOTES PANEL sticky top-15">
 
-                <h3 
-                onClick={displayNotes}
-                className="text-2xl font-semibold cursor-pointer hover:text-blue-400 select-none"
-                title="Click to minimize notes"
-                role="button"
-                >Notes</h3>
+              {/* NOTES TITLE */}
+              <div className="flex-1 rounded-md shadow-lg p-3 bg-gray-100 dark:bg-gray-900 mb-2 flex justify-between">
 
-                <div className="flex justify-center">
-                <button 
-                    value={bookTitle}
-                    className="border-gray-500 border-1 text-black rounded hover:bg-gray-300 hover:text-gray-950 px-2 transition dark:border-white dark:text-white"
-                    onClick={addDraftNotes}>
-                    <FontAwesomeIcon icon={faPlus} size="xs"/>
-                </button>
-                </div>
+                  <h3 
+                  onClick={displayNotes}
+                  className="text-2xl font-semibold cursor-pointer hover:text-blue-400 select-none"
+                  title="Click to minimize notes"
+                  role="button"
+                  >Notes</h3>
 
-            </div>
+                  <div className="flex justify-center">
+                  <button 
+                      value={bookTitle}
+                      className="border-gray-500 border-1 text-black rounded hover:bg-gray-300 hover:text-gray-950 px-2 transition dark:border-white dark:text-white"
+                      onClick={addDraftNotes}>
+                      <FontAwesomeIcon icon={faPlus} size="xs"/>
+                  </button>
+                  </div>
 
-                {/* NOTES CONTENTS */}
-                { notesShowState && (
-                <div className="h-[calc(100vh-8rem)] overflow-y-auto overflow-x-hidden notes-scroll overflow-contain">
+              </div>
 
-                    {/* THIS IS THE BOOK NOTES */}
-                    <div className="">
-                        {[ ...(draftNote ? [draftNote] : []), ...bookNotes ].map(notes => (
-                        <div 
-                            className={`${colorMap[notes.color]} relative p-1 rounded-md shadow-md mb-2 bg-gray-100 dark:bg-gray-900 cursor-pointer animate-fadeDown`}
-                            key={notes.id ?? notes.notesId}
-                            data-id={notes.id}
-                        >
+                  {/* NOTES CONTENTS */}
+                  <div className="h-[calc(100vh-8rem)] overflow-y-auto overflow-x-hidden notes-scroll overflow-contain">
 
-                            <div className="flex justify-between pb-1"> 
-                            
-                            <span className="text-xs text-gray-800 dark:text-gray-400">
-                                {new Date(notes.createdAt).toLocaleString("en-US", {
-                                month: "short",
-                                day: "numeric",
-                                year: "numeric",
-                                hour: "2-digit",
-                                minute: "2-digit",
-                                })}
-                            </span>
+                      {/* THIS IS THE BOOK NOTES */}
+                      <div className="">
+                          {[ ...(draftNote ? [draftNote] : []), ...bookNotes ].map(notes => (
+                          <div 
+                              className={`${colorMap[notes.color]} relative p-1 rounded-md shadow-md mb-2 bg-gray-100 dark:bg-gray-900 cursor-pointer animate-fadeDown`}
+                              key={notes.id ?? notes.notesId}
+                              data-id={notes.id}
+                          >
 
-                            <button 
-                                className="hover:bg-neutral-300/50 rounded-2xl group"
-                                onClick={() => setNoteToDelete(notes)}>
-                                <svg
-                                xmlns="http://www.w3.org/2000/svg"
-                                className="h-5 w-5 text-gray-700 dark:text-gray-400 group-hover:text-red-500"
-                                fill="none"
-                                viewBox="0 0 24 24"
-                                stroke="currentColor"
-                                strokeWidth={2}
-                                >
-                                <path strokeLinecap="round" strokeLinejoin="round" d="M6 6l12 12M6 18L18 6" />
-                                </svg>
-                            </button>
+                              <div className="flex justify-between pb-1"> 
+                              
+                              <span className="text-xs text-gray-800 dark:text-gray-400">
+                                  {new Date(notes.createdAt).toLocaleString("en-US", {
+                                  month: "short",
+                                  day: "numeric",
+                                  year: "numeric",
+                                  hour: "2-digit",
+                                  minute: "2-digit",
+                                  })}
+                              </span>
 
-                            </div>
-                            
-                            <textarea
-                            className="
-                            w-full text-sm
-                            rounded-md 
-                            px-1
-                            focus:outline-none focus:ring-2 focus:ring-blue-400 
-                            hover:ring-blue-400 hover:ring-2
-                            placeholder-gray-400 dark:placeholder-gray-400 
-                            resize-none
-                            overflow-hidden
-                            transition-all duration-200
-                            "
-                            ref={!notes.id ? draftTextareaRef : null}
-                            placeholder="Enter Notes"
-                            onFocus={(e) => {autoResize(e); setOnFocusId(String(notes.id!)); setNoteContent(notes.content); setHideSave(true); 
-                                if (notes.id) {
-                                setDraftstate(false);
-                                }
-                                else {
-                                setDraftstate(true);
-                                }
-                            }}
-                            rows={3}
-                            value={notes.content}
-                            onChange={(e) => {
-                                if (!notes.id) {
-                                // This is draft
-                                setDraftNote(prev =>
-                                    prev ? { ...prev, content: e.target.value } : prev
-                                );
-                                } else {
-                                // This is saved note
-                                setBookNotes(prev =>
-                                    prev.map(note =>
-                                    note.id === notes.id
-                                        ? { ...note, content: e.target.value }
-                                        : note
-                                    )
-                                );
-                                }
-                            }}
-                            onKeyDown={(e) => {
-                                if (e.key === "Enter" && !e.shiftKey) {
-                                e.preventDefault();
-                                (e.target as HTMLElement).blur();
-                                (saveNote(notes));
-                                }
-                            }}
-                            onBlur={(e) => { e.currentTarget.style.height = "auto";}}
-                            />
+                              <button 
+                                  className="hover:bg-neutral-300/50 rounded-2xl group"
+                                  onClick={() => setNoteToDelete(notes)}>
+                                  <svg
+                                  xmlns="http://www.w3.org/2000/svg"
+                                  className="h-5 w-5 text-gray-700 dark:text-gray-400 group-hover:text-red-500"
+                                  fill="none"
+                                  viewBox="0 0 24 24"
+                                  stroke="currentColor"
+                                  strokeWidth={2}
+                                  >
+                                  <path strokeLinecap="round" strokeLinejoin="round" d="M6 6l12 12M6 18L18 6" />
+                                  </svg>
+                              </button>
 
-                            {(hideSave && (notes.id ? Number(onFocusId) === notes.id : draftNoteState) &&
-                            <div className="flex justify-end gap-1">
-                                {/* {(notSaved &&
-                                <span>Not saved</span>
-                                )} */}
+                              </div>
+                              
+                              <textarea
+                              className="
+                              w-full text-sm
+                              rounded-md 
+                              px-1
+                              focus:outline-none focus:ring-2 focus:ring-blue-400 
+                              hover:ring-blue-400 hover:ring-2
+                              placeholder-gray-400 dark:placeholder-gray-400 
+                              resize-none
+                              overflow-hidden
+                              transition-all duration-200
+                              "
+                              ref={!notes.id ? draftTextareaRef : null}
+                              placeholder="Enter Notes"
+                              onFocus={(e) => {autoResize(e); setOnFocusId(String(notes.id!)); setNoteContent(notes.content); setHideSave(true); 
+                                  if (notes.id) {
+                                  setDraftstate(false);
+                                  }
+                                  else {
+                                  setDraftstate(true);
+                                  }
+                              }}
+                              rows={3}
+                              value={notes.content}
+                              onChange={(e) => {
+                                  if (!notes.id) {
+                                  // This is draft
+                                  setDraftNote(prev =>
+                                      prev ? { ...prev, content: e.target.value } : prev
+                                  );
+                                  } else {
+                                  // This is saved note
+                                  setBookNotes(prev =>
+                                      prev.map(note =>
+                                      note.id === notes.id
+                                          ? { ...note, content: e.target.value }
+                                          : note
+                                      )
+                                  );
+                                  }
+                              }}
+                              onKeyDown={(e) => {
+                                  if (e.key === "Enter" && !e.shiftKey) {
+                                  e.preventDefault();
+                                  (e.target as HTMLElement).blur();
+                                  (saveNote(notes));
+                                  }
+                              }}
+                              onBlur={(e) => { e.currentTarget.style.height = "auto";}}
+                              />
 
-                                <button 
-                                className="flex px-4 py-1 bg-neutral-500 rounded-xl hover:bg-neutral-600"
-                                onClick={() => {setHideSave(false); setDraftNote(null);}}
-                                >
-                                Cancel
-                                </button>
+                              {(hideSave && (notes.id ? Number(onFocusId) === notes.id : draftNoteState) &&
+                              <div className="flex justify-end gap-1">
+                                  {/* {(notSaved &&
+                                  <span>Not saved</span>
+                                  )} */}
 
-                                <button 
-                                className="flex px-4 py-1 bg-blue-700 rounded-xl"
-                                onClick={() => {saveNote(notes);}}
-                                disabled={noteContent === notes.content}
-                                >
-                                Save 
-                                </button> 
-                            </div>
-                            )}
+                                  <button 
+                                  className="flex px-4 py-1 bg-neutral-500 rounded-xl hover:bg-neutral-600"
+                                  onClick={() => {setHideSave(false); setDraftNote(null);}}
+                                  >
+                                  Cancel
+                                  </button>
 
-                            {noteToDelete && noteToDelete.id === notes.id && (
-                            <div className="absolute inset-0 bg-black/40 backdrop-blur-sm flex items-center justify-center rounded-md z-10">
-                                <div className="bg-white dark:bg-gray-800 p-3 rounded-md shadow-lg text-center w-40">
-                                <p className="text-sm mb-2">Delete this note?</p>
-                                <div className="flex justify-between">
-                                    <button
-                                    onClick={() => handleDeleteNote(noteToDelete!)}
-                                    className="text-red-500 text-sm hover:scale-105"
-                                    >
-                                    Delete
-                                    </button>
-                                    <button
-                                    onClick={() => setNoteToDelete(null)}
-                                    className="text-gray-500 text-sm"
-                                    >
-                                    Cancel
-                                    </button>
-                                </div>
-                                </div>
-                            </div>
-                            )}
-                        </div>
-                        ))}
-                    </div>
+                                  <button 
+                                  className="flex px-4 py-1 bg-blue-700 rounded-xl"
+                                  onClick={() => {saveNote(notes);}}
+                                  disabled={noteContent === notes.content}
+                                  >
+                                  Save 
+                                  </button> 
+                              </div>
+                              )}
 
-                </div>
+                              {noteToDelete && noteToDelete.id === notes.id && (
+                              <div className="absolute inset-0 bg-black/40 backdrop-blur-sm flex items-center justify-center rounded-md z-10">
+                                  <div className="bg-white dark:bg-gray-800 p-3 rounded-md shadow-lg text-center w-40">
+                                  <p className="text-sm mb-2">Delete this note?</p>
+                                  <div className="flex justify-between">
+                                      <button
+                                      onClick={() => handleDeleteNote(noteToDelete!)}
+                                      className="text-red-500 text-sm hover:scale-105"
+                                      >
+                                      Delete
+                                      </button>
+                                      <button
+                                      onClick={() => setNoteToDelete(null)}
+                                      className="text-gray-500 text-sm"
+                                      >
+                                      Cancel
+                                      </button>
+                                  </div>
+                                  </div>
+                              </div>
+                              )}
+                          </div>
+                          ))}
+                      </div>
 
-                )}
+                  </div>
 
-            </div>
+              </div>
 
-        </div>
+          </div>
+        )}
+      
 
         {/* MODALS */}
             {/* Undo Popup */}

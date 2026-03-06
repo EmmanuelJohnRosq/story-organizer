@@ -57,9 +57,8 @@ export async function findBackupFile(accessToken: string) {
   );
 
   if (response.status === 401) {
-      sessionStorage.setItem("googleAuth", "false"); 
-      return;
-    }
+    sessionStorage.setItem("googleAuth", "false"); 
+  }
 
   if (!response.ok) {
     throw new Error("Failed to check Drive");

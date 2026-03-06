@@ -92,6 +92,21 @@ button:disabled {
   animation: scaleIn 0.3s ease-out forwards;
 }
 
+.animate-fadeRight {
+  animation: fadeRight 0.3s ease-out;
+}
+
+@keyframes fadeRight {
+  from { 
+    opacity: 0; 
+    transform: translateX(0); 
+  }
+  to { 
+    opacity: 1; 
+  }
+}
+
+
 /* NEWEST BROWSERS SCROLLBAR SET */
 /* .notes-scroll {
   scrollbar-width: thin;

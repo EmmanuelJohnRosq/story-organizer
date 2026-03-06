@@ -870,7 +870,7 @@ export default function UserPage() {
         </div>
 
         {/* RIGHT SIDE CONTAINER */}
-        <div className="hidden xs:block flex-1 flex flex-col relative">
+        <div className="hidden xs:block flex-1 flex flex-col relative bg-red-500">
 
             {/* NOTES CONTAINER */}
             <div className="PARENT CONTAINER FOR THE NOTES PANEL sticky top-15">
