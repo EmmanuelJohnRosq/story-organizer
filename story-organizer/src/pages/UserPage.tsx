@@ -568,7 +568,7 @@ export default function UserPage() {
                                     <div className="">
                                         <label className="text-xs text-gray-400">Recent book:</label>
                                         <div className="flex items-center justify-between gap-2">
-                                            <p className="text-sm truncate indent-2">{recentBookTitle ?? "No books yet"}</p>
+                                            <p className="text-sm truncate indent-2">{recentBookTitle ? recentBookTitle : "Check your books..."}</p>
                                             {recentBook && (
                                                 <button
                                                     type="button"
@@ -581,7 +581,7 @@ export default function UserPage() {
                                         </div>
                                         <label className="text-xs text-gray-400">Recent character:</label>
                                         <div className="flex items-center justify-between gap-2">
-                                            <p className="text-sm truncate indent-2">{recentCharName ?? "No characters yet"}</p>
+                                            <p className="text-sm truncate indent-2">{recentCharName ? recentCharName : "See your characters..."}</p>
                                             {recentCharacter && (
                                                 <button
                                                     type="button"

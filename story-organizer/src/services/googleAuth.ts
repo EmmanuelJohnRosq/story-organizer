@@ -35,6 +35,7 @@ export function initGoogleAuth(
 export function signIn() {
   if (!tokenClient) return;
   tokenClient.requestAccessToken();
+  sessionStorage.setItem("googleAuth", "true");
 }
 
 export function getAccessToken() {

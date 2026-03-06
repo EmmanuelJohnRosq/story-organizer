@@ -129,9 +129,12 @@ export default function Header() {
           if (file) {
             setBackupFileId(file.id);
             localStorage.setItem("googleFileID", file.id);
+            setDisplayExpiringAuth(false);
           }
         } catch (err) {
           console.error("Drive check failed");
+          setDisplayExpiringAuth(true);
+          setTimeout(() => {setDisplayExpiringAuth(false)}, 20000);
         }
       };
 
@@ -164,7 +167,8 @@ export default function Header() {
     // Show Google Save MODAL
     function showSaveGoogleModal(state: boolean) {
         if(!googleUser) {
-            alert("Sign in to an account first.");
+            alert("Sign in to a google account first.");
+            logIn();
             return;
         }
         setShowGoogleSaveModal(state);
@@ -331,7 +335,7 @@ export default function Header() {
             alert("Upload failed. Try to login again.");
             showSaveGoogleModal(false);
             setIsGoogleSaving(false);
-            signIn();
+            logIn();
         }
 
     }
@@ -360,6 +364,17 @@ export default function Header() {
             setGoogleUser(null);
             signOut(); // Call the actual logout function passed as a prop
             setShowAccountSettings(false);
+        }
+    }
+
+    const [displayExpiringAuth, setDisplayExpiringAuth] = useState(false);
+
+    async function logIn() {
+        try {
+            signIn(); 
+
+        } catch (error) {
+            console.error("Login failed or was cancelled:", error);
         }
     }
 
@@ -537,7 +552,7 @@ export default function Header() {
                         <>
                             <div 
                                 className="w-9 h-9 rounded-full overflow-hidden shadow-lg border border-slate-700 transition hover:border-white cursor-pointer"
-                                onClick={() => {setShowAccountSettings(prev => !prev); console.log(googleUser.picture);}}
+                                onClick={() => {setShowAccountSettings(prev => !prev);}}
                             >
                             <img
                                 src={googleUser.picture}
@@ -633,7 +648,7 @@ export default function Header() {
                                 (
                                 <>
                                 <button
-                                    onClick={() => signIn()} 
+                                    onClick={() => logIn()} 
                                     title="Sign in to your Google Account"
                                     className="w-full text-left px-2 py-1 rounded hover:bg-emerald-100 dark:hover:bg-emerald-900/40"
                                 >   <FontAwesomeIcon icon={faUser} className="mr-2"/>Sign In
@@ -645,6 +660,8 @@ export default function Header() {
                         )}
 
                     </div>
+
+                    {/* <button className="bg-green-100 p-1 rounded-xl" onClick={() => setDisplayExpiringAuth(!displayExpiringAuth)}> MAKE IT APPEAR</button> */}
 
                 </div>
             </header>
@@ -664,7 +681,7 @@ export default function Header() {
                     <div className="flex justify-between">
                     <div>
                         <h2 className="text-x1 font-bold">SAVE YOUR BOOKS</h2>
-                        <p className="text-sm text-gray-500">From your impulsive actions, save your file now.</p>
+                        <p className="text-sm text-gray-500">From your impulsive actions, download your file now.</p>
                     </div>
                     <div className="px-2">
                         <button
@@ -715,7 +732,7 @@ export default function Header() {
                     <div className="flex justify-between mt-3">
                         <div>
                         <h2 className="text-x1 font-bold">EXTRICATE YOUR CHARACTERS</h2>
-                        <p className="text-sm text-gray-500">From your own chaotic life, upload now.</p>
+                        <p className="text-sm text-gray-500">From your own chaotic life, upload data now.</p>
                         </div>
                         <div className="px-2">
                         <button
@@ -731,7 +748,7 @@ export default function Header() {
                 </div>
             )}
 
-
+            {/* DISPLAYS THE MODAL FOR CONFIRMING THE SAVING OF A BACKUP DATA IN GDRIVE */}
             {showGoogleSaveModal && googleUser &&(
             <div 
                 className="fixed inset-0 flex items-center justify-center bg-black/50 z-50"
@@ -825,6 +842,20 @@ export default function Header() {
                     )}
 
                 </div>
+            </div>
+            )}
+
+            {/* DISPLAY RECONNECT TO GOOGLE ACCOUNT WHEN AUTH EXPIRES */}
+            {displayExpiringAuth && (
+            <div className="fixed z-50 top-15 left-1/2 bg-gray-300 py-1 px-4 transform -translate-x-1/2 rounded shadow-lg animate-fadeDown flex justify-between">
+                <span className="flex place-items-center mr-2">
+                    Google Auth Expired: Reconnect to Google Drive
+                </span>
+                <button 
+                    className="border bg-blue-500 px-4 py-2 text-white rounded-md hover:border hover:border-blue-900"
+                    onClick={() => logIn()}>
+                     Reconnect
+                </button>
             </div>
             )}
 
