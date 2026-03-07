@@ -329,6 +329,13 @@ export default function ExperimentPage() {
       settitleEditing(true);
       setTimeout(() => {setSavedTitle(false), settitleEditing(false), setStatePopup(false), setAlert("");}, 2000);
     }
+
+    // SAVE BOOK TAGS
+    async function saveTags() {
+      if(!bookTags) return;
+      const UpdatebookTags = { tags: bookTags.split(",").map(a => normalizeWhitespace(a))};
+      await db.books.update(currentBookId, UpdatebookTags);
+    }
   
     // DEFAULT CHAR IMAGE FORMAT
     const [char_image] = useState("/textures/char_images/default_char.jpg")
@@ -655,7 +662,10 @@ export default function ExperimentPage() {
 
     const incompleteCharacters = character.filter(char => getCharacterCompletion(char) < 100).length;
 
-    const genreChips = currentBook?.genre ?? [];
+    const bookChips = [
+      ...(currentBook?.genre ?? []).map(text => ({ text, type: 'genre' })),
+      ...(currentBook?.tags ?? []).map(text => ({ text, type: 'tag' }))
+    ];
 
   return (
     // MAIN PARENT CONTAINER DIV CLOSER
@@ -740,7 +750,7 @@ export default function ExperimentPage() {
                           
                           <textarea
                               rows={12}
-                              className="w-full px-1 py-1 focus:outline-none placeholder-gray-400 dark:placeholder-gray-600 text-area-scroll"
+                              className="w-full px-1 py-1 focus:outline-none text-sm placeholder-gray-400 dark:placeholder-gray-600 text-area-scroll"
                               placeholder="Update book summary"
                               value={bookSummary}
                               onFocus={(e) => autoResize(e)}
@@ -752,18 +762,25 @@ export default function ExperimentPage() {
                   </div>
                 )}
 
-                {/* CHARACTER GENRE'S */}
+                {/* CHARACTER GENRE AND TAGS */}
                 <div className="rounded-md shadow-lg p-4 mb-2 bg-gray-100 dark:bg-gray-900 transition duration-300">
-                  <label className="text-sm font-semibold mb-2">Book Genre</label>
+                  <label className="text-sm font-semibold mb-2">Book Classification</label>
                   <div className="flex flex-wrap gap-2">
-                    {genreChips.length ? (
-                      genreChips.map((genre) => (
-                        <span key={genre} className="px-3 py-1 rounded-full bg-blue-200 text-blue-900 dark:bg-blue-900/40 dark:text-blue-200 text-sm">
-                          {genre}
+                    {bookChips.length ? (
+                      bookChips.map((chip, index) => (
+                        <span 
+                          key={`${chip.type}-${chip.text}-${index}`} 
+                          className={`px-3 py-1 rounded-full text-sm ${
+                            chip.type === 'genre' 
+                              ? "bg-blue-200 text-blue-900 dark:bg-blue-900/40 dark:text-blue-200" // Genre Style
+                              : "bg-purple-200 text-purple-900 dark:bg-purple-900/40 dark:text-purple-200" // Tag Style
+                          }`}
+                        >
+                          {chip.text}
                         </span>
                       ))
                     ) : (
-                      <span className="text-sm text-gray-500 dark:text-gray-400">No book tags yet.</span>
+                      <span className="text-sm text-gray-500 dark:text-gray-400">No data yet.</span>
                     )}
                   </div>
                 </div>
