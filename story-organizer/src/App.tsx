@@ -3,6 +3,7 @@ import Layout from "./components/Layout";
 
 import UserPage from "./pages/UserPage";
 import BookPage from "./pages/BookPage";
+import ExperimentPage from "./pages/experimentPage";
 import CharacterPage from "./pages/CharacterPage";
 import { useEffect } from "react";
 
@@ -52,6 +53,10 @@ export default function StoryOrganizer() {
           index
           path="/" 
           element={<UserPage />} 
+        />
+        <Route 
+          path="book/:currentBookId/experiment" 
+          element={<ExperimentPage />} 
         />
         <Route 
           path="book/:currentBookId/" 
