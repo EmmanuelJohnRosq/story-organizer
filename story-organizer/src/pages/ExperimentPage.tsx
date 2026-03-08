@@ -5,6 +5,7 @@ import { db, type Book, type Character, type EditableCharacter, type Notes, type
 
 import { FontAwesomeIcon} from "@fortawesome/react-fontawesome";
 import { faCheck, faPlus, faMinus, faEllipsis } from "@fortawesome/free-solid-svg-icons";
+import { createPortal } from "react-dom";
 
 export default function ExperimentPage() {
   const { currentBookId } = useParams();
@@ -448,6 +449,18 @@ export default function ExperimentPage() {
     const [notesShowState, setNotesShowState] = useState(false);
     const [addCharacterState, setAddCharState] = useState(true);
     const [showSettingsMenu, setShowSettingsMenu] = useState(false);
+    const [isNotesDrawerMounted, setIsNotesDrawerMounted] = useState(false);
+    const [isNotesDrawerVisible, setIsNotesDrawerVisible] = useState(false);
+
+    useEffect(() => {
+      if (!notesShowState) return;
+
+      document.body.classList.add("overflow-hidden");
+
+      return () => {
+        document.body.classList.remove("overflow-hidden");
+      };
+    }, [notesShowState]);
 
     // SHOW/HIDE CREATE NEW BOOK FORM
     const addBooksState = () => {
@@ -460,11 +473,60 @@ export default function ExperimentPage() {
         setAddCharState(!addCharacterState);
         setAddnewBooks(true);
     };
+
+    const notesDrawerTimeoutRef = useRef<number | null>(null);
+
+    const openNotesDrawer = () => {
+      if (notesDrawerTimeoutRef.current) {
+        clearTimeout(notesDrawerTimeoutRef.current);
+        notesDrawerTimeoutRef.current = null;
+      }
+
+      setIsNotesDrawerMounted(true);
+      setNotesShowState(true);
+
+      requestAnimationFrame(() => {
+        setIsNotesDrawerVisible(true);
+      });
+    };
+
+    const closeNotesDrawer = () => {
+      setIsNotesDrawerVisible(false);
+      setNotesShowState(false);
+
+      notesDrawerTimeoutRef.current = window.setTimeout(() => {
+        setIsNotesDrawerMounted(false);
+        notesDrawerTimeoutRef.current = null;
+      }, 300);
+    };
   
     // SHOW/HIDE NOTES DISPLAY
     const displayNotes = () => {
-      setNotesShowState(!notesShowState);
+       if (notesShowState) {
+        closeNotesDrawer();
+        return;
+      }
+
+      openNotesDrawer();
     };
+
+    useEffect(() => {
+      if (!notesShowState) return;
+
+      document.body.classList.add("overflow-hidden");
+
+      return () => {
+        document.body.classList.remove("overflow-hidden");
+      };
+    }, [notesShowState]);
+
+    useEffect(() => {
+      return () => {
+        if (notesDrawerTimeoutRef.current) {
+          clearTimeout(notesDrawerTimeoutRef.current);
+        }
+      };
+    }, []);
   
     const [hideSave, setHideSave] = useState(false);
     // const [notSaved, setNotSaved] = useState(false);
@@ -891,7 +953,7 @@ export default function ExperimentPage() {
                       </div>
 
                       <div className="flex flex-col justify-center"> 
-                        <a href="#">
+                        <a>
                           <h3 className="text-sm font-semibold tracking-tight line-clamp-1 leading-none">
                             {char.name}
                           </h3>
@@ -994,10 +1056,11 @@ export default function ExperimentPage() {
                 
                 <div className="flex justify-center">
                   <button 
-                      value={bookTitle}
-                      className="border-gray-500 border text-black rounded hover:bg-gray-200/50 hover:text-gray-950 px-2 transition hover:border-white dark:text-white"
-                      onClick={addDraftNotes}>
-                      <FontAwesomeIcon icon={faPlus} size="xs"/>
+                    value={bookTitle}
+                    className="border-gray-500 border text-black rounded hover:bg-gray-200/50 hover:text-gray-950 px-2 transition hover:border-white dark:text-white"
+                    onClick={addDraftNotes}
+                  >
+                    <FontAwesomeIcon icon={faPlus} size="xs"/>
                   </button>
                 </div>
               </div>
@@ -1190,42 +1253,122 @@ export default function ExperimentPage() {
           </div>
           )}
 
-          {/* ADD NOTE GLOBAL BUTTON */}
-          <div className="xs:hidden sticky w-25 bottom-5 z-50 bg-blue-600 hover:bg-blue-700 text-white rounded-full px-3 py-2 shadow-xl transition ${draftNote ? 'hidden' : 'block'}">
-            <button
-              onClick={displayNotes}
-              className={``}
-              title="Add note"
-            >
-              {notesShowState ? <FontAwesomeIcon icon={faMinus} className="mr-2" /> : <FontAwesomeIcon icon={faPlus} className="mr-2" />}
-              Notes
-            </button>
-          </div>
+          {createPortal(
+            <>
+              {/* MOBILE NOTES TOGGLE */}
+              <button
+                onClick={displayNotes}
+                className="xs:hidden fixed bottom-5 right-5 z-50 bg-blue-600 hover:bg-blue-700 text-white rounded-full p-4 shadow-xl"
+                title={notesShowState ? "Close notes" : "Open notes"}
+              >
+                <FontAwesomeIcon icon={notesShowState ? faMinus : faPlus} />
+              </button>
 
-          {/* MOBILE NOTES UI - Place this at the very bottom of this div */}
-          <div className="relative">
-            {/* 1. Backdrop: Always rendered, opacity handles visibility */}
-            <div 
-              className={`fixed inset-0 bg-black/50 z-40 transition-opacity duration-300 ${
-                notesShowState ? 'opacity-100' : 'opacity-0 pointer-events-none'
-              }`}
-              onClick={() => setNotesShowState(false)}
-            />
+              {/* MOBILE NOTES DRAWER */}
+              {isNotesDrawerMounted && (
+                <div
+                  className={`xs:hidden text-black dark:text-white fixed inset-0 z-40 transition-opacity duration-300 ${isNotesDrawerVisible ? "opacity-100" : "opacity-0"}`}
+                  role="dialog"
+                  aria-modal="true"
+                >
+                  <button
+                    className="absolute inset-0 bg-black/50"
+                    aria-label="Close notes drawer"
+                    onClick={closeNotesDrawer}
+                  />
 
-            {/* 2. Panel: Always rendered, translate-y handles the "hidden" state */}
-            <div 
-              className={`fixed bottom-0 left-0 right-0 z-50 bg-white rounded-t-3xl shadow-2xl transition-transform duration-500 ease-out h-[75vh] flex flex-col ${
-                notesShowState ? 'translate-y-0' : 'translate-y-full'
-              }`}
-            >
-              {/* Visual Handle */}
-              <div className="w-12 h-1.5 bg-gray-300 rounded-full mx-auto my-4 shrink-0" />
-              
-              <div className="p-6 overflow-y-auto flex-1">
-                {/* Your Notes Content */}
-              </div>
-            </div>
-          </div>
+                  <div className={`absolute bottom-0 left-0 right-0 rounded-t-2xl bg-gray-100 dark:bg-gray-800 shadow-2xl p-3 max-h-[75vh] transition-transform duration-300 ${isNotesDrawerVisible ? "translate-y-0" : "translate-y-full"}`}>
+                <div className="flex items-center justify-between mb-2">
+                  <h2 className="text-sm font-semibold">Notes</h2>
+                  <div className="flex gap-2">
+                    <button
+                      onClick={addDraftNotes}
+                      className="text-xs bg-blue-600 hover:bg-blue-700 text-white px-3 py-1 rounded-md"
+                    >
+                      Add
+                    </button>
+                    <button
+                      onClick={closeNotesDrawer}
+                      className="text-xs bg-gray-400 hover:bg-gray-500 text-white px-3 py-1 rounded-md"
+                    >
+                      Close
+                    </button>
+                  </div>
+                </div>
+
+                <div className="h-[calc(75vh-3.5rem)] overflow-y-auto overflow-x-hidden notes-scroll overflow-contain mt-2">
+                  {bookNotes.length < 1 && !draftNote && (
+                    <div className="text-sm text-gray-500">
+                      Add notes, references, future scenarios, book plans, etc...
+                    </div>
+                  )}
+
+                  <div>
+                    {[ ...(draftNote ? [draftNote] : []), ...bookNotes ].map(notes => (
+                      <div
+                        className={`${colorMap[notes.color]} relative p-1 rounded-md shadow-md mb-2 bg-gray-100 dark:bg-gray-900 cursor-pointer animate-fadeDown`}
+                        key={`mobile-${notes.id ?? notes.notesId}`}
+                      >
+                        <div className="flex justify-between pb-1">
+                          <span className="text-xs text-gray-800 dark:text-gray-400">
+                            {new Date(notes.createdAt).toLocaleString("en-US", {
+                              month: "short",
+                              day: "numeric",
+                              hour: "numeric",
+                              minute: "2-digit",
+                            })}
+                          </span>
+
+                          <button onClick={() => setNoteToDelete(notes)}>
+                            <FontAwesomeIcon icon={faMinus} size="sm" className="text-gray-700 dark:text-gray-300 hover:text-red-500" />
+                          </button>
+                        </div>
+
+                        <textarea
+                          className="w-full text-sm p-1 outline-none border-none rounded text-area-scroll resize-none"
+                          rows={3}
+                          value={notes.content}
+                          onChange={(e) => {
+                            if (!notes.id) {
+                              setDraftNote(prev => prev ? { ...prev, content: e.target.value } : prev);
+                            } else {
+                              setBookNotes(prev => prev.map(note => note.id === notes.id ? { ...note, content: e.target.value } : note));
+                            }
+                          }}
+                          onBlur={() => saveNote(notes)}
+                        />
+
+                        {noteToDelete && noteToDelete.id === notes.id && (
+                          <div className="absolute inset-0 bg-black/40 backdrop-blur-sm flex items-center justify-center rounded-md z-10">
+                            <div className="bg-white dark:bg-gray-800 p-3 rounded-md shadow-lg text-center w-40">
+                              <p className="text-sm mb-2">Delete this note?</p>
+                              <div className="flex justify-between">
+                                <button
+                                  onClick={() => handleDeleteNote(noteToDelete!)}
+                                  className="text-red-500 text-sm hover:scale-105"
+                                >
+                                  Delete
+                                </button>
+                                <button
+                                  onClick={() => setNoteToDelete(null)}
+                                  className="text-gray-500 text-sm"
+                                >
+                                  Cancel
+                                </button>
+                              </div>
+                            </div>
+                          </div>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                </div>
+                  </div>
+                </div>
+              )}
+            </>,
+            document.body
+          )}
           
 
     {/* MAIN PARENT CONTAINER DIV CLOSER */}
