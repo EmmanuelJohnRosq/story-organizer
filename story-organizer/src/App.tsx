@@ -54,10 +54,6 @@ export default function StoryOrganizer() {
           path="/" 
           element={<UserPage />} 
         />
-        {/* <Route 
-          path="book/:currentBookId/experiment" 
-          element={<ExperimentPage />} 
-        /> */}
         <Route 
           path="book/:currentBookId/" 
           element={<ExperimentPage />} 
@@ -66,6 +62,10 @@ export default function StoryOrganizer() {
           path="book/:currentBookId/:characterSlug"
           element={<CharacterPage />}
         />
+        {/* <Route
+          path="book/:currentBookId/:characterSlug/edit"
+          element={<CharEditPage />}
+        /> */}
       </Route>
     </Routes>
   );

@@ -5,7 +5,7 @@ export type Character = {
   bookId: string;
 
   name: string;
-  role: string; // protagonist, antagonist, supporting, confidant, mentor, love interest, background character, etc.
+  role: string; // protagonist, antagonist, supporting, confidant, mentor, love interest, background character, etc...
 
   status: string; // "alive" | "dead" | "undead" |"unknown"
   importance: string; //"primary" | "secondary" | "tertiary" | "unknown"
@@ -81,6 +81,7 @@ export type Book = {
   title: string;
   summary: string;
   volume: number;
+  volumeName: string;
   createdAt: number;
   tags: string[];
   genre: string[];
@@ -120,7 +121,7 @@ class StoryDB extends Dexie {
   constructor() {
     super("StoryDB");
 
-    this.version(15).stores({
+    this.version(16).stores({
       books: "id, title", 
       images: "imageId, charId, bookId",
       notes: "++id, bookId, charId",
@@ -130,26 +131,14 @@ class StoryDB extends Dexie {
     })
     
     .upgrade(async (tx) => {
-      const characters = await tx.table("characters").toArray();
-
-      for (const char of characters) {
-
-        if (Array.isArray(char.abilities)) {
-
-          // Detect OLD format (string[])
-          if (char.abilities.length > 0 && typeof char.abilities[0] === "string") {
-
-            const newAbilities = char.abilities.map((ability: string) => ({
-              ability,
-              description: ""
-            }));
-
-            await tx.table("characters").update(char.id, {
-              abilities: newAbilities
-            });
-          }
-        }
-      }
+      // Use .modify() to update every existing record in the "books" table
+      return tx.table("books").toCollection().modify(book => {
+        // Set a default value or calculate it based on existing data
+        book.volumeName = ""; 
+        
+        // Optional: If you want to derive it from other properties
+        // book.volumeName = `${book.title} - Vol 1`;
+      });
     });
 
   }

@@ -19,6 +19,7 @@ export default function UserPage() {
     const [bookTitle, setBookTitle] = useState("");
     const [bookSummary, setBookSummary] = useState("");
     const [bookVolume, setBookVolume] = useState<string>("0");
+    const [bookVolName, setbookVolName] = useState("");
     const [bookChapterCount, setBookChapterCount] = useState(0);
     const [bookStatus, setBookStatus] = useState("ongoing"); // default
 
@@ -256,6 +257,7 @@ export default function UserPage() {
             title: normalizedTitle,
             summary: bookSummary,
             volume: Number(bookVolume) || 0,
+            volumeName: bookVolName,
             createdAt: Date.now(),
             tags: bookTags,
             genre: bookGenre,
@@ -276,6 +278,7 @@ export default function UserPage() {
         setStatePopup(true);
         setBookTitle("");
         setBookVolume("");
+        setbookVolName("");
         setBookSummary("");
         setBookTags([]);
         setBookGenre([]);
