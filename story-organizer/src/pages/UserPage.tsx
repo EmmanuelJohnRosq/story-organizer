@@ -19,12 +19,13 @@ export default function UserPage() {
     const [bookTitle, setBookTitle] = useState("");
     const [bookSummary, setBookSummary] = useState("");
     const [bookVolume, setBookVolume] = useState<string>("0");
-    const [bookTags, setBookTags] = useState("");
-    const [bookGenre, setBookGenre] = useState("");
     const [bookChapterCount, setBookChapterCount] = useState(0);
     const [bookStatus, setBookStatus] = useState("ongoing"); // default
 
     const [userNotes, setUserNotes] = useState<Notes[]>([]);
+    
+    const [bookTags, setBookTags] = useState<string[]>([]);
+    const [bookGenre, setBookGenre] = useState<string[]>([]);
 
     const [characters, setCharacters] = useState<Character[]>([])
     const [tipIndex, setTipIndex] = useState(0);
@@ -256,8 +257,8 @@ export default function UserPage() {
             summary: bookSummary,
             volume: Number(bookVolume) || 0,
             createdAt: Date.now(),
-            tags: bookTags.split(",").map(a => normalizeWhitespace(a)),
-            genre: bookGenre.split(",").map(a => normalizeWhitespace(a)),
+            tags: bookTags,
+            genre: bookGenre,
             chapterCount: bookChapterCount,
             status: bookStatus,
         };
@@ -276,8 +277,8 @@ export default function UserPage() {
         setBookTitle("");
         setBookVolume("");
         setBookSummary("");
-        setBookTags("");
-        setBookGenre("");
+        setBookTags([]);
+        setBookGenre([]);
         setBookChapterCount(0);
         setBookStatus("ongoing");
         setBookAdded(true);
@@ -659,19 +660,6 @@ export default function UserPage() {
                         value={bookSummary}
                         onChange={e => setBookSummary(e.target.value)}
                         onBlur={(e) => { e.currentTarget.style.height = "auto";}}
-                        />
-                    </div>
-
-                    {/* SAMPLE GENRE */}
-                    <div>
-                        <label className="block text-sm font-medium mb-1">
-                        Book Genre
-                        </label>
-                        <input
-                            className="w-full border rounded-md px-4 py-2 focus:outline-none focus:ring-2 focus:ring-blue-400 placeholder-gray-400 dark:placeholder-gray-600"
-                            placeholder="Enter genre separated by comma"
-                            value={bookGenre}
-                            onChange={e => setBookGenre(e.target.value)}
                         />
                     </div>
 

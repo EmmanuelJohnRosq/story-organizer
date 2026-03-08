@@ -852,7 +852,7 @@ export default function Header() {
                     Google Auth Expired: Reconnect to Google Drive
                 </span>
                 <button 
-                    className="border bg-blue-500 px-4 py-2 text-white rounded-md hover:border hover:border-blue-900"
+                    className="h-10 items-center border bg-blue-500 px-4 py-2 text-white rounded-md hover:border hover:border-blue-900"
                     onClick={() => logIn()}>
                      Reconnect
                 </button>

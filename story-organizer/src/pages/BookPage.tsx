@@ -912,12 +912,12 @@ export default function BookPage() {
                   >Notes</h3>
 
                   <div className="flex justify-center">
-                  <button 
-                      value={bookTitle}
-                      className="border-gray-500 border-1 text-black rounded hover:bg-gray-300 hover:text-gray-950 px-2 transition dark:border-white dark:text-white"
-                      onClick={addDraftNotes}>
-                      <FontAwesomeIcon icon={faPlus} size="xs"/>
-                  </button>
+                    <button 
+                        value={bookTitle}
+                        className="border-gray-500 border-1 text-black rounded hover:bg-gray-300 hover:text-gray-950 px-2 transition dark:border-white dark:text-white"
+                        onClick={addDraftNotes}>
+                        <FontAwesomeIcon icon={faPlus} size="xs"/>
+                    </button>
                   </div>
 
               </div>

@@ -688,7 +688,7 @@ export default function ExperimentPage() {
               <button
                 className="w-full text-left px-3 py-2 rounded hover:bg-gray-200 dark:hover:bg-gray-700"
                 onClick={() => {
-                  setAddnewBooks(false);
+                  addBooksState();
                   setShowSettingsMenu(false);
                 }}
               >
@@ -697,7 +697,7 @@ export default function ExperimentPage() {
               <button
                 className="w-full text-left px-3 py-2 rounded hover:bg-gray-200 dark:hover:bg-gray-700"
                 onClick={() => {
-                  setAddCharState(false);
+                  addNewcharacter();
                   setShowSettingsMenu(false);
                 }}
               >
@@ -733,34 +733,32 @@ export default function ExperimentPage() {
               <div className="sticky top-15 xxs:h-[calc(100vh-7rem)] w-full overflow-y-auto overflow-x-hidden notes-scroll overflow-contain">
 
                 {/* BOOK SUMMARY FORM */}
-                {!Addnewbooks && (
-                  // BOOK DETAILS
-                  <div className="flex-1 rounded-md shadow-lg pt-4 px-4 pb-1 mb-1 bg-gray-100 dark:bg-gray-900 transition duration-300 animate-fadeDown">
-                    <form className="space-y-2">
+                {/* // BOOK DETAILS */}
+                <div className="flex-1 rounded-md shadow-lg pt-4 px-4 pb-1 mb-1 bg-gray-100 dark:bg-gray-900 transition duration-300 animate-fadeDown">
+                  <form className="space-y-2">
 
-                        {/* Summary */}
-                        <div>
-                          <label className="text-sm font-semibold">
-                            Book Content
-                          </label>
+                      {/* Summary */}
+                      <div>
+                        <label className="text-sm font-semibold">
+                          Book Content
+                        </label>
 
-                          <label className="block text-xs text-neutral-400 mb-1">
-                            Volume {bookVolume} • Volume Name • {upcaseLetter(bookStatus)}
-                          </label>
-                          
-                          <textarea
-                              rows={12}
-                              className="w-full px-1 py-1 focus:outline-none text-sm placeholder-gray-400 dark:placeholder-gray-600 text-area-scroll"
-                              placeholder="Update book summary"
-                              value={bookSummary}
-                              onFocus={(e) => autoResize(e)}
-                              onBlur={(e) => { e.currentTarget.style.height = "auto";}}
-                              onChange={e => setBookSummary(e.target.value)}
-                          />
-                        </div>
-                    </form>
-                  </div>
-                )}
+                        <label className="block text-xs text-neutral-400 mb-1">
+                          Volume {bookVolume} • Volume Name • {upcaseLetter(bookStatus)}
+                        </label>
+                        
+                        <textarea
+                            rows={12}
+                            className="w-full px-1 py-1 focus:outline-none text-sm placeholder-gray-400 dark:placeholder-gray-600 text-area-scroll"
+                            placeholder="Update book summary"
+                            value={bookSummary}
+                            onFocus={(e) => autoResize(e)}
+                            onBlur={(e) => { e.currentTarget.style.height = "auto";}}
+                            onChange={e => setBookSummary(e.target.value)}
+                        />
+                      </div>
+                  </form>
+                </div>
 
                 {/* CHARACTER GENRE AND TAGS */}
                 <div className="rounded-md shadow-lg p-4 mb-2 bg-gray-100 dark:bg-gray-900 transition duration-300">
@@ -872,7 +870,7 @@ export default function ExperimentPage() {
                   title="Open character sheet."
                   className="
                   h-15 w-full
-                  cursor-pointer bg-white shadow-2xl rounded-4xl
+                  cursor-pointer bg-white shadow-lg rounded-4xl
                   transition
                   hover:bg-gray-100 dark:hover:bg-black
                   group animate-fadeDown
@@ -884,7 +882,7 @@ export default function ExperimentPage() {
                     <div className="flex gap-2">
                       {/* IMAGE */}
                       <div className="flex h-12 w-12 overflow-hidden shrink-0 rounded-full items-center group-hover:scale-110">
-                        <a>
+                        <a> 
                             <img 
                             className="h-full w-full object-cover transition" 
                             src={imageMap[char.id] || char_image}
@@ -988,167 +986,173 @@ export default function ExperimentPage() {
 
           {/* RIGHT SIDE CONTAINER */}
           <div className="hidden col-span-2 xs:flex flex-col relative animate-fadeRight transition delay-500 duration-900">
-              
-              {/* NOTES CONTAINER */}
-              <div className="rounded-md pl-2 pt-2 mb-2 bg-gray-100 dark:bg-gray-900 transition duration-300">
-                <div className="flex justify-between"> 
-                  <label className="text-sm font-semibold">Notes</label>
-                  <label className="">
-
-                  </label>
+            
+            {/* NOTES CONTAINER */}
+            <div className="rounded-md pl-2 pr-1 pt-2 mb-2 bg-gray-100 dark:bg-gray-900 transition duration-300">
+              <div className="flex justify-between"> 
+                <label className="text-sm font-semibold">Notes</label>
+                
+                <div className="flex justify-center">
+                  <button 
+                      value={bookTitle}
+                      className="border-gray-500 border text-black rounded hover:bg-gray-200/50 hover:text-gray-950 px-2 transition hover:border-white dark:text-white"
+                      onClick={addDraftNotes}>
+                      <FontAwesomeIcon icon={faPlus} size="xs"/>
+                  </button>
                 </div>
+              </div>
 
-                {/* NOTES CONTENTS */}
-                <div className="h-[calc(100vh-10rem)] overflow-y-auto overflow-x-hidden notes-scroll overflow-contain mt-2">
+              {/* NOTES CONTENTS */}
+              <div className="h-[calc(100vh-10rem)] overflow-y-auto overflow-x-hidden notes-scroll overflow-contain mt-2">
 
-                  {bookNotes.length < 1 && !draftNote && (
-                    <div className="text-sm text-gray-500">
-                      Add notes, references, future scenarios, book plans, etc...
-                    </div>
-                  )}
-
-                  {/* THIS IS THE BOOK NOTES */}
-                  <div className="">
-                      {[ ...(draftNote ? [draftNote] : []), ...bookNotes ].map(notes => (
-                      <div 
-                          className={`${colorMap[notes.color]} relative p-1 rounded-md shadow-md mb-2 bg-gray-100 dark:bg-gray-900 cursor-pointer animate-fadeDown`}
-                          key={notes.id ?? notes.notesId}
-                          data-id={notes.id}
-                      >
-
-                          <div className="flex justify-between pb-1"> 
-                          
-                          <span className="text-xs text-gray-800 dark:text-gray-400">
-                              {new Date(notes.createdAt).toLocaleString("en-US", {
-                              month: "short",
-                              day: "numeric",
-                              year: "numeric",
-                              hour: "2-digit",
-                              minute: "2-digit",
-                              })}
-                          </span>
-
-                          <button 
-                              className="hover:bg-neutral-300/50 rounded-2xl group"
-                              onClick={() => setNoteToDelete(notes)}>
-                              <svg
-                              xmlns="http://www.w3.org/2000/svg"
-                              className="h-5 w-5 text-gray-700 dark:text-gray-400 group-hover:text-red-500"
-                              fill="none"
-                              viewBox="0 0 24 24"
-                              stroke="currentColor"
-                              strokeWidth={2}
-                              >
-                              <path strokeLinecap="round" strokeLinejoin="round" d="M6 6l12 12M6 18L18 6" />
-                              </svg>
-                          </button>
-
-                          </div>
-                          
-                          <textarea
-                          className="
-                          w-full text-sm
-                          rounded-md 
-                          px-1
-                          focus:outline-none focus:ring-1 focus:ring-gray-400 
-                          hover:ring-gray-400 hover:ring-1
-                          resize-none
-                          overflow-hidden
-                          transition-all duration-200
-                          "
-                          ref={!notes.id ? draftTextareaRef : null}
-                          placeholder="Enter Notes"
-                          onFocus={(e) => {autoResize(e); setOnFocusId(String(notes.id!)); setNoteContent(notes.content); setHideSave(true); 
-                              if (notes.id) {
-                              setDraftstate(false);
-                              }
-                              else {
-                              setDraftstate(true);
-                              }
-                          }}
-                          rows={3}
-                          value={notes.content}
-                          onChange={(e) => {
-                              if (!notes.id) {
-                              // This is draft
-                              setDraftNote(prev =>
-                                  prev ? { ...prev, content: e.target.value } : prev
-                              );
-                              } else {
-                              // This is saved note
-                              setBookNotes(prev =>
-                                  prev.map(note =>
-                                  note.id === notes.id
-                                      ? { ...note, content: e.target.value }
-                                      : note
-                                  )
-                              );
-                              }
-                          }}
-                          onKeyDown={(e) => {
-                              if (e.key === "Enter" && !e.shiftKey) {
-                              e.preventDefault();
-                              (e.target as HTMLElement).blur();
-                              (saveNote(notes));
-                              }
-                          }}
-                          onBlur={(e) => { e.currentTarget.style.height = "auto";}}
-                          />
-
-                          {(hideSave && (notes.id ? Number(onFocusId) === notes.id : draftNoteState) &&
-                          <div className="flex justify-end gap-1">
-                              {/* {(notSaved &&
-                              <span>Not saved</span>
-                              )} */}
-
-                              <button 
-                              className="flex px-4 py-1 bg-neutral-500 rounded-xl hover:bg-neutral-600"
-                              onClick={() => {setHideSave(false); setDraftNote(null);}}
-                              >
-                              Cancel
-                              </button>
-
-                              <button 
-                              className="flex px-4 py-1 bg-blue-700 rounded-xl"
-                              onClick={() => {saveNote(notes);}}
-                              disabled={noteContent === notes.content}
-                              >
-                              Save 
-                              </button> 
-                          </div>
-                          )}
-
-                          {noteToDelete && noteToDelete.id === notes.id && (
-                          <div className="absolute inset-0 bg-black/40 backdrop-blur-sm flex items-center justify-center rounded-md z-10">
-                              <div className="bg-white dark:bg-gray-800 p-3 rounded-md shadow-lg text-center w-40">
-                              <p className="text-sm mb-2">Delete this note?</p>
-                              <div className="flex justify-between">
-                                  <button
-                                  onClick={() => handleDeleteNote(noteToDelete!)}
-                                  className="text-red-500 text-sm hover:scale-105"
-                                  >
-                                  Delete
-                                  </button>
-                                  <button
-                                  onClick={() => setNoteToDelete(null)}
-                                  className="text-gray-500 text-sm"
-                                  >
-                                  Cancel
-                                  </button>
-                              </div>
-                              </div>
-                          </div>
-                          )}
-                      </div>
-                      ))}
+                {bookNotes.length < 1 && !draftNote && (
+                  <div className="text-sm text-gray-500">
+                    Add notes, references, future scenarios, book plans, etc...
                   </div>
+                )}
 
+                {/* THIS IS THE BOOK NOTES */}
+                <div className="">
+                    {[ ...(draftNote ? [draftNote] : []), ...bookNotes ].map(notes => (
+                    <div 
+                        className={`${colorMap[notes.color]} relative p-1 rounded-md shadow-md mb-2 bg-gray-100 dark:bg-gray-900 cursor-pointer animate-fadeDown`}
+                        key={notes.id ?? notes.notesId}
+                        data-id={notes.id}
+                    >
+
+                        <div className="flex justify-between pb-1"> 
+                        
+                        <span className="text-xs text-gray-800 dark:text-gray-400">
+                            {new Date(notes.createdAt).toLocaleString("en-US", {
+                            month: "short",
+                            day: "numeric",
+                            year: "numeric",
+                            hour: "2-digit",
+                            minute: "2-digit",
+                            })}
+                        </span>
+
+                        <button 
+                            className="hover:bg-neutral-300/50 rounded-2xl group"
+                            onClick={() => setNoteToDelete(notes)}>
+                            <svg
+                            xmlns="http://www.w3.org/2000/svg"
+                            className="h-5 w-5 text-gray-700 dark:text-gray-400 group-hover:text-red-500"
+                            fill="none"
+                            viewBox="0 0 24 24"
+                            stroke="currentColor"
+                            strokeWidth={2}
+                            >
+                            <path strokeLinecap="round" strokeLinejoin="round" d="M6 6l12 12M6 18L18 6" />
+                            </svg>
+                        </button>
+
+                        </div>
+                        
+                        <textarea
+                        className="
+                        w-full text-sm
+                        rounded-md 
+                        px-1
+                        focus:outline-none focus:ring-1 focus:ring-gray-400 
+                        hover:ring-gray-400 hover:ring-1
+                        resize-none
+                        overflow-hidden
+                        transition-all duration-200
+                        "
+                        ref={!notes.id ? draftTextareaRef : null}
+                        placeholder="Enter Notes"
+                        onFocus={(e) => {autoResize(e); setOnFocusId(String(notes.id!)); setNoteContent(notes.content); setHideSave(true); 
+                            if (notes.id) {
+                            setDraftstate(false);
+                            }
+                            else {
+                            setDraftstate(true);
+                            }
+                        }}
+                        rows={3}
+                        value={notes.content}
+                        onChange={(e) => {
+                            if (!notes.id) {
+                            // This is draft
+                            setDraftNote(prev =>
+                                prev ? { ...prev, content: e.target.value } : prev
+                            );
+                            } else {
+                            // This is saved note
+                            setBookNotes(prev =>
+                                prev.map(note =>
+                                note.id === notes.id
+                                    ? { ...note, content: e.target.value }
+                                    : note
+                                )
+                            );
+                            }
+                        }}
+                        onKeyDown={(e) => {
+                            if (e.key === "Enter" && !e.shiftKey) {
+                            e.preventDefault();
+                            (e.target as HTMLElement).blur();
+                            (saveNote(notes));
+                            }
+                        }}
+                        onBlur={(e) => { e.currentTarget.style.height = "auto";}}
+                        />
+
+                        {(hideSave && (notes.id ? Number(onFocusId) === notes.id : draftNoteState) &&
+                        <div className="flex justify-end gap-1">
+                            {/* {(notSaved &&
+                            <span>Not saved</span>
+                            )} */}
+
+                            <button 
+                            className="flex px-4 py-1 bg-neutral-500 rounded-xl hover:bg-neutral-600"
+                            onClick={() => {setHideSave(false); setDraftNote(null);}}
+                            >
+                            Cancel
+                            </button>
+
+                            <button 
+                            className="flex px-4 py-1 bg-blue-700 rounded-xl"
+                            onClick={() => {saveNote(notes);}}
+                            disabled={noteContent === notes.content}
+                            >
+                            Save 
+                            </button> 
+                        </div>
+                        )}
+
+                        {noteToDelete && noteToDelete.id === notes.id && (
+                        <div className="absolute inset-0 bg-black/40 backdrop-blur-sm flex items-center justify-center rounded-md z-10">
+                            <div className="bg-white dark:bg-gray-800 p-3 rounded-md shadow-lg text-center w-40">
+                            <p className="text-sm mb-2">Delete this note?</p>
+                            <div className="flex justify-between">
+                                <button
+                                onClick={() => handleDeleteNote(noteToDelete!)}
+                                className="text-red-500 text-sm hover:scale-105"
+                                >
+                                Delete
+                                </button>
+                                <button
+                                onClick={() => setNoteToDelete(null)}
+                                className="text-gray-500 text-sm"
+                                >
+                                Cancel
+                                </button>
+                            </div>
+                            </div>
+                        </div>
+                        )}
+                    </div>
+                    ))}
                 </div>
 
               </div>
 
-          </div>
+            </div>
 
+          </div>
+          
         </div>
       
 
@@ -1187,16 +1191,41 @@ export default function ExperimentPage() {
           )}
 
           {/* ADD NOTE GLOBAL BUTTON */}
-          {bookNotes.length < 5 && (
+          <div className="xs:hidden sticky w-25 bottom-5 z-50 bg-blue-600 hover:bg-blue-700 text-white rounded-full px-3 py-2 shadow-xl transition ${draftNote ? 'hidden' : 'block'}">
             <button
-              onClick={addDraftNotes}
-              className={`hidden xs:block fixed bottom-5 right-5 z-50 bg-blue-600 hover:bg-blue-700 text-white rounded-full px-4 py-3 shadow-xl transition ${draftNote ? 'hidden' : 'block'}`}
+              onClick={displayNotes}
+              className={``}
               title="Add note"
             >
-              <FontAwesomeIcon icon={faPlus} className="mr-2" />
-              Quick Note
+              {notesShowState ? <FontAwesomeIcon icon={faMinus} className="mr-2" /> : <FontAwesomeIcon icon={faPlus} className="mr-2" />}
+              Notes
             </button>
-          )}
+          </div>
+
+          {/* MOBILE NOTES UI - Place this at the very bottom of this div */}
+          <div className="relative">
+            {/* 1. Backdrop: Always rendered, opacity handles visibility */}
+            <div 
+              className={`fixed inset-0 bg-black/50 z-40 transition-opacity duration-300 ${
+                notesShowState ? 'opacity-100' : 'opacity-0 pointer-events-none'
+              }`}
+              onClick={() => setNotesShowState(false)}
+            />
+
+            {/* 2. Panel: Always rendered, translate-y handles the "hidden" state */}
+            <div 
+              className={`fixed bottom-0 left-0 right-0 z-50 bg-white rounded-t-3xl shadow-2xl transition-transform duration-500 ease-out h-[75vh] flex flex-col ${
+                notesShowState ? 'translate-y-0' : 'translate-y-full'
+              }`}
+            >
+              {/* Visual Handle */}
+              <div className="w-12 h-1.5 bg-gray-300 rounded-full mx-auto my-4 shrink-0" />
+              
+              <div className="p-6 overflow-y-auto flex-1">
+                {/* Your Notes Content */}
+              </div>
+            </div>
+          </div>
           
 
     {/* MAIN PARENT CONTAINER DIV CLOSER */}
