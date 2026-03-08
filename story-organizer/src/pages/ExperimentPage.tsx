@@ -378,7 +378,7 @@ export default function ExperimentPage() {
       green: "bg-green-200 dark:bg-green-800",
       sky: "bg-sky-200 dark:bg-sky-800",
       purple: "bg-purple-200 dark:bg-purple-800",
-      gray: "bg-gray-200 dark:bg-gray-900"
+      gray: "bg-gray-200 dark:bg-gray-950"
     };
       
     const notesSubject = "";
@@ -705,7 +705,7 @@ export default function ExperimentPage() {
               </button>
 
               <button
-                className="w-full text-left px-3 py-2 rounded hover:bg-gray-200 dark:hover:bg-sky-700/50"
+                className="hidden xs:block w-full text-left px-3 py-2 rounded hover:bg-gray-200 dark:hover:bg-sky-700/50"
                 onClick={() => {addDraftNotes(); setShowSettingsMenu(false)}}
               >
                 Add draft note
@@ -724,13 +724,13 @@ export default function ExperimentPage() {
         </div>
 
         {/* CONTENT CONTAINER */}
-        <div className="xs:grid grid-cols-10 gap-2 items-start">
+        <div className="grid xxs:grid-cols-2 xs:grid-cols-10 gap-2 items-start">
     
           {/* LEFT SIDE CONTAINER */}
-          <div className="hidden col-span-3 xs:flex flex-1 relative">
+          <div className="col-span-1 xs:col-span-3 flex-1 relative">
 
               {/* BOOK AND CHARACTER FORMS LEFT PANEL */}
-              <div className="sticky top-15 h-[calc(100vh-7rem)] w-full overflow-y-auto overflow-x-hidden notes-scroll overflow-contain">
+              <div className="sticky top-15 xxs:h-[calc(100vh-7rem)] w-full overflow-y-auto overflow-x-hidden notes-scroll overflow-contain">
 
                 {/* BOOK SUMMARY FORM */}
                 {!Addnewbooks && (
@@ -764,7 +764,14 @@ export default function ExperimentPage() {
 
                 {/* CHARACTER GENRE AND TAGS */}
                 <div className="rounded-md shadow-lg p-4 mb-2 bg-gray-100 dark:bg-gray-900 transition duration-300">
-                  <label className="text-sm font-semibold mb-2">Book Classification</label>
+                  <label className="text-sm font-semibold">Book Classification</label>
+
+                  <div className="block mb-1 -mt-1">
+                    <label className="text-xs text-blue-900 dark:text-blue-400">Genre</label>
+                    <label className="text-xs text-gray-300"> • </label>
+                    <label className="text-xs text-purple-900 dark:text-purple-400">Tags</label>
+                  </div>
+                  
                   <div className="flex flex-wrap gap-2">
                     {bookChips.length ? (
                       bookChips.map((chip, index) => (
@@ -776,7 +783,7 @@ export default function ExperimentPage() {
                               : "bg-purple-200 text-purple-900 dark:bg-purple-900/40 dark:text-purple-200" // Tag Style
                           }`}
                         >
-                          {chip.text}
+                          {upcaseLetter(chip.text)}
                         </span>
                       ))
                     ) : (
@@ -809,7 +816,7 @@ export default function ExperimentPage() {
           </div>
           
           {/* CENTER CONTAINER */}
-          <div className="col-span-5 w-full">
+          <div className="col-span-1 xs:col-span-5 w-full">
 
             {/* CHARACTER DATA COMPLETION PROGRESS BAR */}
             <div className="rounded-md shadow-lg p-4 mb-2 bg-gray-100 dark:bg-gray-900 transition duration-300">
@@ -866,8 +873,8 @@ export default function ExperimentPage() {
                   className="
                   h-15 w-full
                   cursor-pointer bg-white shadow-2xl rounded-4xl
-                  transition-all duration-300
-                  hover:bg-gray-100 dark:hover:bg-black 
+                  transition
+                  hover:bg-gray-100 dark:hover:bg-black
                   group animate-fadeDown
                   flex items-center pl-2
                   dark:bg-gray-950"
@@ -876,10 +883,10 @@ export default function ExperimentPage() {
 
                     <div className="flex gap-2">
                       {/* IMAGE */}
-                      <div className="flex h-12 w-12 overflow-hidden shrink-0 rounded-full items-center">
+                      <div className="flex h-12 w-12 overflow-hidden shrink-0 rounded-full items-center group-hover:scale-110">
                         <a>
                             <img 
-                            className="h-full w-full object-cover group-hover:scale-105 transition" 
+                            className="h-full w-full object-cover transition" 
                             src={imageMap[char.id] || char_image}
                             alt="Default Character Image" />
                         </a>
@@ -983,147 +990,158 @@ export default function ExperimentPage() {
           <div className="hidden col-span-2 xs:flex flex-col relative animate-fadeRight transition delay-500 duration-900">
               
               {/* NOTES CONTAINER */}
-              <div className="PARENT CONTAINER FOR THE NOTES PANEL">
+              <div className="rounded-md pl-2 pt-2 mb-2 bg-gray-100 dark:bg-gray-900 transition duration-300">
+                <div className="flex justify-between"> 
+                  <label className="text-sm font-semibold">Notes</label>
+                  <label className="">
+
+                  </label>
+                </div>
 
                 {/* NOTES CONTENTS */}
-                <div className="h-[calc(100vh-7rem)] overflow-y-auto overflow-x-hidden notes-scroll overflow-contain">
+                <div className="h-[calc(100vh-10rem)] overflow-y-auto overflow-x-hidden notes-scroll overflow-contain mt-2">
 
-                    {/* THIS IS THE BOOK NOTES */}
-                    <div className="">
-                        {[ ...(draftNote ? [draftNote] : []), ...bookNotes ].map(notes => (
-                        <div 
-                            className={`${colorMap[notes.color]} relative p-1 rounded-md shadow-md mb-2 bg-gray-100 dark:bg-gray-900 cursor-pointer animate-fadeDown`}
-                            key={notes.id ?? notes.notesId}
-                            data-id={notes.id}
-                        >
-
-                            <div className="flex justify-between pb-1"> 
-                            
-                            <span className="text-xs text-gray-800 dark:text-gray-400">
-                                {new Date(notes.createdAt).toLocaleString("en-US", {
-                                month: "short",
-                                day: "numeric",
-                                year: "numeric",
-                                hour: "2-digit",
-                                minute: "2-digit",
-                                })}
-                            </span>
-
-                            <button 
-                                className="hover:bg-neutral-300/50 rounded-2xl group"
-                                onClick={() => setNoteToDelete(notes)}>
-                                <svg
-                                xmlns="http://www.w3.org/2000/svg"
-                                className="h-5 w-5 text-gray-700 dark:text-gray-400 group-hover:text-red-500"
-                                fill="none"
-                                viewBox="0 0 24 24"
-                                stroke="currentColor"
-                                strokeWidth={2}
-                                >
-                                <path strokeLinecap="round" strokeLinejoin="round" d="M6 6l12 12M6 18L18 6" />
-                                </svg>
-                            </button>
-
-                            </div>
-                            
-                            <textarea
-                            className="
-                            w-full text-sm
-                            rounded-md 
-                            px-1
-                            focus:outline-none focus:ring-2 focus:ring-blue-400 
-                            hover:ring-blue-400 hover:ring-2
-                            placeholder-gray-400 dark:placeholder-gray-400 
-                            resize-none
-                            overflow-hidden
-                            transition-all duration-200
-                            "
-                            ref={!notes.id ? draftTextareaRef : null}
-                            placeholder="Enter Notes"
-                            onFocus={(e) => {autoResize(e); setOnFocusId(String(notes.id!)); setNoteContent(notes.content); setHideSave(true); 
-                                if (notes.id) {
-                                setDraftstate(false);
-                                }
-                                else {
-                                setDraftstate(true);
-                                }
-                            }}
-                            rows={3}
-                            value={notes.content}
-                            onChange={(e) => {
-                                if (!notes.id) {
-                                // This is draft
-                                setDraftNote(prev =>
-                                    prev ? { ...prev, content: e.target.value } : prev
-                                );
-                                } else {
-                                // This is saved note
-                                setBookNotes(prev =>
-                                    prev.map(note =>
-                                    note.id === notes.id
-                                        ? { ...note, content: e.target.value }
-                                        : note
-                                    )
-                                );
-                                }
-                            }}
-                            onKeyDown={(e) => {
-                                if (e.key === "Enter" && !e.shiftKey) {
-                                e.preventDefault();
-                                (e.target as HTMLElement).blur();
-                                (saveNote(notes));
-                                }
-                            }}
-                            onBlur={(e) => { e.currentTarget.style.height = "auto";}}
-                            />
-
-                            {(hideSave && (notes.id ? Number(onFocusId) === notes.id : draftNoteState) &&
-                            <div className="flex justify-end gap-1">
-                                {/* {(notSaved &&
-                                <span>Not saved</span>
-                                )} */}
-
-                                <button 
-                                className="flex px-4 py-1 bg-neutral-500 rounded-xl hover:bg-neutral-600"
-                                onClick={() => {setHideSave(false); setDraftNote(null);}}
-                                >
-                                Cancel
-                                </button>
-
-                                <button 
-                                className="flex px-4 py-1 bg-blue-700 rounded-xl"
-                                onClick={() => {saveNote(notes);}}
-                                disabled={noteContent === notes.content}
-                                >
-                                Save 
-                                </button> 
-                            </div>
-                            )}
-
-                            {noteToDelete && noteToDelete.id === notes.id && (
-                            <div className="absolute inset-0 bg-black/40 backdrop-blur-sm flex items-center justify-center rounded-md z-10">
-                                <div className="bg-white dark:bg-gray-800 p-3 rounded-md shadow-lg text-center w-40">
-                                <p className="text-sm mb-2">Delete this note?</p>
-                                <div className="flex justify-between">
-                                    <button
-                                    onClick={() => handleDeleteNote(noteToDelete!)}
-                                    className="text-red-500 text-sm hover:scale-105"
-                                    >
-                                    Delete
-                                    </button>
-                                    <button
-                                    onClick={() => setNoteToDelete(null)}
-                                    className="text-gray-500 text-sm"
-                                    >
-                                    Cancel
-                                    </button>
-                                </div>
-                                </div>
-                            </div>
-                            )}
-                        </div>
-                        ))}
+                  {bookNotes.length < 1 && !draftNote && (
+                    <div className="text-sm text-gray-500">
+                      Add notes, references, future scenarios, book plans, etc...
                     </div>
+                  )}
+
+                  {/* THIS IS THE BOOK NOTES */}
+                  <div className="">
+                      {[ ...(draftNote ? [draftNote] : []), ...bookNotes ].map(notes => (
+                      <div 
+                          className={`${colorMap[notes.color]} relative p-1 rounded-md shadow-md mb-2 bg-gray-100 dark:bg-gray-900 cursor-pointer animate-fadeDown`}
+                          key={notes.id ?? notes.notesId}
+                          data-id={notes.id}
+                      >
+
+                          <div className="flex justify-between pb-1"> 
+                          
+                          <span className="text-xs text-gray-800 dark:text-gray-400">
+                              {new Date(notes.createdAt).toLocaleString("en-US", {
+                              month: "short",
+                              day: "numeric",
+                              year: "numeric",
+                              hour: "2-digit",
+                              minute: "2-digit",
+                              })}
+                          </span>
+
+                          <button 
+                              className="hover:bg-neutral-300/50 rounded-2xl group"
+                              onClick={() => setNoteToDelete(notes)}>
+                              <svg
+                              xmlns="http://www.w3.org/2000/svg"
+                              className="h-5 w-5 text-gray-700 dark:text-gray-400 group-hover:text-red-500"
+                              fill="none"
+                              viewBox="0 0 24 24"
+                              stroke="currentColor"
+                              strokeWidth={2}
+                              >
+                              <path strokeLinecap="round" strokeLinejoin="round" d="M6 6l12 12M6 18L18 6" />
+                              </svg>
+                          </button>
+
+                          </div>
+                          
+                          <textarea
+                          className="
+                          w-full text-sm
+                          rounded-md 
+                          px-1
+                          focus:outline-none focus:ring-1 focus:ring-gray-400 
+                          hover:ring-gray-400 hover:ring-1
+                          resize-none
+                          overflow-hidden
+                          transition-all duration-200
+                          "
+                          ref={!notes.id ? draftTextareaRef : null}
+                          placeholder="Enter Notes"
+                          onFocus={(e) => {autoResize(e); setOnFocusId(String(notes.id!)); setNoteContent(notes.content); setHideSave(true); 
+                              if (notes.id) {
+                              setDraftstate(false);
+                              }
+                              else {
+                              setDraftstate(true);
+                              }
+                          }}
+                          rows={3}
+                          value={notes.content}
+                          onChange={(e) => {
+                              if (!notes.id) {
+                              // This is draft
+                              setDraftNote(prev =>
+                                  prev ? { ...prev, content: e.target.value } : prev
+                              );
+                              } else {
+                              // This is saved note
+                              setBookNotes(prev =>
+                                  prev.map(note =>
+                                  note.id === notes.id
+                                      ? { ...note, content: e.target.value }
+                                      : note
+                                  )
+                              );
+                              }
+                          }}
+                          onKeyDown={(e) => {
+                              if (e.key === "Enter" && !e.shiftKey) {
+                              e.preventDefault();
+                              (e.target as HTMLElement).blur();
+                              (saveNote(notes));
+                              }
+                          }}
+                          onBlur={(e) => { e.currentTarget.style.height = "auto";}}
+                          />
+
+                          {(hideSave && (notes.id ? Number(onFocusId) === notes.id : draftNoteState) &&
+                          <div className="flex justify-end gap-1">
+                              {/* {(notSaved &&
+                              <span>Not saved</span>
+                              )} */}
+
+                              <button 
+                              className="flex px-4 py-1 bg-neutral-500 rounded-xl hover:bg-neutral-600"
+                              onClick={() => {setHideSave(false); setDraftNote(null);}}
+                              >
+                              Cancel
+                              </button>
+
+                              <button 
+                              className="flex px-4 py-1 bg-blue-700 rounded-xl"
+                              onClick={() => {saveNote(notes);}}
+                              disabled={noteContent === notes.content}
+                              >
+                              Save 
+                              </button> 
+                          </div>
+                          )}
+
+                          {noteToDelete && noteToDelete.id === notes.id && (
+                          <div className="absolute inset-0 bg-black/40 backdrop-blur-sm flex items-center justify-center rounded-md z-10">
+                              <div className="bg-white dark:bg-gray-800 p-3 rounded-md shadow-lg text-center w-40">
+                              <p className="text-sm mb-2">Delete this note?</p>
+                              <div className="flex justify-between">
+                                  <button
+                                  onClick={() => handleDeleteNote(noteToDelete!)}
+                                  className="text-red-500 text-sm hover:scale-105"
+                                  >
+                                  Delete
+                                  </button>
+                                  <button
+                                  onClick={() => setNoteToDelete(null)}
+                                  className="text-gray-500 text-sm"
+                                  >
+                                  Cancel
+                                  </button>
+                              </div>
+                              </div>
+                          </div>
+                          )}
+                      </div>
+                      ))}
+                  </div>
 
                 </div>
 
@@ -1169,10 +1187,10 @@ export default function ExperimentPage() {
           )}
 
           {/* ADD NOTE GLOBAL BUTTON */}
-          {bookNotes.length < 6 && (
+          {bookNotes.length < 5 && (
             <button
               onClick={addDraftNotes}
-              className={`fixed bottom-5 right-5 z-50 bg-blue-600 hover:bg-blue-700 text-white rounded-full px-4 py-3 shadow-xl transition ${draftNote ? 'hidden' : 'block'}`}
+              className={`hidden xs:block fixed bottom-5 right-5 z-50 bg-blue-600 hover:bg-blue-700 text-white rounded-full px-4 py-3 shadow-xl transition ${draftNote ? 'hidden' : 'block'}`}
               title="Add note"
             >
               <FontAwesomeIcon icon={faPlus} className="mr-2" />
