@@ -121,7 +121,7 @@ class StoryDB extends Dexie {
   constructor() {
     super("StoryDB");
 
-    this.version(16).stores({
+    this.version(17).stores({
       books: "id, title", 
       images: "imageId, charId, bookId",
       notes: "++id, bookId, charId",
@@ -131,13 +131,16 @@ class StoryDB extends Dexie {
     })
     
     .upgrade(async (tx) => {
-      // Use .modify() to update every existing record in the "books" table
-      return tx.table("books").toCollection().modify(book => {
-        // Set a default value or calculate it based on existing data
-        book.volumeName = ""; 
-        
-        // Optional: If you want to derive it from other properties
-        // book.volumeName = `${book.title} - Vol 1`;
+      // Use .modify() to update every existing record in the "character" table
+      return tx.table("characters").toCollection().modify(char => {
+        if (!('setRace' in char)) {
+          char.setRace = []; 
+        }
+
+        // 2. If 'setRaces' DOES exist, delete it
+        if ('setRaces' in char) {
+          delete char.setRaces;
+        }
       });
     });
 

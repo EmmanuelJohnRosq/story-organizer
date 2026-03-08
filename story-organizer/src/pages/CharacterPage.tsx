@@ -377,6 +377,13 @@ const [charDescription, setCharDescription] = useState<CharacterDescription>({
     setEditingCharacter({ ...editableVersion });
   }
 
+  async function editCharacter() {
+    if(!currentBookId) return;
+    if(!editingCharacter) return;
+    
+    navigate(`/book/${currentBookId}/${editingCharacter.id}-${editingCharacter.name.toLowerCase().replace(/[^a-z0-9]+/g, "-")}/edit`);
+  }
+
   // DEFAULT CHAR IMAGE FORMAT
   const [char_image] = useState("/textures/char_images/default_char.jpg")
 
@@ -813,10 +820,10 @@ const [charDescription, setCharDescription] = useState<CharacterDescription>({
             <div className="flex flex-col items-center">
               <div className="w-40 h-56 rounded-xl overflow-hidden shadow-lg border border-slate-700" onClick={() => console.log(originalCharacter)}>
                 <img
-                      src={imageMap[selectedCharacterId] || char_image}
-                      alt={originalCharacter.name}
-                      className="w-full h-full object-cover rounded"
-                    />
+                  src={imageMap[selectedCharacterId] || char_image}
+                  alt={originalCharacter.name}
+                  className="w-full h-full object-cover rounded"
+                />
               </div>
             </div>
 
@@ -1023,7 +1030,7 @@ const [charDescription, setCharDescription] = useState<CharacterDescription>({
                       className="absolute right-0 top-10 z-20 w-48 rounded-md border border-gray-200 bg-white shadow-lg dark:bg-gray-800 dark:border-gray-700 p-2 space-y-2">
                       <button
                         title="Edit character data"
-                        onClick={() => {window.alert("EDIT CHARACTER");}}
+                        onClick={() => { editCharacter();setShowCharacterActions(false);}}
                         className="w-full text-left px-2 py-1 rounded hover:bg-gray-100 dark:hover:bg-emerald-700/50"
                       >
                         <FontAwesomeIcon icon={faPenToSquare} className="mr-2"/>Edit
