@@ -2,7 +2,7 @@ import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { faFileImport, faCircleUser, faUpload, faSpinner, faDownload, faArrowLeft, faUser, faHouse } from "@fortawesome/free-solid-svg-icons";
 import { useCallback, useEffect, useState } from "react";
 import { db } from "../db";
-import { useNavigate, useParams } from "react-router-dom";
+import { useNavigate, useParams, useLocation } from "react-router-dom";
 import { useDropzone } from "react-dropzone";
 
 import { useGoogleAuth, type GoogleUser } from "../context/GoogleAuthContext";
@@ -378,6 +378,20 @@ export default function Header() {
         }
     }
 
+    // BACKING PATH LOCATION PAGES
+    const location = useLocation();
+    const isEditPage = location.pathname.endsWith("/edit");
+
+    let backPath = "/";
+
+    if(isEditPage && characterSlug) { //this is the edit page
+        backPath = `/book/${currentBookId}/${characterSlug}`;
+    } else if (characterSlug && currentBookId) { //this is the char page
+        backPath = `/book/${currentBookId}`;
+    } else if (!characterSlug && currentBookId) { //this is the book page
+        backPath = `/`;
+    }
+
     // NUKES ALL THE EXISTING FILES IN GOOGLE DRIVE/DELETE ALL
     // async function deleteAllGdrive() {
     // const token = localStorage.getItem("googleAccessToken");
@@ -402,9 +416,9 @@ export default function Header() {
                         <div className="flex items-center text-white min-w-0">
                             <button
                                 type="button"
-                                onClick={() => navigate(characterSlug ? `/book/${currentBookId}` : "/")}
+                                onClick={() => navigate(backPath)}
                                 className="px-2 py-1 rounded-l-md hover:bg-white/10 transition"
-                                title={characterSlug ? "Back to book" : "Back to library"}
+                                title={"Back"}
                             >
                                 <FontAwesomeIcon icon={faArrowLeft} size="lg"/>
                             </button>
@@ -418,8 +432,11 @@ export default function Header() {
                                 <h2 className="text-xl truncate px-2">
                                     {bookTitle || "Book"}
                                 </h2>
-                                <p className="text-lg truncate border-l border-slate-700 pl-2">
+                                <p className="text-lg truncate border-l border-slate-700 px-2">
                                     {characterName && <span className="text-gray-300">{characterName}</span>}
+                                </p>
+                                <p className="text-lg truncate border-l border-slate-700 pl-2">
+                                    {isEditPage && <span className="text-gray-300">Build your character</span>}
                                 </p>
                             </div>
                         </div>

@@ -1,6 +1,6 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
-import { db, type Book, type Character, type CharacterDescription } from "../db";
+import { db, type Book, type Character, type CharacterDescription, type CharImage } from "../db";
 
 type EditTab = "profile" | "lore" | "abilities" | "appearance" | "relationships" | "meta";
 
@@ -9,12 +9,6 @@ type ChipEditorProps = {
   items: string[];
   onChange: (items: string[]) => void;
   placeholder: string;
-};
-
-type CharacterImageOption = {
-  imageId: string;
-  url: string;
-  createdAt: number;
 };
 
 const TAG_OPTIONS = [
@@ -28,18 +22,6 @@ const TAG_OPTIONS = [
   "Mage",
   "Warrior",
   "Healer",
-];
-
-const GENRE_OPTIONS = [
-  "Fantasy",
-  "Sci-Fi",
-  "Romance",
-  "Mystery",
-  "Thriller",
-  "Horror",
-  "Historical",
-  "Adventure",
-  "Slice of Life",
 ];
 
 function normalizeWhitespace(text: string) {
@@ -111,19 +93,25 @@ export default function CharEditPage() {
   const [book, setBook] = useState<Book | null>(null);
   const [allCharacters, setAllCharacters] = useState<Character[]>([]);
   const [editingCharacter, setEditingCharacter] = useState<Character | null>(null);
+  const [originalCharacter, setOriginalCharacter] = useState<Character | null>(null);
   const [alert, setAlert] = useState("");
+  const [success, setSuccess] = useState("");
 
   const [tagOptions, setTagOptions] = useState<string[]>(TAG_OPTIONS);
-  const [genreOptions, setGenreOptions] = useState<string[]>(GENRE_OPTIONS);
   const [customTagDraft, setCustomTagDraft] = useState("");
-  const [customGenreDraft, setCustomGenreDraft] = useState("");
   const [relationshipDraft, setRelationshipDraft] = useState<{ charId: number; type: string }>({ charId: 0, type: "ally" });
   const [showImagePicker, setShowImagePicker] = useState(false);
-  const [characterImages, setCharacterImages] = useState<CharacterImageOption[]>([]);
+  const [characterImages, setCharacterImages] = useState<CharImage[]>([]);
   const [selectedImageId, setSelectedImageId] = useState("");
   const [charImage] = useState("/textures/char_images/default_char.jpg");
 
-  const selectedImageStorageKey = `char-display-image:${selectedCharacterId}`;
+  const fileInputRef = useRef<HTMLInputElement | null>(null);
+  const [imagePrompt, setImagePrompt] = useState("");
+  const [isGeneratingImage, setIsGeneratingImage] = useState(false);
+  const [imageActionError, setImageActionError] = useState(""); 
+  const [pendingImageId, setPendingImageId] = useState("");
+
+  const isEditPage = location.pathname.endsWith("/edit");
 
   useEffect(() => {
     const loadData = async () => {
@@ -145,16 +133,15 @@ export default function CharEditPage() {
 
       setBook(loadedBook);
       setEditingCharacter(loadedCharacter);
+      setOriginalCharacter(loadedCharacter);
       setAllCharacters(loadedCharacters);
       setTagOptions(Array.from(new Set([...TAG_OPTIONS, ...loadedCharacter.tags])));
-      setGenreOptions(Array.from(new Set([...GENRE_OPTIONS, ...(loadedBook.genre || [])])));
     };
 
     void loadData();
   }, [currentBookId, selectedCharacterId]);
 
-  useEffect(() => {
-    const loadCharacterImages = async () => {
+  const loadCharacterImages = async () => {
       if (!selectedCharacterId) return;
 
       const loadedImages = await db.images
@@ -164,19 +151,19 @@ export default function CharEditPage() {
 
       loadedImages.sort((a, b) => b.createdAt - a.createdAt);
 
-      const mapped: CharacterImageOption[] = loadedImages.map((image) => ({
+      const mapped: CharImage[] = loadedImages.map((image) => ({
         imageId: image.imageId,
         createdAt: image.createdAt,
         url: URL.createObjectURL(image.imageBlob),
+        isDisplayed: image.isDisplayed,
       }));
 
-      const preferredImageId = localStorage.getItem(selectedImageStorageKey);
-      const hasPreferredImage = mapped.some((image) => image.imageId === preferredImageId);
+      const displayedImage = mapped.find((image) => image.isDisplayed);
 
       setCharacterImages(mapped);
 
-      if (hasPreferredImage && preferredImageId) {
-        setSelectedImageId(preferredImageId);
+      if (displayedImage) {
+        setSelectedImageId(displayedImage.imageId);
       } else if (mapped.length > 0) {
         setSelectedImageId(mapped[0].imageId);
       } else {
@@ -184,6 +171,7 @@ export default function CharEditPage() {
       }
     };
 
+  useEffect(() => {
     void loadCharacterImages();
   }, [selectedCharacterId]);
 
@@ -193,16 +181,172 @@ export default function CharEditPage() {
         URL.revokeObjectURL(image.url);
       });
     };
-  }, [characterImages]);
+  }, [isEditPage]);
 
   const selectedCharacterImage =
     characterImages.find((image) => image.imageId === selectedImageId)?.url || charImage;
 
-  function setDisplayImage(imageId: string) {
+  async function setDisplayImage(imageId: string) {
+    if (!selectedCharacterId) return;
+
+    await db.transaction("rw", db.images, async () => {
+      const charImages = await db.images
+        .where("charId")
+        .equals(selectedCharacterId)
+        .toArray();
+
+      await Promise.all(
+        charImages.map((image) =>
+          db.images.update(image.imageId, {
+            isDisplayed: image.imageId === imageId,
+          })
+        )
+      );
+    });
+
     setSelectedImageId(imageId);
-    localStorage.setItem(selectedImageStorageKey, imageId);
+    setCharacterImages((prev) =>
+      prev.map((image) => ({
+        ...image,
+        isDisplayed: image.imageId === imageId,
+      }))
+    );
     setShowImagePicker(false);
   }
+
+  async function deleteImage(imageId: string) {
+  if (!selectedCharacterId) return;
+
+  const shouldDelete = window.confirm("Delete this image permanently?");
+  if (!shouldDelete) return;
+
+  const target = characterImages.find((image) => image.imageId === imageId);
+
+  await db.transaction("rw", db.images, async () => {
+    await db.images.delete(imageId);
+
+    const remaining = await db.images
+      .where("charId")
+      .equals(selectedCharacterId)
+      .toArray();
+
+    if (remaining.length === 0) return;
+
+    const hasDisplayed = remaining.some((image) => image.isDisplayed);
+    if (!hasDisplayed || target?.isDisplayed) {
+      const fallback = remaining.sort((a, b) => b.createdAt - a.createdAt)[0];
+
+      await Promise.all(
+        remaining.map((image) =>
+          db.images.update(image.imageId, {
+            isDisplayed: image.imageId === fallback.imageId,
+          })
+        )
+      );
+    }
+  });
+
+  await loadCharacterImages();
+
+  if (pendingImageId === imageId) {
+    setPendingImageId("");
+  }
+}
+
+async function confirmDisplayImage() {
+  if (!pendingImageId) return;
+  await setDisplayImage(pendingImageId);
+}
+
+  async function saveImageBlob(blob: Blob) {
+    const newImageId = crypto.randomUUID();
+    const createdAt = Date.now();
+
+    await db.transaction("rw", db.images, async () => {
+      await db.images
+        .where("charId")
+        .equals(selectedCharacterId)
+        .modify({ isDisplayed: false });
+
+      await db.images.add({
+        imageId: newImageId,
+        bookId: "",
+        charId: selectedCharacterId,
+        imageBlob: blob,
+        createdAt,
+        isDisplayed: true,
+      });
+    });
+
+    await loadCharacterImages();
+    setSelectedImageId(newImageId);
+    // setImageActionError("");
+  }
+
+  async function onUploadImage(event: React.ChangeEvent<HTMLInputElement>) {
+    const file = event.target.files?.[0];
+    if (!file) return;
+
+    await saveImageBlob(file);
+    event.target.value = "";
+  }
+
+  async function generateImageFromPrompt() {
+    const prompt = normalizeWhitespace(imagePrompt || `${editingCharacter?.name ?? "character"} fantasy portrait`);
+    if (!prompt) return;
+
+    if (typeof puter === "undefined" || !puter?.ai?.txt2img) {
+      setImageActionError("Image generation is unavailable in this environment.");
+      return;
+    }
+
+    try {
+      setIsGeneratingImage(true);
+      setImageActionError("");
+      const generated = await puter.ai.txt2img(prompt, { model: "gpt-image-1.5" });
+      const response = await fetch(generated.src);
+      const blob = await response.blob();
+      await saveImageBlob(blob);
+    } catch {
+      setImageActionError("Failed to generate image. Try another prompt.");
+    } finally {
+      setIsGeneratingImage(false);
+    }
+  }
+
+  const missingFields = useMemo(() => {
+    if (!editingCharacter) return [] as string[];
+
+    const checks: { label: string; value: unknown }[] = [
+      { label: "Role", value: editingCharacter.role },
+      { label: "Status", value: editingCharacter.status },
+      { label: "Importance", value: editingCharacter.importance },
+      { label: "Occupation", value: editingCharacter.occupation },
+      { label: "Power Level", value: editingCharacter.powerLevel },
+      { label: "Backstory Notes", value: editingCharacter.notes },
+      { label: "Future Notes", value: editingCharacter.futureNotes },
+      { label: "Character Arc", value: editingCharacter.characterArc },
+      { label: "Titles", value: editingCharacter.titles.length },
+      { label: "Traits", value: editingCharacter.personalityTraits.length },
+      { label: "Tags", value: editingCharacter.tags.length },
+      { label: "Abilities", value: editingCharacter.abilities.length },
+      { label: "Relationships", value: editingCharacter.relationships.length },
+      { label: "Appearance • Age", value: editingCharacter.description.basic.age },
+      { label: "Appearance • Race", value: editingCharacter.description.basic.race },
+      { label: "Appearance • Gender", value: editingCharacter.description.basic.gender },
+      { label: "Appearance • Eye Color", value: editingCharacter.description.face.eyeColor },
+      { label: "Appearance • Hair Color", value: editingCharacter.description.hair.hairColor },
+      { label: "Appearance • Body Type", value: editingCharacter.description.body.bodyType },
+    ];
+
+    return checks
+      .filter((item) => {
+        if (typeof item.value === "number") return item.value <= 0;
+        if (Array.isArray(item.value)) return item.value.length === 0;
+        return !String(item.value ?? "").trim();
+      })
+      .map((item) => item.label);
+  }, [editingCharacter]);
 
   const completion = useMemo(() => {
     if (!editingCharacter) return 0;
@@ -213,13 +357,35 @@ export default function CharEditPage() {
       editingCharacter.notes,
       editingCharacter.characterArc,
       editingCharacter.status,
+      editingCharacter.chapters,
+      editingCharacter.futureNotes,
       editingCharacter.importance,
       editingCharacter.occupation,
+      editingCharacter.netWorth,
       editingCharacter.powerLevel,
       editingCharacter.tags.length > 0 ? "ok" : "",
+      editingCharacter.titles.length > 0 ? "ok" : "",
       editingCharacter.abilities.length > 0 ? "ok" : "",
+      editingCharacter.personalityTraits.length > 0 ? "ok" : "",
       editingCharacter.relationships.length > 0 ? "ok" : "",
+      editingCharacter.setRace.length > 0 ? "ok" : "",
+      editingCharacter.chapterAppearances.length > 0 ? "ok" : "",
       editingCharacter.description.basic.age,
+      editingCharacter.description.basic.race,
+      editingCharacter.description.basic.gender,
+      editingCharacter.description.body.bodyType,
+      editingCharacter.description.body.height,
+      editingCharacter.description.body.skinTone,
+      editingCharacter.description.face.eyeColor,
+      editingCharacter.description.face.eyeShape,
+      editingCharacter.description.face.faceShape,
+      editingCharacter.description.face.mouthSize,
+      editingCharacter.description.face.noseShape,
+      editingCharacter.description.hair.hairColor,
+      editingCharacter.description.hair.hairStyle,
+      editingCharacter.description.extras.accessories,
+      editingCharacter.description.extras.clothingStyle,
+      editingCharacter.description.extras.distinguishingFeatures,
     ];
 
     const completed = checks.filter(Boolean).length;
@@ -231,7 +397,17 @@ export default function CharEditPage() {
   }
 
   async function saveCharacter() {
-    if (!currentBookId || !editingCharacter || !book) return;
+    if (!currentBookId || !editingCharacter) return;
+    if (editingCharacter === originalCharacter) {
+      setAlert("No changes made.");
+      setTimeout(() => setAlert(""), 2500);
+      return;
+    };
+    if(!editingCharacter.name) {
+      setAlert("Character name required...");
+      setTimeout(() => setAlert(""), 2500);
+      return;
+    }
 
     const cleanedCharacter: Character = {
       ...editingCharacter,
@@ -247,11 +423,10 @@ export default function CharEditPage() {
     };
 
     await db.characters.update(cleanedCharacter.id, cleanedCharacter);
-    await db.books.update(currentBookId, { genre: book.genre });
 
     setEditingCharacter(cleanedCharacter);
-    setAlert("Character progression saved!");
-    setTimeout(() => setAlert(""), 1800);
+    setSuccess("Character progression saved!");
+    setTimeout(() => setSuccess(""), 1800);
   }
 
   function updateDescription(path: keyof CharacterDescription, key: string, value: string) {
@@ -287,15 +462,23 @@ export default function CharEditPage() {
     { key: "meta", label: "Meta" },
   ];
 
+  function showImageModal(state: boolean) {
+    setShowImagePicker(state);
+    document.body.classList.toggle('overflow-hidden', state);
+  }
+
   return (
+    // MAIN EDIT PAGE CONTAINER
     <div className="mx-auto w-full max-w-7xl p-4 md:p-6 mt-10">
-      <div className="rounded-2xl border border-indigo-300/30 bg-gradient-to-br from-indigo-700 to-slate-900 px-5 py-2 text-white shadow-lg">
+
+      {/* HERO CARD HEADER OF EDIT PAGE */}
+      <div className="rounded-2xl border border-indigo-300/30 bg-gradient-to-br from-gray-700 to-slate-900 px-5 py-2 text-white shadow-lg">
         <div className="flex flex-wrap items-center justify-between gap-4">
           <div className="flex items-center gap-3">
             <button
               type="button"
               title="Change character image"
-              onClick={() => setShowImagePicker(true)}
+              onClick={() => showImageModal(true)}
               className="group relative h-24 w-20 overflow-hidden rounded-xl border border-slate-700 shadow-lg"
             >
               <img
@@ -305,12 +488,12 @@ export default function CharEditPage() {
               />
 
               <div className="absolute inset-0 flex items-center justify-center bg-black/55 opacity-0 transition group-hover:opacity-100">
-                <span className="rounded-full bg-white/20 px-2 py-1 text-lg font-bold">+</span>
+                <span className="rounded-lg bg-white/20 px-2 py-1 text-lg font-bold">+</span>
               </div>
             </button>
 
             <div>
-              <p className="text-sm text-indigo-200">RPG Character Builder</p>
+              <p className="text-sm text-indigo-200">Character Builder</p>
               <h1 className="text-3xl font-bold">{editingCharacter.name || "Unnamed Character"}</h1>
               <p className="text-sm text-indigo-100">{editingCharacter.role || "Role not set"}</p>
             </div>
@@ -324,50 +507,8 @@ export default function CharEditPage() {
         </div>
       </div>
 
-      {showImagePicker && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4">
-          <div className="w-full max-w-2xl rounded-xl border border-gray-200 bg-white p-4 shadow-xl dark:border-gray-700 dark:bg-gray-900">
-            <div className="mb-3 flex items-center justify-between">
-              <h3 className="text-lg font-bold">Choose Character Display Image</h3>
-              <button
-                type="button"
-                onClick={() => setShowImagePicker(false)}
-                className="rounded-lg border border-gray-300 px-3 py-1 text-sm dark:border-gray-600"
-              >
-                Close
-              </button>
-            </div>
-
-            {characterImages.length === 0 ? (
-              <p className="rounded-lg bg-gray-100 p-4 text-sm text-gray-600 dark:bg-gray-800 dark:text-gray-300">
-                No saved images found for this character yet. Upload or generate an image first, then come back and choose one.
-              </p>
-            ) : (
-              <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 md:grid-cols-4">
-                {characterImages.map((image) => (
-                  <button
-                    type="button"
-                    key={image.imageId}
-                    onClick={() => setDisplayImage(image.imageId)}
-                    className={`overflow-hidden rounded-lg border-2 transition ${
-                      selectedImageId === image.imageId
-                        ? "border-indigo-500 ring-2 ring-indigo-300"
-                        : "border-transparent hover:border-indigo-300"
-                    }`}
-                  >
-                    <img src={image.url} alt="Character option" className="h-28 w-full object-cover" />
-                    <div className="bg-black/70 px-2 py-1 text-xs text-white">
-                      {new Date(image.createdAt).toLocaleString()}
-                    </div>
-                  </button>
-                ))}
-              </div>
-            )}
-          </div>
-        </div>
-      )}
-
-      <div className="mt-5 grid gap-5 lg:grid-cols-[1.65fr_0.8fr]">
+      {/* TABS EDITABLE CONTENT */}
+      <div className="mt-3 grid gap-4 lg:grid-cols-[1.65fr_0.8fr]">
         <div className="space-y-4">
           <div className="flex flex-wrap gap-2 rounded-xl border border-gray-200 bg-white p-3 dark:border-gray-700 dark:bg-gray-900">
             {tabs.map((tab) => (
@@ -523,59 +664,191 @@ export default function CharEditPage() {
                   </div>
                 </div>
 
-                <div>
-                  <p className="mb-2 text-sm font-semibold">Story genre checklist</p>
-                  <div className="flex flex-wrap gap-2">
-                    {genreOptions.map((option) => (
-                      <button
-                        type="button"
-                        key={option}
-                        onClick={() => toggleChecklist(option, book.genre || [], (genre) => setBook({ ...book, genre }))}
-                        className={`rounded-full border px-3 py-1 text-sm ${(book.genre || []).includes(option) ? "border-blue-500 bg-blue-100 text-blue-800 dark:bg-blue-900/40 dark:text-blue-200" : "border-gray-300 bg-white text-gray-700 dark:border-gray-600 dark:bg-gray-800 dark:text-gray-200"}`}
-                      >
-                        {(book.genre || []).includes(option) ? "✓ " : ""}{option}
-                      </button>
-                    ))}
-                  </div>
-                  <div className="mt-2 flex gap-2">
-                    <input className="w-full rounded-lg border p-2 dark:bg-gray-800" value={customGenreDraft} onChange={(event) => setCustomGenreDraft(event.target.value)} placeholder="Add custom genre option" />
-                    <button type="button" className="rounded-lg bg-indigo-600 px-3 py-2 text-sm font-semibold text-white" onClick={() => {
-                      const cleaned = normalizeWhitespace(customGenreDraft);
-                      if (!cleaned) return;
-                      setGenreOptions((prev) => Array.from(new Set([...prev, cleaned])));
-                      setCustomGenreDraft("");
-                    }}>Add</button>
-                  </div>
-                </div>
-
                 <ChipEditor label="Races" items={editingCharacter.setRace} onChange={(setRace) => setEditingCharacter({ ...editingCharacter, setRace })} placeholder="Add race" />
               </div>
             )}
           </div>
         </div>
 
-        <aside className="h-fit space-y-3 rounded-xl border border-gray-200 bg-white p-4 shadow-sm dark:border-gray-700 dark:bg-gray-900 lg:sticky lg:top-5">
-          <h2 className="text-lg font-bold">Build Summary</h2>
-          <p className="text-sm text-gray-500 dark:text-gray-300">Progression completion</p>
-          <div className="h-2 w-full overflow-hidden rounded-full bg-gray-200 dark:bg-gray-700">
-            <div className="h-full rounded-full bg-indigo-600 transition-all" style={{ width: `${completion}%` }} />
-          </div>
-          <p className="text-sm font-semibold text-indigo-600 dark:text-indigo-300">{completion}% complete</p>
+        {/* BUILD SUMMARY CARD */}
+        <div className="lg:sticky lg:top-15 h-fit">
 
-          <div className="space-y-1 text-sm">
-            <p><strong>Book:</strong> {book.title}</p>
-            <p><strong>Tags:</strong> {editingCharacter.tags.length > 0 ? editingCharacter.tags.join(", ") : "None"}</p>
-            <p><strong>Genres:</strong> {(book.genre || []).length > 0 ? (book.genre || []).join(", ") : "None"}</p>
-          </div>
+          {alert && 
+            <p className="mb-1 text-center rounded-lg bg-red-100 px-2 py-1 text-base font-semibold text-red-700 dark:bg-red-900/40 dark:text-red-200">{alert}</p>
+          }
 
-          <div className="flex flex-col gap-2 pt-1">
-            <button type="button" className="rounded-lg bg-indigo-600 px-3 py-2 text-sm font-semibold text-white hover:bg-indigo-700" onClick={() => void saveCharacter()}>Save Build</button>
-            <button type="button" className="rounded-lg border border-gray-300 px-3 py-2 text-sm dark:border-gray-600" onClick={() => navigate(`/book/${currentBookId}/${editingCharacter.id}-${editingCharacter.name.toLowerCase().replace(/[^a-z0-9]+/g, "-")}`)}>Back to Character</button>
-          </div>
+          {success && 
+            <p className="mb-1 text-center rounded-lg bg-emerald-100 px-2 py-1 text-base font-semibold text-emerald-700 dark:bg-emerald-900/40 dark:text-emerald-200">{success}</p>
+          }
 
-          {alert && <p className="rounded-lg bg-emerald-100 px-2 py-1 text-xs font-semibold text-emerald-700 dark:bg-emerald-900/40 dark:text-emerald-200">{alert}</p>}
-        </aside>
+          <aside className=" space-y-3 rounded-xl border border-gray-200 bg-white p-4 shadow-sm dark:border-gray-700 dark:bg-gray-900 ">
+            <h2 className="text-lg font-bold">Build Summary</h2>
+            <p className="text-sm text-gray-500 dark:text-gray-300">Progression completion</p>
+            <div className="h-2 w-full overflow-hidden rounded-full bg-gray-200 dark:bg-gray-700">
+              <div className="h-full rounded-full bg-indigo-600 transition-all" style={{ width: `${completion}%` }} />
+            </div>
+            <p className="text-sm font-semibold text-indigo-600 dark:text-indigo-300">{completion}% complete</p>
+
+            {/* MISSING FIELDS CHECK CARD */}
+            <div className="rounded-md border border-emerald-300 bg-emerald-50/80 p-3 dark:border-emerald-700 dark:bg-emerald-900/20">
+              <p className="mb-1 text-xs font-semibold text-emerald-700 dark:text-emerald-300">
+                Missing fields check.
+              </p>
+              {missingFields.length === 0 ? (
+                <p className="text-sm">Nice! Your character build has no blank priority fields.</p>
+              ) : (
+                <ul className="max-h-36 list-disc space-y-1 overflow-y-auto notes-scroll pl-4 text-sm">
+                  {missingFields.slice(0, 8).map((field) => (
+                    <li key={field}>{field}</li>
+                  ))}
+                </ul>
+              )}
+              {missingFields.length > 8 && (
+                <p className="mt-2 text-xs text-emerald-700 dark:text-emerald-300">
+                  +{missingFields.length - 8} more fields are still blank.
+                </p>
+              )}
+            </div>
+
+            <div className="space-y-1 text-sm">
+              <p><strong>Book:</strong> {book.title}</p>
+              <p><strong>Tags:</strong> {editingCharacter.tags.length > 0 ? editingCharacter.tags.join(", ") : "None"}</p>
+            </div>
+
+            <div className="flex flex-col gap-2 pt-1">
+              <button type="button" className="rounded-lg bg-indigo-600 px-3 py-2 text-sm font-semibold text-white hover:bg-indigo-700" onClick={() => void saveCharacter()}>Save Build</button>
+              <button type="button" className="rounded-lg border border-gray-300 px-3 py-2 text-sm dark:border-gray-600" onClick={() => navigate(`/book/${currentBookId}/${editingCharacter.id}-${editingCharacter.name.toLowerCase().replace(/[^a-z0-9]+/g, "-")}`)}>Back to Character</button>
+            </div>
+          </aside>
+
+        </div>
+
       </div>
+
+      {showImagePicker && (
+        <div 
+          className="fixed h-dvh inset-0 flex items-center justify-center bg-black/50 z-50" 
+          onMouseDown={(e) => {
+            if (e.target === e.currentTarget) {
+            showImageModal(false);
+            }
+          }} 
+          >
+          <div 
+            className="w-full mx-auto max-w-2xl rounded-xl border border-gray-200 bg-white p-4 shadow-xl dark:border-gray-700 dark:bg-gray-900"
+            onMouseDown={(e) => e.stopPropagation()}
+          >
+            <div className="mb-3 flex items-center justify-between">
+              <h3 className="text-lg font-bold">Choose Character Display Image</h3>
+              <button
+                type="button"
+                onClick={() => setShowImagePicker(false)}
+                className="rounded-lg border border-gray-300 px-3 py-1 text-sm dark:border-gray-600"
+              >
+                Close
+              </button>
+            </div>
+
+            <div className="mb-3 rounded-lg border border-gray-200 p-3 dark:border-gray-700">
+              <div className="flex flex-wrap gap-2">
+                <button
+                  type="button"
+                  onClick={() => fileInputRef.current?.click()}
+                  className="rounded-lg bg-indigo-600 px-3 py-2 text-sm font-semibold text-white hover:bg-indigo-700"
+                >
+                  Upload Image
+                </button>
+                <input
+                  ref={fileInputRef}
+                  type="file"
+                  accept="image/*"
+                  className="hidden"
+                  onChange={(event) => void onUploadImage(event)}
+                />
+              </div>
+
+              <div className="mt-3 flex gap-2">
+                <input
+                  value={imagePrompt}
+                  onChange={(event) => setImagePrompt(event.target.value)}
+                  className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm dark:border-gray-600 dark:bg-gray-800"
+                  placeholder="Generate portrait prompt (e.g. silver-haired mage, anime style)"
+                />
+                <button
+                  type="button"
+                  disabled={isGeneratingImage}
+                  onClick={() => void generateImageFromPrompt()}
+                  className="rounded-lg bg-purple-600 px-3 py-2 text-sm font-semibold text-white hover:bg-purple-700"
+                >
+                  {isGeneratingImage ? "Generating..." : "Generate"}
+                </button>
+              </div>
+
+              {imageActionError && (
+                <p className="mt-2 text-xs text-red-500">{imageActionError}</p>
+              )}
+            </div>
+
+            {characterImages.length === 0 ? (
+              <p className="rounded-lg bg-gray-100 p-4 text-sm text-gray-600 dark:bg-gray-800 dark:text-gray-300">
+                No saved images found for this character yet. Upload or generate an image first, then come back and choose one.
+              </p>
+            ) : (
+              <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 md:grid-cols-4 max-h-90 overflow-y-auto notes-scroll">
+                {characterImages.map((image) => (
+                  <div key={image.imageId} className="group relative">
+                    <button
+                      type="button"
+                      onClick={() => setPendingImageId(image.imageId)}
+                      className={`w-full overflow-hidden rounded-lg border-2 transition ${
+                        pendingImageId === image.imageId
+                          ? "border-indigo-500 ring-2 ring-indigo-300"
+                          : "border-transparent hover:border-indigo-300"
+                      }`}
+                    >
+                      <img src={image.url} alt="Character option" className="h-28 w-full object-cover" />
+                      <div className="bg-black/70 px-2 py-1 text-xs text-white">
+                        {new Date(image.createdAt).toLocaleString()}
+                      </div>
+                    </button>
+
+                    <button
+                      type="button"
+                      title="Delete image"
+                      onClick={(event) => {
+                        event.stopPropagation();
+                        void deleteImage(image.imageId);
+                      }}
+                      className="absolute right-2 top-2 rounded-full bg-red-600/90 px-2 py-0.5 text-xs font-semibold text-white opacity-0 transition group-hover:opacity-100 hover:bg-red-700"
+                    >
+                      Delete
+                    </button>
+                  </div>
+                ))}
+              </div>
+            )}
+
+            <div className="mt-4 flex items-center justify-end gap-2 border-t border-gray-200 pt-3 dark:border-gray-700">
+              <button
+                type="button"
+                onClick={() => setShowImagePicker(false)}
+                className="rounded-lg border border-gray-300 px-3 py-2 text-sm font-semibold dark:border-gray-600"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                disabled={!pendingImageId || pendingImageId === selectedImageId}
+                onClick={() => void confirmDisplayImage()}
+                className="rounded-lg bg-indigo-600 px-3 py-2 text-sm font-semibold text-white hover:bg-indigo-700 disabled:cursor-not-allowed disabled:opacity-50"
+              >
+                Confirm Selection
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
     </div>
   );
 }

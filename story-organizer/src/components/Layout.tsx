@@ -9,7 +9,7 @@ export default function Layout() {
         {/* MAIN APP CONTAINER / GLOBAL BACKGROUND */}
         <div
             className={`relative min-h-screen w-full min-w-0 mx-auto px-1 transition-colors duration-300
-            bg-white text-black dark:bg-gray-800 dark:text-white backdrop-blur-lg`}
+            bg-white text-black dark:bg-gray-800 dark:text-white`}
         >
             {/* All pages will render here */}
             <Outlet />

@@ -1,7 +1,7 @@
 import { useNavigate, useParams } from "react-router-dom";
 import { useState, useEffect, useCallback, useRef } from "react";
 
-import { db, type Character, type EditableCharacter, type Notes, type CharacterDescription } from "../db";
+import { db, type Character, type EditableCharacter, type Notes, type CharacterDescription, type CharImage } from "../db";
 
 import { FontAwesomeIcon} from "@fortawesome/react-fontawesome";
 import { faTrashCan, faCheck, faSpinner, faPlus, faGear } from "@fortawesome/free-solid-svg-icons";
@@ -72,7 +72,7 @@ export default function CharacterPage() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const [imageSaved, setImageSaved] = useState<string | null>(null);
-  const [imageMap, setImageMap] = useState<Record<string, string>>({});
+  const [imageMap, setImageMap] = useState<Record<string, CharImage[]>>({});
 
   // CHARACTER UPLOAD IMAGE
   const [uploadCharImage, showUploadCharImage] = useState(true);
@@ -433,7 +433,6 @@ const [charDescription, setCharDescription] = useState<CharacterDescription>({
     if (!originalCharacter) return;
     setCharDescription(hydrateDescription(originalCharacter.description));
     setCharTraits(originalCharacter.personalityTraits);
-    console.log("check what came first: upload iamge");
   }, [showGenImage]);
 
   // GENERATE IMAGE TEXT WITH CHARACTER DESCRIPTION
@@ -536,8 +535,6 @@ const [charDescription, setCharDescription] = useState<CharacterDescription>({
     const base64Image = reader.result;
 
     if (typeof base64Image === "string") {
-      console.log("Converted image:", base64Image);
-
       // Call saveImage to save to db.
       saveImage(base64Image);
     }
@@ -550,6 +547,7 @@ const [charDescription, setCharDescription] = useState<CharacterDescription>({
   // SAVE IMAGE INSIDE DB
   async function saveImage(imageFile: any) {
     if (!imageFile) return;
+    if (!selectedCharacter) return;
 
       // 1️⃣ Convert image URL to Blob
     const response = await fetch(imageFile);
@@ -559,16 +557,17 @@ const [charDescription, setCharDescription] = useState<CharacterDescription>({
     await db.images.add({
       imageId: crypto.randomUUID(),
       bookId: "", //SAVING IMAGE IN DB WITHOUT BOOKID. BOOKID IS ONLY FOR BOOK COVERS
-      charId: selectedCharacter!,
+      charId: selectedCharacter,
       imageBlob: blob,
-      createdAt: Date.now()
+      createdAt: Date.now(),
+      isDisplayed: true,
     });
 
     const newUrl = URL.createObjectURL(blob);
 
     setImageMap(prev => ({
       ...prev,
-      [selectedCharacter!]: newUrl
+      [selectedCharacter]: newUrl
     }));
 
     setShowGenImage(false);
@@ -582,7 +581,7 @@ const [charDescription, setCharDescription] = useState<CharacterDescription>({
 
   }
 
-  // LOAD IMAGES IN DB, fetch and put on a setState for display
+  // LOAD IMAGES FROM DB, fetch and put on a setState for display
   const loadImages = async (chars: any) => {
     if (!chars.length) return;
 
@@ -592,11 +591,25 @@ const [charDescription, setCharDescription] = useState<CharacterDescription>({
       .where("charId")
       .anyOf(charIds)
       .toArray();
+    
+    images.sort((a, b) => b.createdAt - a.createdAt);
 
-    const newMap: Record<string, string> = {};
+    const newMap: Record<string, CharImage[]> = {};
 
-    images.forEach(img => {
-      newMap[img.charId] = URL.createObjectURL(img.imageBlob);
+    images.forEach((img) => {
+      const url = URL.createObjectURL(img.imageBlob);
+      const id = img.charId.toString(); // Convert to string for the key
+
+      if (!newMap[id]) {
+        newMap[id] = [];
+      }
+
+      newMap[id].push({
+        url: url,
+        imageId: img.imageId,
+        isDisplayed: img.isDisplayed,
+        createdAt: img.createdAt,
+      });
     });
 
     setImageMap(newMap);
@@ -820,7 +833,7 @@ const [charDescription, setCharDescription] = useState<CharacterDescription>({
             <div className="flex flex-col items-center">
               <div className="w-40 h-56 rounded-xl overflow-hidden shadow-lg border border-slate-700" onClick={() => console.log(originalCharacter)}>
                 <img
-                  src={imageMap[selectedCharacterId] || char_image}
+                  src={imageMap[originalCharacter.id]?.find(img => img.isDisplayed)?.url ?? char_image}
                   alt={originalCharacter.name}
                   className="w-full h-full object-cover rounded"
                 />
@@ -951,7 +964,7 @@ const [charDescription, setCharDescription] = useState<CharacterDescription>({
                         onClick={() => { openCharacterRel(rel.charId); }}
                       >
                         <img
-                          src={imageMap[rel.charId] || char_image}
+                          src={imageMap[rel.charId]?.find(img => img.isDisplayed)?.url ?? char_image}
                           className="w-full h-full object-cover rounded"
                         />
                       </div>

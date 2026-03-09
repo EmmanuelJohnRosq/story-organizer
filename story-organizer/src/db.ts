@@ -94,7 +94,15 @@ export type Images = {
   charId: number; // character ids for matching characters
   bookId: string; // assign bookId for matching book covers
   createdAt: number;
-  imageBlob: Blob; // convert and store the image file into a imageBlob
+  imageBlob: Blob; // convert and store the image file into an imageBlob
+  isDisplayed: boolean; // state if the image is selected to be displayed as char image
+}
+
+export type CharImage = {
+  url: string;
+  imageId: string;
+  isDisplayed: boolean;
+  createdAt: number;
 }
 
 export type EditableCharacter = Character & {
@@ -121,26 +129,26 @@ class StoryDB extends Dexie {
   constructor() {
     super("StoryDB");
 
-    this.version(17).stores({
+    this.version(19).stores({
       books: "id, title", 
       images: "imageId, charId, bookId",
       notes: "++id, bookId, charId",
-      characters: "id, bookId, name, *chapterAppearances, status, *setRaces",
+      characters: "id, bookId, name, *chapterAppearances, status, *setRace",
       // ++id = auto increment
       // title = indexed (useful later for search)
     })
     
     .upgrade(async (tx) => {
-      // Use .modify() to update every existing record in the "character" table
-      return tx.table("characters").toCollection().modify(char => {
-        if (!('setRace' in char)) {
-          char.setRace = []; 
+      // Use .modify() to update every existing record in the "images" table
+      return tx.table("images").toCollection().modify(img => {
+        if (!('isDisplayed' in img)) {
+          img.isDisplayed = false; 
         }
 
         // 2. If 'setRaces' DOES exist, delete it
-        if ('setRaces' in char) {
-          delete char.setRaces;
-        }
+        // if ('setRaces' in char) {
+        //   delete char.setRaces;
+        // }
       });
     });
 

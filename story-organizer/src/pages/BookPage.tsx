@@ -10,86 +10,84 @@ export default function BookPage() {
   const { currentBookId } = useParams();
   const navigate = useNavigate();
 
-    // DO THIS IN PAGE START
-    useEffect(() => { 
-      const loadBook = async () => {
-        if (!currentBookId) {
-        navigate("/", { replace: true });
-        return;
-        }
+  // DO THIS IN PAGE START
+  useEffect(() => { 
+    const loadBook = async () => {
+      if (!currentBookId) {
+      navigate("/", { replace: true });
+      return;
+      }
 
-        const book = await db.books.get(currentBookId);
+      const book = await db.books.get(currentBookId);
 
-        if (!book) {
-        // Invalid ID → redirect
-        navigate("/", { replace: true });
-        return;
-        }
+      if (!book) {
+      // Invalid ID → redirect
+      navigate("/", { replace: true });
+      return;
+      }
 
-        setCurrentBook(book);
-        loadBookNotes(currentBookId); 
-        loadChars(currentBookId);
-      };
+      setCurrentBook(book);
+      loadBookNotes(currentBookId); 
+      loadChars(currentBookId);
+    };
 
-      loadBook();
-      setCharDescription({ ...defaultcharDescription });
-      setCurrentPage(1);
-    }, [currentBookId]);
+    loadBook();
+    setCharDescription({ ...defaultcharDescription });
+    setCurrentPage(1);
+  }, [currentBookId]);
 
-    const [character, setCharacters] = useState<Character[]>([]);
-    const [bookNotes, setBookNotes] = useState<Notes[]>([]);
+  const [character, setCharacters] = useState<Character[]>([]);
+  const [bookNotes, setBookNotes] = useState<Notes[]>([]);
 
-    const [currentBook, setCurrentBook] = useState<Book | null>(null);
-  
-    // Constant Variable
-    const [showAddCharacter, setShowAddCharacter] = useState(false);
-  
-    // CHARACTER DATA
-    const [selectedCharacter, setSelectedCharacter] = useState<number | null>(null);
-    const [editingCharacter, setEditingCharacter] = useState<EditableCharacter | null>(null);
-    const [originalCharacter, setOriginalCharacter] = useState<Character | null>(null);
-  
-    // CHARACTER IMAGE GENERATION w/ PUTER.js
-    const [imageMap, setImageMap] = useState<Record<string, string>>({});
-  
-    // EDITING OF BOOK TITLE
-    const [titleDraft, setTitleDraft] = useState("");
-    const [savedTitle, setSavedTitle] = useState(false);
-    const [titleEditing, settitleEditing] = useState(false);
-  
-    // BOOK DETAILS
-    const [bookTitle, setBookTitle] = useState("");
-    const [bookSummary, setBookSummary] = useState("");
-    const [bookVolume, setBookVolume] = useState<string>("0");
-    const [bookTags, setBookTags] = useState("");
-    const [bookGenre, setBookGenre] = useState("");
-    const [bookChapterCount, setBookChapterCount] = useState(0);
-    const [bookStatus, setBookStatus] = useState("ongoing"); // default
-  
-    // CHARACTER DETAILS INITIALIZE
-    const [name, setName] = useState("");
-    const [role, setRole] = useState("");
-    const [notes, setNotes] = useState("");
-    const [abilities, setAbilities] = useState("");
-    const [chapterAppearance, setChapterAppearance] = useState("");
-  
-    //NEW CHARACTER SCHEMA INITIALIZE
-    const [charStatus, setCharStatus] = useState("unknown");
-    const [charImportance, setCharImportance] = useState("unknown");
-    const [charOccupation, setCharOccupation] = useState("");
-    const [charFutureNotes, setCharFutureNotes] = useState("");
-    const [charNetWorth, setCharNetWorth] = useState("");
-    const [charPowerLevel, setCharPowerLevel] = useState("");
-  
-    // Arrays (comma-separated input)
-    const [charTitles, setCharTitles] = useState(""); // input as string -> array on save
-    const [charPersonalityTraits, setCharPersonalityTraits] = useState("");
-    const [charTags, setCharTags] = useState("");
-    const [charSetRaces, setCharSetRaces] = useState("");
-    const [charChapterAppearances, setCharChapterAppearances] = useState("");
-    const [charCharacterArc, setcharCharacterArc] = useState("");
-  
-    const [charTraits, setCharTraits] = useState<string[]>([]);
+  const [currentBook, setCurrentBook] = useState<Book | null>(null);
+
+  // Constant Variable
+  const [showAddCharacter, setShowAddCharacter] = useState(false);
+
+  // CHARACTER DATA
+  const [selectedCharacter, setSelectedCharacter] = useState<number | null>(null);
+  const [editingCharacter, setEditingCharacter] = useState<EditableCharacter | null>(null);
+  const [originalCharacter, setOriginalCharacter] = useState<Character | null>(null);
+
+  // CHARACTER IMAGE GENERATION w/ PUTER.js
+  const [imageMap, setImageMap] = useState<Record<string, string>>({});
+
+  // EDITING OF BOOK TITLE
+  const [titleDraft, setTitleDraft] = useState("");
+  const [savedTitle, setSavedTitle] = useState(false);
+  const [titleEditing, settitleEditing] = useState(false);
+
+  // BOOK DETAILS
+  const [bookTitle, setBookTitle] = useState("");
+  const [bookSummary, setBookSummary] = useState("");
+  const [bookVolume, setBookVolume] = useState<string>("0");
+  const [bookTags, setBookTags] = useState("");
+  const [bookGenre, setBookGenre] = useState("");
+  const [bookChapterCount, setBookChapterCount] = useState(0);
+  const [bookStatus, setBookStatus] = useState("ongoing"); // default
+
+  // CHARACTER DETAILS INITIALIZE
+  const [name, setName] = useState("");
+  const [role, setRole] = useState("");
+  const [notes, setNotes] = useState("");
+  const [abilities, setAbilities] = useState("");
+  const [chapterAppearance, setChapterAppearance] = useState("");
+
+  //NEW CHARACTER SCHEMA INITIALIZE
+  const [charStatus, setCharStatus] = useState("unknown");
+  const [charImportance, setCharImportance] = useState("unknown");
+  const [charOccupation, setCharOccupation] = useState("");
+  const [charFutureNotes, setCharFutureNotes] = useState("");
+  const [charNetWorth, setCharNetWorth] = useState("");
+  const [charPowerLevel, setCharPowerLevel] = useState("");
+  const [charCharacterArc, setcharCharacterArc] = useState("");
+
+  // Arrays (comma-separated input)
+  const [charTitles, setCharTitles] = useState<string[]>([]);
+  const [charPersonalityTraits, setCharPersonalityTraits] = useState<string[]>([]);
+  const [charTags, setCharTags] = useState<string[]>([]);
+  const [charSetRace, setCharSetRace] = useState<string[]>([]);
+  const [charChapterAppearances, setCharChapterAppearances] = useState<string[]>([]);
 
   const [charAbilities, setCharAbilities] = useState<
     { ability: string; description: string }[]
@@ -224,11 +222,11 @@ export default function BookPage() {
         characterArc: charCharacterArc,
         netWorth: charNetWorth,
         powerLevel: normalizeWhitespace(charPowerLevel),
-        titles: charTitles.split(",").map(a => normalizeWhitespace(a)),
-        personalityTraits: charPersonalityTraits.split(",").map(a => normalizeWhitespace(a)),
-        tags: charTags.split(",").map(a => normalizeWhitespace(a)),
-        setRace: charSetRaces.split(",").map(a => normalizeWhitespace(a)),
-        chapterAppearances: charChapterAppearances.split(",").map(a => normalizeWhitespace(a)),
+        titles: charTitles,
+        personalityTraits: charPersonalityTraits,
+        tags: charTags,
+        setRace: charSetRace,
+        chapterAppearances: charChapterAppearances,
         relationships: charRelationships,
         description: charDescription,
         createdAt: Date.now(),
@@ -253,15 +251,14 @@ export default function BookPage() {
       setCharFutureNotes("");
       setCharNetWorth("");
       setCharPowerLevel("");
-  
-      setCharTitles("");
-      setCharAbilities([]);
-      setCharPersonalityTraits("");
-      setCharTags("");
-      setCharChapterAppearances("");
       setcharCharacterArc("");
   
-      setCharSetRaces("");
+      setCharTitles([]);
+      setCharAbilities([]);
+      setCharPersonalityTraits([]);
+      setCharTags([]);
+      setCharChapterAppearances([]);
+      setCharSetRace([]);
       setCharRelationships([]);
   
       setCharDescription({ ...defaultcharDescription });

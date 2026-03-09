@@ -1,7 +1,7 @@
 import { useNavigate, useParams } from "react-router-dom";
 import { useState, useEffect, useRef } from "react";
 
-import { db, type Book, type Character, type EditableCharacter, type Notes, type CharacterDescription } from "../db";
+import { db, type Book, type Character, type EditableCharacter, type Notes, type CharacterDescription, type CharImage } from "../db";
 
 import { FontAwesomeIcon} from "@fortawesome/react-fontawesome";
 import { faCheck, faPlus, faMinus, faEllipsis } from "@fortawesome/free-solid-svg-icons";
@@ -51,7 +51,7 @@ export default function ExperimentPage() {
     const [originalCharacter, setOriginalCharacter] = useState<Character | null>(null);
   
     // CHARACTER IMAGE GENERATION w/ PUTER.js
-    const [imageMap, setImageMap] = useState<Record<string, string>>({});
+    const [imageMap, setImageMap] = useState<Record<string, CharImage[]>>({});
   
     // EDITING OF BOOK TITLE
     const [titleDraft, setTitleDraft] = useState("");
@@ -81,16 +81,14 @@ export default function ExperimentPage() {
     const [charFutureNotes, setCharFutureNotes] = useState("");
     const [charNetWorth, setCharNetWorth] = useState("");
     const [charPowerLevel, setCharPowerLevel] = useState("");
-  
-    // Arrays (comma-separated input)
-    const [charTitles, setCharTitles] = useState(""); // input as string -> array on save
-    const [charPersonalityTraits, setCharPersonalityTraits] = useState("");
-    const [charTags, setCharTags] = useState("");
-    const [charSetRaces, setCharSetRaces] = useState("");
-    const [charChapterAppearances, setCharChapterAppearances] = useState("");
     const [charCharacterArc, setcharCharacterArc] = useState("");
   
-    const [charTraits, setCharTraits] = useState<string[]>([]);
+    // Arrays (comma-separated input)
+    const [charTitles, setCharTitles] = useState<string[]>([]); // input as string -> array on save
+    const [charPersonalityTraits, setCharPersonalityTraits] = useState<string[]>([]);
+    const [charTags, setCharTags] = useState<string[]>([]);
+    const [charSetRace, setCharSetRace] = useState<string[]>([]);
+    const [charChapterAppearances, setCharChapterAppearances] = useState<string[]>([]);
 
   const [charAbilities, setCharAbilities] = useState<
     { ability: string; description: string }[]
@@ -229,11 +227,11 @@ export default function ExperimentPage() {
         characterArc: charCharacterArc,
         netWorth: charNetWorth,
         powerLevel: normalizeWhitespace(charPowerLevel),
-        titles: charTitles.split(",").map(a => normalizeWhitespace(a)),
-        personalityTraits: charPersonalityTraits.split(",").map(a => normalizeWhitespace(a)),
-        tags: charTags.split(",").map(a => normalizeWhitespace(a)),
-        setRace: charSetRaces.split(",").map(a => normalizeWhitespace(a)),
-        chapterAppearances: charChapterAppearances.split(",").map(a => normalizeWhitespace(a)),
+        titles: charTitles,
+        personalityTraits: charPersonalityTraits,
+        tags: charTags,
+        setRace: charSetRace,
+        chapterAppearances: charChapterAppearances,
         relationships: charRelationships,
         description: charDescription,
         createdAt: Date.now(),
@@ -258,15 +256,14 @@ export default function ExperimentPage() {
       setCharFutureNotes("");
       setCharNetWorth("");
       setCharPowerLevel("");
-  
-      setCharTitles("");
-      setCharAbilities([]);
-      setCharPersonalityTraits("");
-      setCharTags("");
-      setCharChapterAppearances("");
       setcharCharacterArc("");
   
-      setCharSetRaces("");
+      setCharTitles([]);
+      setCharAbilities([]);
+      setCharPersonalityTraits([]);
+      setCharTags([]);
+      setCharChapterAppearances([]);
+      setCharSetRace([]);
       setCharRelationships([]);
   
       setCharDescription({ ...defaultcharDescription });
@@ -352,13 +349,27 @@ export default function ExperimentPage() {
         .where("charId")
         .anyOf(charIds)
         .toArray();
-  
-      const newMap: Record<string, string> = {};
-  
-      images.forEach(img => {
-        newMap[img.charId] = URL.createObjectURL(img.imageBlob);
+      
+      images.sort((a, b) => b.createdAt - a.createdAt);
+
+      const newMap: Record<string, CharImage[]> = {};
+
+      images.forEach((img) => {
+        const url = URL.createObjectURL(img.imageBlob);
+        const id = img.charId.toString(); // Convert to string for the key
+
+        if (!newMap[id]) {
+          newMap[id] = [];
+        }
+
+        newMap[id].push({
+          url: url,
+          imageId: img.imageId,
+          isDisplayed: img.isDisplayed,
+          createdAt: img.createdAt,
+        });
       });
-  
+
       setImageMap(newMap);
     };
   
@@ -781,6 +792,10 @@ export default function ExperimentPage() {
               >
                 Delete book
               </button>
+
+              <button onClick={() => {console.log(imageMap);}}>
+                CLIKC THIS TO CHECK THE IMAGES TAKEN
+              </button>
             </div>
           )}
         </div>
@@ -947,7 +962,7 @@ export default function ExperimentPage() {
                         <a> 
                             <img 
                             className="h-full w-full object-cover transition" 
-                            src={imageMap[char.id] || char_image}
+                            src={imageMap[char.id]?.find(img => img.isDisplayed)?.url ?? char_image}
                             alt="Default Character Image" />
                         </a>
                       </div>
