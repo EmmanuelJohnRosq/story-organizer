@@ -1,5 +1,5 @@
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
-import { faFileImport, faCircleUser, faUpload, faSpinner, faDownload, faArrowLeft, faUser, faHouse } from "@fortawesome/free-solid-svg-icons";
+import { faFileImport, faCircleUser, faUpload, faSpinner, faDownload, faArrowLeft, faUser, faHouse, faAngleRight } from "@fortawesome/free-solid-svg-icons";
 import { useCallback, useEffect, useState } from "react";
 import { db } from "../db";
 import { useNavigate, useParams, useLocation } from "react-router-dom";
@@ -423,21 +423,28 @@ export default function Header() {
                                 <FontAwesomeIcon icon={faArrowLeft} size="lg"/>
                             </button>
 
-                            <div className="hidden sm:flex border-l border-slate-700 place-items-center">
-                                {characterName && (
-                                <h2 onClick={() => navigate('/')} title="Back to library" className="text-xl text-gray-400 cursor-pointer hover:text-white border-r border-slate-700 px-1">
-                                    <FontAwesomeIcon icon={faHouse} />
-                                </h2>
-                                )}
-                                <h2 className="text-xl truncate px-2">
+                            <div className="hidden sm:flex items-center justify-center lg:justify-start border-l border-slate-700 h-full px-4 gap-2">
+                                <h2 className="text-base font-semibold text-white whitespace-nowrap">
                                     {bookTitle || "Book"}
                                 </h2>
-                                <p className="text-lg truncate border-l border-slate-700 px-2">
-                                    {characterName && <span className="text-gray-300">{characterName}</span>}
-                                </p>
-                                <p className="text-lg truncate border-l border-slate-700 pl-2">
-                                    {isEditPage && <span className="text-gray-300">Build your character</span>}
-                                </p>
+
+                                {characterName && (
+                                    <div className="flex items-center gap-2 text-gray-400">
+                                        <FontAwesomeIcon icon={faAngleRight} className="text-lg" />
+                                        <p className="text-sm truncate text-gray-300">
+                                            {characterName}
+                                        </p>
+                                    </div>
+                                )}
+
+                                {isEditPage && (
+                                    <div className="flex items-center gap-2 text-gray-400">
+                                        <FontAwesomeIcon icon={faAngleRight} className="text-lg" />
+                                        <p className="text-xs truncate text-gray-300">
+                                            Character creation
+                                        </p>
+                                    </div>
+                                )}
                             </div>
                         </div>
                     ) : (
@@ -568,7 +575,7 @@ export default function Header() {
                         {googleUser ? (
                         <>
                             <div 
-                                className="w-9 h-9 rounded-full overflow-hidden shadow-lg border border-slate-700 transition hover:border-white cursor-pointer"
+                                className="w-9 h-9 rounded-full overflow-hidden shadow-lg border border-slate-700 transition hover:border-white cursor-pointer select-none"
                                 onClick={() => {setShowAccountSettings(prev => !prev);}}
                             >
                             <img
@@ -633,7 +640,7 @@ export default function Header() {
 
                             {/* THIS IS FOR SAVING TO GOOGLE DRIVE */}
                             <button
-                                title="Save data to Gdrive"
+                                title="Create/Save a backup data to Gdrive"
                                 onClick={() => showSaveGoogleModal(true)}
                                 className="w-full text-left px-2 py-1 rounded hover:bg-green-100 dark:hover:bg-gray-700"
                             >
@@ -644,10 +651,10 @@ export default function Header() {
                             {backupFileId && (
                             <button
                                 onClick={() => handleRestoreFromDrive()}
-                                title="Import Saved files from gDrive"
+                                title="Restore backup data from google drive save"
                                 className="w-full text-left px-2 py-1 rounded hover:bg-blue-100 dark:hover:bg-blue-900/40"
                             >
-                                <FontAwesomeIcon icon={faDownload} className="mr-2"/>Import Saved
+                                <FontAwesomeIcon icon={faDownload} className="mr-2"/>Restore backup
                             </button>
                             )}
 

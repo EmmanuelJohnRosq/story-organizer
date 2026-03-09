@@ -792,10 +792,6 @@ export default function ExperimentPage() {
               >
                 Delete book
               </button>
-
-              <button onClick={() => {console.log(imageMap);}}>
-                CLIKC THIS TO CHECK THE IMAGES TAKEN
-              </button>
             </div>
           )}
         </div>
@@ -826,12 +822,12 @@ export default function ExperimentPage() {
                         
                         <textarea
                             rows={12}
-                            className="w-full px-1 py-1 focus:outline-none text-sm placeholder-gray-400 dark:placeholder-gray-600 text-area-scroll"
+                            className="w-full px-1 py-1 focus:outline-none text-sm placeholder-gray-400 dark:placeholder-gray-600 text-area-scroll resize-none"
                             placeholder="Update book summary"
                             value={bookSummary}
                             onFocus={(e) => autoResize(e)}
                             onBlur={(e) => { e.currentTarget.style.height = "auto";}}
-                            onChange={e => setBookSummary(e.target.value)}
+                            readOnly
                         />
                       </div>
                   </form>

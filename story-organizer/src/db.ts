@@ -129,7 +129,7 @@ class StoryDB extends Dexie {
   constructor() {
     super("StoryDB");
 
-    this.version(19).stores({
+    this.version(20).stores({
       books: "id, title", 
       images: "imageId, charId, bookId",
       notes: "++id, bookId, charId",
@@ -139,16 +139,18 @@ class StoryDB extends Dexie {
     })
     
     .upgrade(async (tx) => {
-      // Use .modify() to update every existing record in the "images" table
-      return tx.table("images").toCollection().modify(img => {
-        if (!('isDisplayed' in img)) {
-          img.isDisplayed = false; 
-        }
+      const images = await tx.table("images").toArray();
+      const activeByChar = new Map<number, string>();
 
-        // 2. If 'setRaces' DOES exist, delete it
-        // if ('setRaces' in char) {
-        //   delete char.setRaces;
-        // }
+      for (const image of images) {
+        const current = activeByChar.get(image.charId);
+        if (!current || image.createdAt > (images.find((item) => item.imageId === current)?.createdAt ?? 0)) {
+          activeByChar.set(image.charId, image.imageId);
+        }
+      }
+
+      await tx.table("images").toCollection().modify((image: Images) => {
+        image.isDisplayed = activeByChar.get(image.charId) === image.imageId;
       });
     });
 

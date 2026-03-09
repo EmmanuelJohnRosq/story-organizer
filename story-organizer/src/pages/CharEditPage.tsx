@@ -159,7 +159,6 @@ export default function CharEditPage() {
       }));
 
       const displayedImage = mapped.find((image) => image.isDisplayed);
-
       setCharacterImages(mapped);
 
       if (displayedImage) {
@@ -211,7 +210,6 @@ export default function CharEditPage() {
         isDisplayed: image.imageId === imageId,
       }))
     );
-    setShowImagePicker(false);
   }
 
   async function deleteImage(imageId: string) {
@@ -280,7 +278,7 @@ async function confirmDisplayImage() {
 
     await loadCharacterImages();
     setSelectedImageId(newImageId);
-    // setImageActionError("");
+    setImageActionError("");
   }
 
   async function onUploadImage(event: React.ChangeEvent<HTMLInputElement>) {
@@ -488,7 +486,7 @@ async function confirmDisplayImage() {
               />
 
               <div className="absolute inset-0 flex items-center justify-center bg-black/55 opacity-0 transition group-hover:opacity-100">
-                <span className="rounded-lg bg-white/20 px-2 py-1 text-lg font-bold">+</span>
+                <span className="rounded-lg bg-white/20 px-2 py-1 text-2xl font-bold">+</span>
               </div>
             </button>
 
@@ -742,7 +740,7 @@ async function confirmDisplayImage() {
               <h3 className="text-lg font-bold">Choose Character Display Image</h3>
               <button
                 type="button"
-                onClick={() => setShowImagePicker(false)}
+                onClick={() => showImageModal(false)}
                 className="rounded-lg border border-gray-300 px-3 py-1 text-sm dark:border-gray-600"
               >
                 Close
@@ -812,26 +810,26 @@ async function confirmDisplayImage() {
                       </div>
                     </button>
 
-                    <button
-                      type="button"
-                      title="Delete image"
-                      onClick={(event) => {
-                        event.stopPropagation();
-                        void deleteImage(image.imageId);
-                      }}
-                      className="absolute right-2 top-2 rounded-full bg-red-600/90 px-2 py-0.5 text-xs font-semibold text-white opacity-0 transition group-hover:opacity-100 hover:bg-red-700"
-                    >
-                      Delete
-                    </button>
                   </div>
                 ))}
               </div>
             )}
 
             <div className="mt-4 flex items-center justify-end gap-2 border-t border-gray-200 pt-3 dark:border-gray-700">
+              
               <button
                 type="button"
-                onClick={() => setShowImagePicker(false)}
+                title="Delete image"
+                disabled={!pendingImageId}
+                onClick={() => {void deleteImage(pendingImageId);}}
+                className="rounded-lg bg-red-500 px-3 py-2 text-sm font-semibold text-white hover:bg-red-600 disabled:cursor-not-allowed disabled:opacity-50"
+              >
+                Delete
+              </button>
+
+              <button
+                type="button"
+                onClick={() => showImageModal(false)}
                 className="rounded-lg border border-gray-300 px-3 py-2 text-sm font-semibold dark:border-gray-600"
               >
                 Cancel
