@@ -10,6 +10,7 @@ import { useEffect } from "react";
 import { useGoogleAuth} from "./context/GoogleAuthContext";
 import { findBackupFile } from "./services/driveService";
 import CharEditPage from "./pages/CharEditPage";
+import CharacterPageCopy from "./pages/CharacterPageCopy";
 
 export default function StoryOrganizer() {
 
@@ -61,7 +62,7 @@ export default function StoryOrganizer() {
         />
         <Route
           path="book/:currentBookId/:characterSlug"
-          element={<CharacterPage />}
+          element={<CharacterPageCopy />}
         />
         <Route
           path="book/:currentBookId/:characterSlug/edit"

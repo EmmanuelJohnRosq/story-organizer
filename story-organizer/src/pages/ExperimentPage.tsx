@@ -800,7 +800,7 @@ export default function ExperimentPage() {
         <div className="grid xxs:grid-cols-2 xs:grid-cols-10 gap-2 items-start">
     
           {/* LEFT SIDE CONTAINER */}
-          <div className="col-span-1 xs:col-span-3 flex-1 relative">
+          <div className="lg:sticky lg:top-15 col-span-1 xs:col-span-3 flex-1 relative">
 
               {/* BOOK AND CHARACTER FORMS LEFT PANEL */}
               <div className="sticky top-15 xxs:h-[calc(100vh-7rem)] w-full overflow-y-auto overflow-x-hidden notes-scroll overflow-contain">
@@ -943,7 +943,7 @@ export default function ExperimentPage() {
                   title="Open character sheet."
                   className="
                   h-15 w-full
-                  cursor-pointer bg-white shadow-lg rounded-4xl
+                  cursor-pointer bg-white shadow-lg rounded-lg
                   transition
                   hover:bg-gray-100 dark:hover:bg-black
                   group animate-fadeDown
@@ -1058,7 +1058,7 @@ export default function ExperimentPage() {
           </div>
 
           {/* RIGHT SIDE CONTAINER */}
-          <div className="hidden col-span-2 xs:flex flex-col relative animate-fadeRight transition delay-500 duration-900">
+          <div className="hidden lg:sticky lg:top-15 col-span-2 xs:flex flex-col relative animate-fadeRight transition delay-500 duration-900">
             
             {/* NOTES CONTAINER */}
             <div className="rounded-md pl-2 pr-1 pt-2 mb-2 bg-gray-100 dark:bg-gray-900 transition duration-300">
