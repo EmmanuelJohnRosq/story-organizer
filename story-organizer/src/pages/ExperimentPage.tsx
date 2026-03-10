@@ -62,6 +62,7 @@ export default function ExperimentPage() {
     const [bookTitle, setBookTitle] = useState("");
     const [bookSummary, setBookSummary] = useState("");
     const [bookVolume, setBookVolume] = useState<string>("0");
+    const [bookVolName, setbookVolName] = useState("");
     const [bookTags, setBookTags] = useState("");
     const [bookGenre, setBookGenre] = useState("");
     const [bookChapterCount, setBookChapterCount] = useState(0);
@@ -72,6 +73,8 @@ export default function ExperimentPage() {
     const [role, setRole] = useState("");
     const [notes, setNotes] = useState("");
     const [abilities, setAbilities] = useState("");
+    const [race, setRace] = useState("");
+    const [status, setStatus] = useState("");
     const [chapterAppearance, setChapterAppearance] = useState("");
   
     //NEW CHARACTER SCHEMA INITIALIZE
@@ -230,7 +233,7 @@ export default function ExperimentPage() {
         titles: charTitles,
         personalityTraits: charPersonalityTraits,
         tags: charTags,
-        setRace: charSetRace,
+        setRace: [race],
         chapterAppearances: charChapterAppearances,
         relationships: charRelationships,
         description: charDescription,
@@ -302,6 +305,7 @@ export default function ExperimentPage() {
         setBookSummary(currentBook.summary);
         setBookGenre((currentBook.genre ?? []).join(", "));
         setBookVolume(String(currentBook.volume));
+        setbookVolName(currentBook.volumeName);
       }
     }, [currentBook]);
   
@@ -458,7 +462,7 @@ export default function ExperimentPage() {
   
     const [Addnewbooks, setAddnewBooks] = useState(false);
     const [notesShowState, setNotesShowState] = useState(false);
-    const [addCharacterState, setAddCharState] = useState(true);
+    const [addCharacterState, setAddCharState] = useState(false);
     const [showSettingsMenu, setShowSettingsMenu] = useState(false);
     const [isNotesDrawerMounted, setIsNotesDrawerMounted] = useState(false);
     const [isNotesDrawerVisible, setIsNotesDrawerVisible] = useState(false);
@@ -745,55 +749,55 @@ export default function ExperimentPage() {
     <div className="w-full mx-auto pt-15 px-2">
 
         {/* PAGE TITLE */}
-        <div className="px-4 py-2 flex justify-between items-center relative">
-          <h1 className="text-2xl md:text-3xl font-bold tracking-tight line-clamp-1">{titleDraft || currentBook?.title || "Book Page"}</h1>
-
-          <button
-            className="border-gray-500 text-black rounded-xl px-1 dark:text-white hover:bg-gray-600"
-            onClick={() => setShowSettingsMenu(prev => !prev)}
-            title="Book settings"
+        <div className="pb-3 grid grid-cols-6 gap-3 items-center relative">
+          <button 
+          type="button" 
+          className="rounded-lg bg-green-800 px-3 py-3  text-base font-semibold text-white hover:bg-green-700"
+          onClick={() => addNewcharacter()}
           >
-            <FontAwesomeIcon icon={faEllipsis} size="xl"/>
+            {!addCharacterState ? "Create Character" : "Minimize Form"}
           </button>
 
-          {showSettingsMenu && (
-            <div className="absolute top-13 right-3 z-30 w-56 rounded-md border bg-white dark:bg-gray-800 dark:border-gray-600 shadow-xl p-2 space-y-1">
-              <button
-                className="w-full text-left px-3 py-2 rounded hover:bg-gray-200 dark:hover:bg-gray-700"
-                onClick={() => {
-                  addBooksState();
-                  setShowSettingsMenu(false);
-                }}
-              >
-                Edit book details
-              </button>
-              <button
-                className="w-full text-left px-3 py-2 rounded hover:bg-gray-200 dark:hover:bg-gray-700"
-                onClick={() => {
-                  addNewcharacter();
-                  setShowSettingsMenu(false);
-                }}
-              >
-                Add character
-              </button>
+          <button 
+          type="button" 
+          className="rounded-lg bg-blue-800 px-3 py-3 text-base font-semibold text-white hover:bg-blue-700"
+          onClick={() => addDraftNotes()}
+          >
+            Add notes
+          </button>
 
-              <button
-                className="hidden xs:block w-full text-left px-3 py-2 rounded hover:bg-gray-200 dark:hover:bg-sky-700/50"
-                onClick={() => {addDraftNotes(); setShowSettingsMenu(false)}}
-              >
-                Add draft note
-              </button>
+          <button 
+          type="button" 
+          className="rounded-lg bg-orange-800 px-3 py-3 text-base font-semibold text-white hover:bg-orange-700"
+          onClick={() => alert("Currently, in development...")}
+          >
+            Dashboard
+          </button>
 
-              <button
-                className="w-full text-left px-3 py-2 rounded text-red-600 hover:bg-red-100 dark:hover:bg-red-900/30"
-                onClick={() => {
-                  if (currentBook?.id) deleteBook(currentBook.id);
-                }}
-              >
-                Delete book
-              </button>
-            </div>
-          )}
+          <button 
+          type="button" 
+          className="rounded-lg bg-pink-800 px-3 py-3 text-base font-semibold text-white hover:bg-pink-700"
+          onClick={() => alert("Currently, in development...")}
+          >
+            AI assist
+          </button>
+
+          <button 
+          type="button" 
+          className="rounded-lg bg-sky-800 px-3 py-3 text-base font-semibold text-white hover:bg-sky-700"
+          onClick={() => alert("Currently, in development...")}
+          >
+            Character graph
+          </button>
+
+          <button 
+          type="button" 
+          className="rounded-lg bg-indigo-800 px-3 py-3 text-base font-semibold text-white hover:bg-indigo-700"
+          onClick={() => alert("Currently, in development...")}
+          >
+            World Builder
+          </button>
+
         </div>
 
         {/* CONTENT CONTAINER */}
@@ -803,85 +807,221 @@ export default function ExperimentPage() {
           <div className="lg:sticky lg:top-15 col-span-1 xs:col-span-3 flex-1 relative">
 
               {/* BOOK AND CHARACTER FORMS LEFT PANEL */}
-              <div className="sticky top-15 xxs:h-[calc(100vh-7rem)] w-full overflow-y-auto overflow-x-hidden notes-scroll overflow-contain">
-
-                {/* BOOK SUMMARY FORM */}
-                {/* // BOOK DETAILS */}
-                <div className="flex-1 rounded-md shadow-lg pt-4 px-4 pb-1 mb-1 bg-gray-100 dark:bg-gray-900 transition duration-300 animate-fadeDown">
-                  <form className="space-y-2">
-
-                      {/* Summary */}
-                      <div>
-                        <label className="text-sm font-semibold">
-                          Book Content
-                        </label>
-
-                        <label className="block text-xs text-neutral-400 mb-1">
-                          Volume {bookVolume} • Volume Name • {upcaseLetter(bookStatus)}
-                        </label>
-                        
-                        <textarea
-                            rows={12}
-                            className="w-full px-1 py-1 focus:outline-none text-sm placeholder-gray-400 dark:placeholder-gray-600 text-area-scroll resize-none"
-                            placeholder="Update book summary"
-                            value={bookSummary}
-                            onFocus={(e) => autoResize(e)}
-                            onBlur={(e) => { e.currentTarget.style.height = "auto";}}
-                            readOnly
-                        />
-                      </div>
-                  </form>
-                </div>
-
-                {/* CHARACTER GENRE AND TAGS */}
-                <div className="rounded-md shadow-lg p-4 mb-2 bg-gray-100 dark:bg-gray-900 transition duration-300">
-                  <label className="text-sm font-semibold">Book Classification</label>
-
-                  <div className="block mb-1 -mt-1">
-                    <label className="text-xs text-blue-900 dark:text-blue-400">Genre</label>
-                    <label className="text-xs text-gray-300"> • </label>
-                    <label className="text-xs text-purple-900 dark:text-purple-400">Tags</label>
-                  </div>
-                  
-                  <div className="flex flex-wrap gap-2">
-                    {bookChips.length ? (
-                      bookChips.map((chip, index) => (
-                        <span 
-                          key={`${chip.type}-${chip.text}-${index}`} 
-                          className={`px-3 py-1 rounded-full text-sm ${
-                            chip.type === 'genre' 
-                              ? "bg-blue-200 text-blue-900 dark:bg-blue-900/40 dark:text-blue-200" // Genre Style
-                              : "bg-purple-200 text-purple-900 dark:bg-purple-900/40 dark:text-purple-200" // Tag Style
-                          }`}
-                        >
-                          {upcaseLetter(chip.text)}
-                        </span>
-                      ))
-                    ) : (
-                      <span className="text-sm text-gray-500 dark:text-gray-400">No data yet.</span>
-                    )}
-                  </div>
-                </div>
-
-                {/* ADD CHARACTER FORM */}
-                {(!addCharacterState &&
-                <div className="flex-1 rounded-md shadow-lg p-3 mb-2 bg-gray-100 dark:bg-gray-900 transition duration-300 animate-fadeDown"
-                    onKeyDown={(e) => {if (e.key === "Enter") addCharacter();}}>
-                    <input className="border p-2 w-full mb-2 rounded" placeholder="Name" value={name} onChange={e => setName(e.target.value)} />
-                    <input className="border p-2 w-full mb-2 rounded" placeholder="Role / Affiliation" value={role} onChange={e => setRole(e.target.value)} />
-                    <textarea className="border p-2 w-full mb-2 rounded" placeholder="Notes" rows={4} value={notes} onChange={e => setNotes(e.target.value)} />
-                    <input className="border p-2 w-full mb-2 rounded" placeholder="Abilities (comma separated)" value={abilities} onChange={e => setAbilities(e.target.value)} />
-                    <input type="number" className="border p-2 w-full mb-2 rounded" placeholder="First Chapter Appearance" value={chapterAppearance} onChange={e => setChapterAppearance(e.target.value)} />
-                    <button
-                    type="button"
-                    className="w-full bg-blue-500 text-white py-2 rounded-md hover:bg-blue-600 transition"
-                    onClick={addCharacter}
+              <div className="sticky top-15 w-full">
+                <div className="xxs:max-h-[calc(100vh-7.5rem)] overflow-y-auto overflow-x-hidden notes-scroll overflow-contain">
+                  {/* ADD CHARACTER FORM */}
+                  {(addCharacterState &&
+                    <div 
+                      className="flex-1 rounded-xl shadow-2xl p-6 mb-2 bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 transition-all duration-300 animate-fadeDown"
+                      onKeyDown={(e) => {if (e.key === "Enter") addCharacter();}}
                     >
-                    SAVE
-                    </button>
-                </div>
-                )}
+                      <div className="flex items-center justify-between mb-6">
+                        <h2 className="text-lg font-bold text-gray-800 dark:text-gray-100">Add New Character</h2>
+                        <span className="px-2 py-1 text-xs font-medium bg-blue-100 text-blue-600 rounded-full dark:bg-blue-900/30 dark:text-blue-400">
+                          Draft Mode
+                        </span>
+                      </div>
 
+                      <div className="space-y-5 my-2">
+                        {/* Name Input */}
+                        <div>
+                          <label className="block text-xs font-semibold uppercase tracking-wider text-gray-500 mb-1 ml-1">Full Name</label>
+                          <input 
+                            className="rounded-lg border border-gray-300 dark:border-gray-700 p-2.5 dark:bg-gray-800 w-full focus:ring-2 focus:ring-blue-500 outline-none transition" 
+                            placeholder="e.g. Artorius Pendragon" 
+                            value={name} 
+                            onChange={e => setName(e.target.value)} 
+                          />
+                        </div>
+
+                        {/* Row for Role & Race */}
+                        <div className="grid grid-cols-2 gap-4">
+                          <div>
+                            <label className="block text-xs font-semibold uppercase tracking-wider text-gray-500 mb-1 ml-1">Role</label>
+                            <select 
+                              className="rounded-lg border border-gray-300 dark:border-gray-700 p-2.5 dark:bg-gray-800 w-full focus:ring-2 focus:ring-blue-500 outline-none transition appearance-none cursor-pointer"
+                              value={role} 
+                              onChange={e => setRole(e.target.value)}
+                            >
+                              <option value="">Select Role</option>
+                              <option value="protagonist">Protagonist</option>
+                              <option value="antagonist">Antagonist</option>
+                              <option value="supporting">Supporting character</option>
+                              <option value="confidant">Confidant</option>
+                              <option value="mentor">Mentor</option>
+                              <option value="love interest">Love interest</option>
+                              <option value="background">Background character</option>
+                              <option value="rival">Rival</option>
+                              <option value="side character">Side character</option>
+                              <option value="unknown">Unknown</option>
+                            </select>
+                          </div> 
+
+                          <div>
+                            <label className="block text-xs font-semibold uppercase tracking-wider text-gray-500 mb-1 ml-1">Race</label>
+                            <select 
+                              className="rounded-lg border border-gray-300 dark:border-gray-700 p-2.5 dark:bg-gray-800 w-full focus:ring-2 focus:ring-blue-500 outline-none transition appearance-none cursor-pointer"
+                              value={race} 
+                              onChange={e => setRace(e.target.value)}
+                            >
+                              <option value="">Select Race</option>
+                              <option value="human">Human</option>
+                              <option value="elf">Elf</option>
+                              <option value="dwarf">Dwarf</option>
+                              <option value="orc">Orc</option>
+                              <option value="dragon">Dragon</option>
+                              <option value="Other">Other</option>
+                            </select>
+                          </div>
+                        </div>
+
+                        {/* Row for Status & Appearance */}
+                        <div className="grid grid-cols-2 gap-4">
+                          <div>
+                            <label className="block text-xs font-semibold uppercase tracking-wider text-gray-500 mb-1 ml-1">Status</label>
+                            <select 
+                              className="rounded-lg border border-gray-300 dark:border-gray-700 p-2.5 dark:bg-gray-800 w-full focus:ring-2 focus:ring-blue-500 outline-none transition appearance-none cursor-pointer"
+                              value={status} 
+                              onChange={e => setStatus(e.target.value)}
+                            >
+                              <option value="Alive">Alive</option>
+                              <option value="Deceased">Deceased</option>
+                              <option value="Deceased">Undead</option>
+                              <option value="Unknown">Unknown</option>
+                            </select>
+                          </div>
+
+                          <div>
+                            <label className="block text-xs font-semibold uppercase tracking-wider text-gray-500 mb-1 ml-1">First Chapter Appearance</label>
+                            <input 
+                              type="number" 
+                              className="rounded-lg border border-gray-300 dark:border-gray-700 p-2.5 dark:bg-gray-800 w-full focus:ring-2 focus:ring-blue-500 outline-none transition" 
+                              placeholder="Ch. #" 
+                              value={chapterAppearance} 
+                              onChange={e => setChapterAppearance(e.target.value)} 
+                            />
+                          </div>
+                        </div>
+                      </div>
+
+                      <button
+                        type="button"
+                        className="w-full mt-6 bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 rounded-lg shadow-lg hover:shadow-blue-500/30 transform hover:-translate-y-0.5 transition-all active:scale-95"
+                        onClick={addCharacter}
+                      >
+                        Create Character
+                      </button>
+                    </div>
+                  )}
+
+                  {/* BOOK SUMMARY FORM */}
+                  <div className="flex-1 rounded-md shadow-lg pt-4 px-4 pb-1 mb-1 bg-gray-100 dark:bg-gray-900 transition duration-300 animate-fadeDown">
+                    <div className="space-y-2">
+
+                        {/* Summary */}
+                        <div>
+                          <div className="flex justify-between">
+                            <label className="text-xl font-semibold truncate">
+                              {titleDraft || currentBook?.title || "Book Content"}
+                            </label>
+
+                            <button
+                              className="border-gray-500 text-black rounded-xl px-1 dark:text-gray-500 hover:text-white"
+                              onClick={() => setShowSettingsMenu(prev => !prev)}
+                              title="Book settings"
+                            >
+                              <FontAwesomeIcon icon={faEllipsis} size="lg"/>
+                            </button>
+
+                            {showSettingsMenu && (
+                              <div className="absolute top-13 right-3 z-30 w-56 rounded-md border bg-white dark:bg-gray-800 dark:border-gray-600 shadow-xl p-2 space-y-1">
+                                <button
+                                  className="w-full text-left px-3 py-2 rounded hover:bg-gray-200 dark:hover:bg-gray-700"
+                                  onClick={() => {
+                                    addBooksState();
+                                    setShowSettingsMenu(false);
+                                  }}
+                                >
+                                  Edit book details
+                                </button>
+                                <button
+                                  className="w-full text-left px-3 py-2 rounded hover:bg-gray-200 dark:hover:bg-gray-700"
+                                  onClick={() => {
+                                    addNewcharacter();
+                                    setShowSettingsMenu(false);
+                                  }}
+                                >
+                                  Add character
+                                </button>
+
+                                <button
+                                  className="hidden xs:block w-full text-left px-3 py-2 rounded hover:bg-gray-200 dark:hover:bg-sky-700/50"
+                                  onClick={() => {addDraftNotes(); setShowSettingsMenu(false)}}
+                                >
+                                  Add draft note
+                                </button>
+
+                                <button
+                                  className="w-full text-left px-3 py-2 rounded text-red-600 hover:bg-red-100 dark:hover:bg-red-900/30"
+                                  onClick={() => {
+                                    if (currentBook?.id) deleteBook(currentBook.id);
+                                  }}
+                                >
+                                  Delete book
+                                </button>
+                              </div>
+                            )}
+                          </div>
+                          
+
+                          <label className="block text-xs text-neutral-400 mb-1">
+                            Volume {bookVolume || "0"} • {bookVolName || "Volume Name"} • {upcaseLetter(bookStatus) || "unknown"}
+                          </label>
+                          
+                          <textarea
+                              rows={12}
+                              className="w-full px-1 py-1 focus:outline-none text-sm placeholder-gray-400 dark:placeholder-gray-600 text-area-scroll resize-none"
+                              placeholder="Update book summary"
+                              value={bookSummary}
+                              onFocus={(e) => autoResize(e)}
+                              onBlur={(e) => { e.currentTarget.style.height = "auto";}}
+                              readOnly
+                          />
+                        </div>
+                    </div>
+                  </div>
+
+                  {/* CHARACTER GENRE AND TAGS */}
+                  <div className="rounded-md shadow-lg p-4 mb-2 bg-gray-100 dark:bg-gray-900 transition duration-300">
+                    <label className="text-sm font-semibold">Book Classification</label>
+
+                    <div className="block mb-1 -mt-1">
+                      <label className="text-xs text-blue-900 dark:text-blue-400">Genre</label>
+                      <label className="text-xs text-gray-300"> • </label>
+                      <label className="text-xs text-purple-900 dark:text-purple-400">Tags</label>
+                    </div>
+                    
+                    <div className="flex flex-wrap gap-2">
+                      {bookChips.length ? (
+                        bookChips.map((chip, index) => (
+                          <span 
+                            key={`${chip.type}-${chip.text}-${index}`} 
+                            className={`px-3 py-1 rounded-full text-sm ${
+                              chip.type === 'genre' 
+                                ? "bg-blue-200 text-blue-900 dark:bg-blue-900/40 dark:text-blue-200" // Genre Style
+                                : "bg-purple-200 text-purple-900 dark:bg-purple-900/40 dark:text-purple-200" // Tag Style
+                            }`}
+                          >
+                            {upcaseLetter(chip.text)}
+                          </span>
+                        ))
+                      ) : (
+                        <span className="text-sm text-gray-500 dark:text-gray-400">No data yet.</span>
+                      )}
+                    </div>
+                  </div>
+                </div>
+              
               </div>
 
           </div>
@@ -958,7 +1098,9 @@ export default function ExperimentPage() {
                         <a> 
                             <img 
                             className="h-full w-full object-cover transition" 
-                            src={imageMap[char.id]?.find(img => img.isDisplayed)?.url ?? char_image}
+                            src={imageMap[char.id]?.find(img => img.isDisplayed)?.url ||
+                                 imageMap[char.id]?.[0]?.url ||
+                                 char_image}
                             alt="Default Character Image" />
                         </a>
                       </div>
@@ -1063,7 +1205,7 @@ export default function ExperimentPage() {
             {/* NOTES CONTAINER */}
             <div className="rounded-md pl-2 pr-1 pt-2 mb-2 bg-gray-100 dark:bg-gray-900 transition duration-300">
               <div className="flex justify-between"> 
-                <label className="text-sm font-semibold">Notes</label>
+                <label className="text-sm font-semibold">{"Book"} Notes</label>
                 
                 <div className="flex justify-center">
                   <button 
@@ -1077,16 +1219,16 @@ export default function ExperimentPage() {
               </div>
 
               {/* NOTES CONTENTS */}
-              <div className="h-[calc(100vh-10rem)] overflow-y-auto overflow-x-hidden notes-scroll overflow-contain mt-2">
+              <div className="max-h-[calc(100vh-10.5rem)] overflow-y-auto overflow-x-hidden notes-scroll overflow-contain mt-2">
 
                 {bookNotes.length < 1 && !draftNote && (
-                  <div className="text-sm text-gray-500">
+                  <div className="text-sm text-gray-500 p-5">
                     Add notes, references, future scenarios, book plans, etc...
                   </div>
                 )}
 
                 {/* THIS IS THE BOOK NOTES */}
-                <div className="">
+                <div className="overflow-contain">
                     {[ ...(draftNote ? [draftNote] : []), ...bookNotes ].map(notes => (
                     <div 
                         className={`${colorMap[notes.color]} relative p-1 rounded-md shadow-md mb-2 bg-gray-100 dark:bg-gray-900 cursor-pointer animate-fadeDown`}
@@ -1278,7 +1420,7 @@ export default function ExperimentPage() {
               {/* MOBILE NOTES DRAWER */}
               {isNotesDrawerMounted && (
                 <div
-                  className={`xs:hidden text-black dark:text-white fixed inset-0 z-40 transition-opacity duration-300 ${isNotesDrawerVisible ? "opacity-100" : "opacity-0"}`}
+                  className={`xs:hidden text-black dark:text-white fixed inset-0 z-40 transition-opacity duration-300 justify-items-center ${isNotesDrawerVisible ? "opacity-100" : "opacity-0"}`}
                   role="dialog"
                   aria-modal="true"
                 >
@@ -1288,7 +1430,7 @@ export default function ExperimentPage() {
                     onClick={closeNotesDrawer}
                   />
 
-                  <div className={`absolute bottom-0 left-0 right-0 rounded-t-2xl bg-gray-100 dark:bg-gray-800 shadow-2xl p-3 max-h-[75vh] transition-transform duration-300 ${isNotesDrawerVisible ? "translate-y-0" : "translate-y-full"}`}>
+                  <div className={`absolute bottom-0 rounded-t-2xl bg-gray-100 dark:bg-gray-800 shadow-2xl p-3 w-full max-w-[65vh] max-h-[75vh] transition-transform duration-300 ${isNotesDrawerVisible ? "translate-y-0" : "translate-y-full"}`}>
                 <div className="flex items-center justify-between mb-2">
                   <h2 className="text-sm font-semibold">Notes</h2>
                   <div className="flex gap-2">

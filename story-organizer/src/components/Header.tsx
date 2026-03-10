@@ -202,7 +202,7 @@ export default function Header() {
     };
 
     // TAKE ALL THE DATA FROM DATABASE AND SET IT TO DATA
-   async function getAllDB() {
+    async function getAllDB() {
         const imageRecords = await db.images.toArray();
         const allBooks = await db.books.toArray();
         const allCharacters = await db.characters.toArray();
@@ -215,12 +215,13 @@ export default function Header() {
             charId: img.charId,
             createdAt: img.createdAt,
             base64: await blobToBase64(img.imageBlob),
+            isDisplayed: img.isDisplayed,
         }))
         );
 
         const data = {
             app: "story-organizer",
-            version: "4.0",
+            version: "5.0",
             exportedAt: new Date().toISOString(),
             books: allBooks,
             character: allCharacters,
@@ -278,6 +279,7 @@ export default function Header() {
                 bookId: img.bookId,
                 createdAt: img.createdAt,
                 imageBlob: base64ToBlob(img.base64),
+                isDisplayed: img.isDisplayed,
             }));
 
             await db.images.bulkAdd(restoredImages);
@@ -305,7 +307,7 @@ export default function Header() {
 
     const name = "Story-Organizer-BackUp-Data"
 
-    // SAVE DATA DB TO GOOGLE DRIVE
+    // BACK UP ALL OF THE DATABASE TO GOOGLE DRIVE
     async function backupData() {
         const token = localStorage.getItem("googleAccessToken");
         const existingFile = localStorage.getItem("googleFileID");

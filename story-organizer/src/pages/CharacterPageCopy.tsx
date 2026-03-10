@@ -4,11 +4,12 @@ import { useState, useEffect, useCallback, useRef } from "react";
 import { db, type Character, type EditableCharacter, type Notes, type CharacterDescription, type CharImage } from "../db";
 
 import { FontAwesomeIcon} from "@fortawesome/react-fontawesome";
-import { faTrashCan, faCheck, faSpinner, faPlus, faGear } from "@fortawesome/free-solid-svg-icons";
+import { faTrashCan, faCheck, faSpinner, faPlus, faGear, faMinus } from "@fortawesome/free-solid-svg-icons";
 import { useDropzone } from "react-dropzone";
 
 import { FiEdit2, FiX } from "react-icons/fi"; // example pencil icon from react
 import { faPenToSquare } from "@fortawesome/free-regular-svg-icons";
+import { createPortal } from "react-dom";
 
 type CharacterDetailTab = "overview" | "abilities" | "relationships" | "appearance";
 
@@ -83,6 +84,10 @@ export default function CharacterPage() {
   // MODALS
   const [showGenImage, setShowGenImage] = useState(false);
   const [showFileModal, setShowFileModal] = useState(false);
+
+  // NOTES MOBILE MODAL
+  const [isNotesDrawerMounted, setIsNotesDrawerMounted] = useState(false);
+  const [isNotesDrawerVisible, setIsNotesDrawerVisible] = useState(false);
 
   // IMPORT Variables
   // const fileInputRef = useRef<HTMLInputElement>(null);
@@ -270,6 +275,61 @@ const [charDescription, setCharDescription] = useState<CharacterDescription>({
     setShowGenImage(state);
     document.body.classList.toggle('overflow-hidden', state);
   }
+
+  const notesDrawerTimeoutRef = useRef<number | null>(null);
+  const [notesShowState, setNotesShowState] = useState(false);
+
+  const openNotesDrawer = () => {
+    if (notesDrawerTimeoutRef.current) {
+      clearTimeout(notesDrawerTimeoutRef.current);
+      notesDrawerTimeoutRef.current = null;
+    }
+
+    setIsNotesDrawerMounted(true);
+    setNotesShowState(true);
+
+    requestAnimationFrame(() => {
+      setIsNotesDrawerVisible(true);
+    });
+  };
+
+  const closeNotesDrawer = () => {
+    setIsNotesDrawerVisible(false);
+    setNotesShowState(false);
+
+    notesDrawerTimeoutRef.current = window.setTimeout(() => {
+      setIsNotesDrawerMounted(false);
+      notesDrawerTimeoutRef.current = null;
+    }, 300);
+  };
+
+  // SHOW/HIDE NOTES DISPLAY
+  const displayNotes = () => {
+    if (notesShowState) {
+    closeNotesDrawer();
+    return;
+  }
+
+    openNotesDrawer();
+  };
+
+  useEffect(() => {
+    if (!notesShowState) return;
+
+    document.body.classList.add("overflow-hidden");
+
+    return () => {
+      document.body.classList.remove("overflow-hidden");
+    };
+  }, [notesShowState]);
+
+  useEffect(() => {
+    return () => {
+      if (notesDrawerTimeoutRef.current) {
+        clearTimeout(notesDrawerTimeoutRef.current);
+      }
+    };
+  }, []);
 
   // delete character block
   async function deleteCharacter(characterId: number) {
@@ -700,13 +760,6 @@ const [charDescription, setCharDescription] = useState<CharacterDescription>({
     }
   }
 
-  const [notesShowState, setNotesShowState] = useState(true);
-
-  // SHOW/HIDE NOTES DISPLAY
-  const displayNotes = () => {
-    setNotesShowState(!notesShowState);
-  };
-
   const [hideSave, setHideSave] = useState(false);
   // const [notSaved, setNotSaved] = useState(false);
   const [onFocusId, setOnFocusId] = useState("");
@@ -834,9 +887,11 @@ const [charDescription, setCharDescription] = useState<CharacterDescription>({
 
               {/* IMAGE */}
               <div className="flex flex-col items-center">
-                <div className="h-56 w-40 overflow-hidden rounded-2xl border border-slate-300 shadow-lg shadow-slate-500/20 dark:border-slate-700">
+                <div className="h-56 w-60 overflow-hidden rounded-2xl border border-slate-300 shadow-lg shadow-slate-500/20 dark:border-slate-700">
                   <img
-                    src={imageMap[originalCharacter.id]?.find(img => img.isDisplayed)?.url ?? char_image}
+                    src={imageMap[originalCharacter.id]?.find(img => img.isDisplayed)?.url ||
+                          imageMap[originalCharacter.id]?.[0]?.url ||
+                          char_image}
                     alt={originalCharacter.name}
                     className="w-full h-full object-cover rounded"
                   />
@@ -889,7 +944,7 @@ const [charDescription, setCharDescription] = useState<CharacterDescription>({
                 {/* STATUS + IMPORTANCE */}
                 <div className="flex justify-center gap-2 mt-3 flex-wrap">
                   <span className="px-3 py-1 text-xs rounded-full bg-emerald-600/20 text-emerald-800 dark:text-emerald-400 border border-emerald-600/30">
-                    {originalCharacter.status}
+                    {originalCharacter.status ?? "None"}
                   </span>
 
                   <span className="px-3 py-1 text-xs rounded-full bg-sky-500/20 text-sky-800 dark:text-sky-300 border border-sky-700/30">
@@ -897,8 +952,8 @@ const [charDescription, setCharDescription] = useState<CharacterDescription>({
                   </span>
 
                   <span className="px-3 py-1 text-xs rounded-full bg-sky-500/20 text-sky-800 dark:text-sky-300 border border-sky-700/30">
-                    {originalCharacter.description.basic.race}
-                  </span>
+                    {upcaseLetter(originalCharacter.setRace[0] || originalCharacter.description.basic.race || "Unknown")}
+                  </span> 
                 </div>
               </div>
 
@@ -911,22 +966,23 @@ const [charDescription, setCharDescription] = useState<CharacterDescription>({
                   Related Characters
                 </h3>
 
-                <div className="space-y-2 grid grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5">
+                <div className="grid grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 w-full justify-items-center">
                   {originalCharacter.relationships?.slice(0, 4).map((rel, i) => (
                     <div
                       key={i}
-                      className="cursor-pointer place-items-center" 
+                      className="flex flex-col items-center justify-center p-2 w-full" 
                     >
-                      <div>
-                        <div 
-                          className="w-17 h-17 rounded-full overflow-hidden shadow-lg border border-slate-700 hover:scale-103 hover:border-slate-300 transition"
-                          onClick={() => { openCharacterRel(rel.charId); }}
-                        >
-                          <img
-                            src={imageMap[rel.charId]?.find(img => img.isDisplayed)?.url ?? char_image}
-                            className="w-full h-full object-cover rounded"
-                          />
-                        </div>
+                      <div 
+                        className="w-17 h-17 rounded-full overflow-hidden shadow-lg border border-slate-700 hover:scale-105 hover:border-slate-300 transition cursor-pointer"
+                        onClick={() => { openCharacterRel(rel.charId); }}
+                      >
+                        <img
+                          src={imageMap[rel.charId]?.find(img => img.isDisplayed)?.url ||
+                              imageMap[rel.charId]?.[0]?.url ||
+                              char_image}
+                          className="w-full h-full object-cover"
+                          alt="relationship"
+                        />
                       </div>
                     </div>
                   ))}
@@ -1236,7 +1292,7 @@ const [charDescription, setCharDescription] = useState<CharacterDescription>({
           {/* NOTES CONTAINER */}
           <div className="rounded-md pl-2 pr-1 pt-2 mb-2 bg-gray-100 dark:bg-gray-900 transition duration-300">
             <div className="flex justify-between"> 
-              <label className="text-sm font-semibold">Notes</label>
+              <label className="text-sm font-semibold">Character Notes</label>
               
               <div className="flex justify-center">
                 <button 
@@ -1250,10 +1306,10 @@ const [charDescription, setCharDescription] = useState<CharacterDescription>({
             </div>
 
             {/* NOTES CONTENTS */}
-            <div className="h-[calc(100vh-7rem)] overflow-y-auto overflow-x-hidden notes-scroll overflow-contain mt-2">
+            <div className="max-h-[calc(100vh-7.5rem)] overflow-y-auto overflow-x-hidden notes-scroll overflow-contain mt-2">
 
               {charNotes.length < 1 && !draftNote && (
-                <div className="text-sm text-gray-500">
+                <div className="text-sm text-gray-500 p-5">
                   Add notes, references, future scenarios, book plans, etc...
                 </div>
               )}
@@ -1611,6 +1667,124 @@ const [charDescription, setCharDescription] = useState<CharacterDescription>({
             </div>
             
           </div>
+      )}
+
+      {/* MOBILE NOTES */}
+      {createPortal(
+        <>
+          {/* MOBILE NOTES TOGGLE */}
+          <button
+            onClick={displayNotes}
+            className="xs:hidden fixed bottom-5 right-5 z-50 bg-blue-600 hover:bg-blue-700 text-white rounded-full p-4 shadow-xl"
+            title={notesShowState ? "Close notes" : "Open notes"}
+          >
+            <FontAwesomeIcon icon={notesShowState ? faMinus : faPlus} />
+          </button>
+
+          {/* MOBILE NOTES DRAWER */}
+          {isNotesDrawerMounted && (
+            <div
+              className={`xs:hidden text-black dark:text-white fixed inset-0 z-40 transition-opacity duration-300 justify-items-center ${isNotesDrawerVisible ? "opacity-100" : "opacity-0"}`}
+              role="dialog"
+              aria-modal="true"
+            >
+              <button
+                className="absolute inset-0 bg-black/50"
+                aria-label="Close notes drawer"
+                onClick={closeNotesDrawer}
+              />
+
+              <div className={`absolute bottom-0 rounded-t-2xl bg-gray-100 dark:bg-gray-800 shadow-2xl p-3 w-full max-w-[65vh] max-h-[75vh] transition-transform duration-300 ${isNotesDrawerVisible ? "translate-y-0" : "translate-y-full"}`}>
+                <div className="flex items-center justify-between mb-2">
+                  <h2 className="text-sm font-semibold">Notes</h2>
+                  <div className="flex gap-2">
+                    <button
+                      onClick={addDraftNotes}
+                      className="text-xs bg-blue-600 hover:bg-blue-700 text-white px-3 py-1 rounded-md"
+                    >
+                      Add
+                    </button>
+                    <button
+                      onClick={closeNotesDrawer}
+                      className="text-xs bg-gray-400 hover:bg-gray-500 text-white px-3 py-1 rounded-md"
+                    >
+                      Close
+                    </button>
+                  </div>
+                </div>
+
+                <div className="h-[calc(75vh-3.5rem)] overflow-y-auto overflow-x-hidden notes-scroll overflow-contain mt-2">
+                  {charNotes.length < 1 && !draftNote && (
+                    <div className="text-sm text-gray-500">
+                      Add notes, references, future scenarios, book plans, etc...
+                    </div>
+                  )}
+
+                  <div>
+                    {[ ...(draftNote ? [draftNote] : []), ...charNotes ].map(notes => (
+                      <div
+                        className={`${colorMap[notes.color]} relative p-1 rounded-md shadow-md mb-2 bg-gray-100 dark:bg-gray-900 cursor-pointer animate-fadeDown`}
+                        key={`mobile-${notes.id ?? notes.notesId}`}
+                      >
+                        <div className="flex justify-between pb-1">
+                          <span className="text-xs text-gray-800 dark:text-gray-400">
+                            {new Date(notes.createdAt).toLocaleString("en-US", {
+                              month: "short",
+                              day: "numeric",
+                              hour: "numeric",
+                              minute: "2-digit",
+                            })}
+                          </span>
+
+                          <button onClick={() => setNoteToDelete(notes)}>
+                            <FontAwesomeIcon icon={faMinus} size="sm" className="text-gray-700 dark:text-gray-300 hover:text-red-500" />
+                          </button>
+                        </div>
+
+                        <textarea
+                          className="w-full text-sm p-1 outline-none border-none rounded text-area-scroll resize-none"
+                          rows={3}
+                          value={notes.content}
+                          onChange={(e) => {
+                            if (!notes.id) {
+                              setDraftNote(prev => prev ? { ...prev, content: e.target.value } : prev);
+                            } else {
+                              setCharNotes(prev => prev.map(note => note.id === notes.id ? { ...note, content: e.target.value } : note));
+                            }
+                          }}
+                          onBlur={() => saveNote(notes)}
+                        />
+
+                        {noteToDelete && noteToDelete.id === notes.id && (
+                          <div className="absolute inset-0 bg-black/40 backdrop-blur-sm flex items-center justify-center rounded-md z-10">
+                            <div className="bg-white dark:bg-gray-800 p-3 rounded-md shadow-lg text-center w-40">
+                              <p className="text-sm mb-2">Delete this note?</p>
+                              <div className="flex justify-between">
+                                <button
+                                  onClick={() => handleDeleteNote(noteToDelete!)}
+                                  className="text-red-500 text-sm hover:scale-105"
+                                >
+                                  Delete
+                                </button>
+                                <button
+                                  onClick={() => setNoteToDelete(null)}
+                                  className="text-gray-500 text-sm"
+                                >
+                                  Cancel
+                                </button>
+                              </div>
+                            </div>
+                          </div>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              </div>
+            </div>
+          )}
+        </>,
+        document.body
       )}
 
     {/* MAIN PARENT CONTAINER DIV CLOSER */}

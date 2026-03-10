@@ -467,7 +467,7 @@ async function confirmDisplayImage() {
 
   return (
     // MAIN EDIT PAGE CONTAINER
-    <div className="mx-auto w-full max-w-7xl p-4 md:p-6 mt-10">
+    <div className="mx-auto w-full max-w-7xl p-4 md:p-6 mt-11">
 
       {/* HERO CARD HEADER OF EDIT PAGE */}
       <div className="rounded-2xl border border-indigo-300/30 bg-gradient-to-br from-gray-700 to-slate-900 px-5 py-2 text-white shadow-lg">
@@ -485,8 +485,8 @@ async function confirmDisplayImage() {
                 className="h-full w-full object-cover"
               />
 
-              <div className="absolute inset-0 flex items-center justify-center bg-black/55 opacity-0 transition group-hover:opacity-100">
-                <span className="rounded-lg bg-white/20 px-2 py-1 text-2xl font-bold">+</span>
+              <div className="absolute inset-0 flex items-center justify-center bg-black/30 opacity-100 transition group-hover:bg-black/60">
+                <span className="rounded-lg bg-white/15 px-2 py-1 text-2xl font-bold text-gray-300 pb-2 group-hover:bg-white/40 group-hover:text-white">+</span>
               </div>
             </button>
 
@@ -507,7 +507,7 @@ async function confirmDisplayImage() {
 
       {/* TABS EDITABLE CONTENT */}
       <div className="mt-3 grid gap-4 lg:grid-cols-[1.65fr_0.8fr]">
-        <div className="space-y-4">
+        <div className="space-y-2">
           <div className="flex flex-wrap gap-2 rounded-xl border border-gray-200 bg-white p-3 dark:border-gray-700 dark:bg-gray-900">
             {tabs.map((tab) => (
               <button
@@ -774,7 +774,8 @@ async function confirmDisplayImage() {
                 />
                 <button
                   type="button"
-                  disabled={isGeneratingImage}
+                  // disabled={isGeneratingImage}
+                  disabled
                   onClick={() => void generateImageFromPrompt()}
                   className="rounded-lg bg-purple-600 px-3 py-2 text-sm font-semibold text-white hover:bg-purple-700"
                 >
