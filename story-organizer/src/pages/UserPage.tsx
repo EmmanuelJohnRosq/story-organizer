@@ -932,6 +932,11 @@ export default function UserPage() {
                             </div>
                             
                             <textarea
+                            onInput={(e: React.FormEvent<HTMLTextAreaElement>) => {
+                                const target = e.currentTarget;
+                                target.style.height = '';
+                                target.style.height = target.scrollHeight + 'px';
+                            }}
                             className="
                             w-full text-sm
                             rounded-md 
@@ -991,14 +996,14 @@ export default function UserPage() {
 
                                 <button 
                                 className="flex px-4 py-1 bg-neutral-500 rounded-xl hover:bg-neutral-600"
-                                onClick={() => {setHideSave(false); setDraftNote(null);}}
+                                onMouseDown={() => {setHideSave(false); setDraftNote(null);}}
                                 >
                                 Cancel
                                 </button>
 
                                 <button 
                                 className="flex px-4 py-1 bg-blue-700 rounded-xl hover:bg-blue-800"
-                                onClick={() => {saveNote(notes);}}
+                                onMouseDown={() => {saveNote(notes);}}
                                 >
                                 Save 
                                 </button>

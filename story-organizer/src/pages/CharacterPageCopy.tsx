@@ -11,7 +11,7 @@ import { FiEdit2, FiX } from "react-icons/fi"; // example pencil icon from react
 import { faPenToSquare } from "@fortawesome/free-regular-svg-icons";
 import { createPortal } from "react-dom";
 
-type CharacterDetailTab = "overview" | "abilities" | "relationships" | "appearance";
+type CharacterDetailTab = "overview" | "profile" | "relationships" | "appearance";
 
 export default function CharacterPage() {
   const { currentBookId, characterSlug } = useParams();
@@ -153,7 +153,7 @@ const [charDescription, setCharDescription] = useState<CharacterDescription>({
 
   const characterDetailTabs: { key: CharacterDetailTab; label: string }[] = [
     { key: "overview", label: "Overview" },
-    { key: "abilities", label: "Abilities" },
+    { key: "profile", label: "Profile" },
     { key: "relationships", label: "Relationships" },
     { key: "appearance", label: "Appearance" },
   ];
@@ -1003,7 +1003,7 @@ const [charDescription, setCharDescription] = useState<CharacterDescription>({
         </div>
       
         {/* CENTER CONTAINER */}
-        <div className="col-span-1 xs:col-span-6 w-full">
+        <div className="col-span-1 xs:col-span-4 w-full">
 
           {/* CHARACTER DATA PAGE / EDIT CHAR DETAILS */}
           { originalCharacter && editingCharacter && (
@@ -1117,7 +1117,7 @@ const [charDescription, setCharDescription] = useState<CharacterDescription>({
                     </div>
                   )}
 
-                  {activeCharacterTab === "abilities" && (
+                  {activeCharacterTab === "profile" && (
                     <div className="space-y-2">
                       {/* RACE */}
                       <div className="rounded-xl border border-slate-200 bg-white p-3 shadow-sm dark:border-slate-700 dark:bg-slate-900/70">
@@ -1353,6 +1353,11 @@ const [charDescription, setCharDescription] = useState<CharacterDescription>({
                       </div>
                       
                       <textarea
+                      onInput={(e: React.FormEvent<HTMLTextAreaElement>) => {
+                        const target = e.currentTarget;
+                        target.style.height = '';
+                        target.style.height = target.scrollHeight + 'px';
+                      }}
                       className="
                       w-full text-sm
                       rounded-md 
@@ -1410,14 +1415,14 @@ const [charDescription, setCharDescription] = useState<CharacterDescription>({
 
                           <button 
                           className="flex px-4 py-1 bg-neutral-500 rounded-xl hover:bg-neutral-600"
-                          onClick={() => {setHideSave(false); setDraftNote(null);}}
+                          onMouseDown={() => {setHideSave(false); setDraftNote(null);}}
                           >
                           Cancel
                           </button>
 
                           <button 
                           className="flex px-4 py-1 bg-blue-700 rounded-xl"
-                          onClick={() => {saveNote(notes);}}
+                          onMouseDown={() => {saveNote(notes);}}
                           disabled={noteContent === notes.content}
                           >
                           Save 

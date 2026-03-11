@@ -1219,7 +1219,7 @@ export default function ExperimentPage() {
               </div>
 
               {/* NOTES CONTENTS */}
-              <div className="max-h-[calc(100vh-10.5rem)] overflow-y-auto overflow-x-hidden notes-scroll overflow-contain mt-2">
+              <div className="max-h-[calc(100vh-11rem)] overflow-y-auto overflow-x-hidden notes-scroll overflow-contain mt-2">
 
                 {bookNotes.length < 1 && !draftNote && (
                   <div className="text-sm text-gray-500 p-5">
@@ -1266,6 +1266,11 @@ export default function ExperimentPage() {
                         </div>
                         
                         <textarea
+                        onInput={(e: React.FormEvent<HTMLTextAreaElement>) => {
+                          const target = e.currentTarget;
+                          target.style.height = '';
+                          target.style.height = target.scrollHeight + 'px';
+                        }}
                         className="
                         w-full text-sm
                         rounded-md 
@@ -1323,14 +1328,14 @@ export default function ExperimentPage() {
 
                             <button 
                             className="flex px-4 py-1 bg-neutral-500 rounded-xl hover:bg-neutral-600"
-                            onClick={() => {setHideSave(false); setDraftNote(null);}}
+                            onMouseDown={() => {setHideSave(false); setDraftNote(null);}}
                             >
                             Cancel
                             </button>
 
                             <button 
                             className="flex px-4 py-1 bg-blue-700 rounded-xl"
-                            onClick={() => {saveNote(notes);}}
+                            onMouseDown={() => {saveNote(notes);}}
                             disabled={noteContent === notes.content}
                             >
                             Save 
