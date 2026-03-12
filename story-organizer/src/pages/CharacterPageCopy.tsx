@@ -1046,7 +1046,7 @@ const [charDescription, setCharDescription] = useState<CharacterDescription>({
           </aside>
         </div>
 
-        {/* LEFT SIDE CONTAINER */}
+        {/* LEFT CENTER CONTAINER */}
         <div className="lg:sticky lg:top-15 col-span-1 xs:col-span-2 flex-1 relative">
 
           {/* CHARACTER CARD IN CHAR PAGE, left side */}
@@ -1136,8 +1136,8 @@ const [charDescription, setCharDescription] = useState<CharacterDescription>({
                   Related Characters
                 </h3>
 
-                <div className="grid grid-cols-4 xxs:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 w-full justify-items-center">
-                  {originalCharacter.relationships?.slice(0, 4).map((rel, i) => (
+                <div className="grid grid-cols-4 xxs:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-2 w-full justify-items-center">
+                  {originalCharacter.relationships?.slice(0, 8).map((rel, i) => (
                     <div
                       key={i}
                       className="flex flex-col items-center justify-center p-2 w-full" 
@@ -2062,7 +2062,7 @@ const [charDescription, setCharDescription] = useState<CharacterDescription>({
             }
           }}
         >
-          <div className="w-full max-w-2xl max-h-[90vh] overflow-y-auto rounded-md bg-white dark:bg-gray-900 p-4 shadow-2xl" onMouseDown={(e) => e.stopPropagation()}>
+          <div className="w-full max-w-2xl max-h-[90vh] overflow-y-auto rounded-md bg-white dark:bg-gray-900 p-4 shadow-2xl notes-scroll" onMouseDown={(e) => e.stopPropagation()}>
             <div className="flex items-start justify-between gap-3">
               <div>
                 <h2 className="text-lg font-semibold">Add Worldbuilding Section</h2>

@@ -1725,7 +1725,7 @@ export default function ExperimentPage() {
                 }
               }}
             >
-              <div className="w-full max-w-2xl max-h-[90vh] overflow-y-auto rounded-md bg-white dark:bg-gray-900 p-4 shadow-2xl" onMouseDown={(e) => e.stopPropagation()}>
+              <div className="w-full max-w-2xl max-h-[90vh] overflow-y-auto rounded-md bg-white dark:bg-gray-900 p-4 shadow-2xl notes-scroll" onMouseDown={(e) => e.stopPropagation()}>
                 <div className="flex items-start justify-between gap-3">
                   <div>
                     <h2 className="text-lg font-semibold">Add Worldbuilding Section</h2>
