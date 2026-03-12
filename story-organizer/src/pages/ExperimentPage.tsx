@@ -1,7 +1,7 @@
 import { useNavigate, useParams } from "react-router-dom";
 import { useState, useEffect, useRef } from "react";
 
-import { db, type Book, type Character, type EditableCharacter, type Notes, type CharacterDescription, type CharImage } from "../db";
+import { db, type Book, type Character, type EditableCharacter, type Notes, type CharacterDescription, type CharImage, type WorldbuildingSection, type WorldbuildingEntry } from "../db";
 
 import { FontAwesomeIcon} from "@fortawesome/react-fontawesome";
 import { faCheck, faPlus, faMinus, faEllipsis } from "@fortawesome/free-solid-svg-icons";
@@ -43,7 +43,7 @@ export default function ExperimentPage() {
     const [currentBook, setCurrentBook] = useState<Book | null>(null);
   
     // Constant Variable
-    const [showAddCharacter, setShowAddCharacter] = useState(false);
+    const [showAddCharacter, setShowAddCharacter] = useState(true);
   
     // CHARACTER DATA
     const [selectedCharacter, setSelectedCharacter] = useState<number | null>(null);
@@ -244,6 +244,7 @@ export default function ExperimentPage() {
       await db.characters.add(newCharacter);
   
       setCharacters(prev => [...prev, newCharacter]);
+      setCurrentPage(totalPages);
   
       setAlert("Character Successfully Created");
       setStatePopup(true);
@@ -640,7 +641,7 @@ export default function ExperimentPage() {
     // PAGINATION ON CHARACTTER CARDS DISPLAY
     const [currentPage, setCurrentPage] = useState(1);
   
-    const charactersPerPage = 12;
+    const charactersPerPage = 15;
   
     const indexOfLastChar = currentPage * charactersPerPage;
     const indexOfFirstChar = indexOfLastChar - charactersPerPage;
@@ -652,7 +653,7 @@ export default function ExperimentPage() {
   
     const totalPages = Math.ceil(character.length / charactersPerPage);
   
-    const pageWindow = 3; // how many page numbers to show
+    const pageWindow = 2; // how many page numbers to show
   
     const getPageNumbers = () => {
       const pages = [];
@@ -744,75 +745,203 @@ export default function ExperimentPage() {
       ...(currentBook?.tags ?? []).map(text => ({ text, type: 'tag' }))
     ];
 
+    const sampleWorldWiki: WorldbuildingSection[] = [
+      {
+        id: "Rules",
+        title: "World Rules",
+        entries: [
+          { label: "Year", value: "Aster Cycle 472" },
+          { label: "Travel", value: "Gateways open only during moonrise tides." },
+          { label: "Law", value: "Memory-forging magic is forbidden in all Free Cities." },
+        ],
+      },
+      {
+        id: "Power System",
+        title: "Power System",
+        entries: [
+          { label: "Source", value: "Aether Threads woven through the sky." },
+          { label: "Cost", value: "Every cast consumes heat from the body and short-term memory." },
+          { label: "Ranks", value: "Sparkborn → Channeler → Warden → Astral" },
+        ],
+      },
+      {
+        id: "Factions",
+        title: "Factions & Culture",
+        entries: [
+          { label: "Dominant Faction", value: "The Cartographer Guild controls map-gates and sea routes." },
+          { label: "Religion", value: "The Nine Lantern rites guide mourning, naming, and oath-binding." },
+          { label: "Current Conflict", value: "A civil split over opening the sealed northern ruins." },
+        ],
+      },
+      {
+        id: "Hooks",
+        title: "Story Hooks",
+        entries: [
+          { label: "Secret", value: "The protagonist's bloodline can restore dead gateways." },
+          { label: "Foreshadow", value: "Black snow appears one day before a realm fracture." },
+        ],
+      },
+      {
+        id: "Source",
+        title: "Power Source",
+        entries: [
+          { label: "Mana", value: "Mana is the Universe's General Energy." },
+          { label: "Divine power", value: "Divine Power is an energy level higher than Mana." },
+          { label: "Bloodline", value: "Beasts, Demons, and Hell Spawns have bloodline powers, advantage of some other races unlike humans." },
+        ],
+      },
+      {
+        id: "Level",
+        title: "Power Level",
+        entries: [
+          { label: "Tier 0", value: "Mortal/Human/Animals/Items" },
+          { label: "Tier 1", value: "Awakener/Knight and Mage Apprentice/Beast/Items" },
+          { label: "Tier 2", value: "Knight/Mage/Beast" },
+          { label: "Tier 3", value: "GrandKnight/GrandMage/Magic Beast" },
+          { label: "Tier 4", value: "Supreme Mage/Knight" },
+          { label: "Tier 5", value: "Saint Domain" },
+          { label: "Tier 6", value: "Demigod" },
+          { label: "Tier 7", value: "Godhood" },
+        ],
+      },
+    ];
+
+    const [worldbuildingSections, setWorldbuildingSections] = useState<WorldbuildingSection[]>(sampleWorldWiki);
+    const [showWorldbuildingModal, setShowWorldbuildingModal] = useState(false);
+    const [worldSectionTitle, setWorldSectionTitle] = useState("");
+    const [worldDraftEntries, setWorldDraftEntries] = useState<WorldbuildingEntry[]>([{ label: "", value: "" }]);
+
+    const [openWorldSections, setOpenWorldSections] = useState<Record<string, boolean>>(() => {
+      const initial: Record<string, boolean> = {};
+      sampleWorldWiki.forEach(s => initial[s.id] = true);
+      return initial;
+    });
+
+    const openWorldbuildingModal = () => {
+      setWorldSectionTitle("");
+      setWorldDraftEntries([{ label: "", value: "" }]);
+      setShowWorldbuildingModal(true);
+      setShowSettingsMenu(false);
+    };
+
+    const addWorldDraftEntry = () => {
+      setWorldDraftEntries(prev => [...prev, { label: "", value: "" }]);
+    };
+
+    const updateWorldDraftEntry = (index: number, key: "label" | "value", newValue: string) => {
+      setWorldDraftEntries(prev => prev.map((entry, i) => (
+        i === index ? { ...entry, [key]: newValue } : entry
+      )));
+    };
+
+    const removeWorldDraftEntry = (index: number) => {
+      setWorldDraftEntries(prev => {
+        if (prev.length === 1) return prev;
+        return prev.filter((_, i) => i !== index);
+      });
+    };
+
+    const saveWorldbuildingSection = () => {
+      const normalizedTitle = normalizeWhitespace(worldSectionTitle);
+      const cleanEntries = worldDraftEntries
+        .map(entry => ({
+          label: normalizeWhitespace(entry.label),
+          value: entry.value.trim().replace(/\s+/g, " "),
+        }))
+        .filter(entry => entry.label && entry.value);
+
+      if (!normalizedTitle || cleanEntries.length === 0) {
+        return;
+      }
+
+      const sectionId = `${normalizedTitle.toLowerCase().replace(/[^a-z0-9]+/g, "-")}-${Date.now()}`;
+
+      setWorldbuildingSections(prev => [
+        ...prev,
+        {
+          id: sectionId,
+          title: normalizedTitle,
+          entries: cleanEntries,
+        },
+      ]);
+
+      setOpenWorldSections(prev => ({ ...prev, [sectionId]: true }));
+      setShowWorldbuildingModal(false);
+    };
+
+    const toggleWorldSection = (sectionId: string) => {
+      setOpenWorldSections(prev => ({ ...prev, [sectionId]: !prev[sectionId] }));
+    };
+
   return (
     // MAIN PARENT CONTAINER DIV CLOSER
     <div className="w-full mx-auto pt-15 px-2">
 
-        {/* PAGE TITLE */}
-        <div className="pb-3 grid grid-cols-6 gap-3 items-center relative">
-          <button 
-          type="button" 
-          className="rounded-lg bg-green-800 px-3 py-3 text-xs xs:text-base font-semibold text-white hover:bg-green-700"
-          onClick={() => addNewcharacter()}
-          >
-            {!addCharacterState ? "Create Character" : "Minimize Form"}
-          </button>
+        {/* PAGE BUTONS */}
+        <div className="hidden xxs:block pb-3 h-15 sticky top-15">
+          <div className="grid grid-cols-6 gap-3 items-center">
+            {/* ADD CHARACTER */}
+            <button 
+            type="button" 
+            className="rounded-lg bg-green-800 px-3 py-3 text-xs xs:text-base font-semibold text-white hover:bg-green-700"
+            onClick={() => addNewcharacter()}
+            >
+              {!addCharacterState ? "Create Character" : "Minimize Form"}
+            </button>
 
-          <button 
-          type="button" 
-          className="rounded-lg bg-blue-800 px-3 py-3 text-base font-semibold text-white hover:bg-blue-700"
-          onClick={() => addDraftNotes()}
-          >
-            Add notes
-          </button>
+            {/* ADD NOTE */}
+            <button 
+            type="button" 
+            className="rounded-lg bg-blue-800 px-3 py-3 text-base font-semibold text-white hover:bg-blue-700"
+            onClick={() => addDraftNotes()}
+            >
+              Add notes
+            </button>
+            
+            {/* Dashboard */}
+            <button 
+            type="button" 
+            className="rounded-lg bg-orange-800 px-3 py-3 text-base font-semibold text-white hover:bg-orange-700"
+            onClick={() => alert("Currently, in development...")}
+            >
+              Dashboard
+            </button>
 
-          <button 
-          type="button" 
-          className="rounded-lg bg-orange-800 px-3 py-3 text-base font-semibold text-white hover:bg-orange-700"
-          onClick={() => alert("Currently, in development...")}
-          >
-            Dashboard
-          </button>
+            {/* AI ASSIST */}
+            <button 
+            type="button" 
+            className="rounded-lg bg-pink-800 px-3 py-3 text-base font-semibold text-white hover:bg-pink-700"
+            onClick={() => {alert("Currently, in development...");}}
+            >
+              AI assist
+            </button>
 
-          <button 
-          type="button" 
-          className="rounded-lg bg-pink-800 px-3 py-3 text-base font-semibold text-white hover:bg-pink-700"
-          onClick={() => alert("Currently, in development...")}
-          >
-            AI assist
-          </button>
+            {/* GRAPH */}
+            <button 
+            type="button" 
+            className="rounded-lg bg-sky-800 px-3 py-3 text-base font-semibold text-white hover:bg-sky-700"
+            onClick={() => alert("Currently, in development...")}
+            >
+              Character graph
+            </button>
 
-          <button 
-          type="button" 
-          className="rounded-lg bg-sky-800 px-3 py-3 text-base font-semibold text-white hover:bg-sky-700"
-          onClick={() => alert("Currently, in development...")}
-          >
-            Character graph
-          </button>
-
-          <button 
-          type="button" 
-          className="rounded-lg bg-indigo-800 px-3 py-3 text-base font-semibold text-white hover:bg-indigo-700"
-          onClick={() => alert("Currently, in development...")}
-          >
-            World Builder
-          </button>
+            {/* World Building */}
+            <button 
+            type="button" 
+            className="rounded-lg bg-indigo-800 px-3 py-3 text-base font-semibold text-white hover:bg-indigo-700"
+            onClick={openWorldbuildingModal}
+            >
+              World Building
+            </button>
+          </div>
 
         </div>
 
         {/* CONTENT CONTAINER */}
-        <div className="grid xxs:grid-cols-6 xs:grid-cols-10 gap-2 items-start">
-
-          {/* LEFT LEFT SIDEBAR */}
-          <div className="lg:sticky lg:top-15 col-span-1 flex-1 relative bg-green-300 w-full">
-
-            <div>
-              BUTTON
-            </div>
-          </div>
+        <div className="grid grid-cols-1 xxs:grid-cols-6 xs:grid-cols-10 gap-2 items-start">
     
           {/* LEFT SIDE CONTAINER */}
-          <div className="lg:sticky lg:top-15 col-span-2 xs:col-span-3 flex-1 relative">
+          <div className="lg:sticky lg:top-30 cols-span-1 xxs:col-span-2 xs:col-span-3 flex-1 relative">
 
               {/* BOOK AND CHARACTER FORMS LEFT PANEL */}
               <div className="sticky top-15 w-full">
@@ -1035,7 +1164,7 @@ export default function ExperimentPage() {
           </div>
           
           {/* CENTER CONTAINER */}
-          <div className="col-span-3 xs:col-span-4 w-full">
+          <div className="xxs:col-span-4 xs:col-span-5 w-full">
 
             {/* CHARACTER DATA COMPLETION PROGRESS BAR */}
             <div className="rounded-md shadow-lg p-4 mb-2 bg-gray-100 dark:bg-gray-900 transition duration-300">
@@ -1056,18 +1185,6 @@ export default function ExperimentPage() {
 
             {/* DETAILS / CHARACTERS Display */}
             <div className="px-3 pt-3 mb-3 rounded-md shadow-lg bg-gray-100 dark:bg-gray-900">
-
-              {/* Input Character Details */}
-              {showAddCharacter && (
-                  <div className="shadow rounded-md p-4 mb-6 flow-root">
-                      <input className="border p-2 w-full mb-2 rounded" placeholder="Name" value={name} onChange={e => setName(e.target.value)} />
-                      <input className="border p-2 w-full mb-2 rounded" placeholder="Role / Affiliation" value={role} onChange={e => setRole(e.target.value)} />
-                      <textarea className="border p-2 w-full mb-2 rounded" placeholder="Notes" value={notes} onChange={e => setNotes(e.target.value)} />
-                      <input className="border p-2 w-full mb-2 rounded" placeholder="Abilities (comma separated)" value={abilities} onChange={e => setAbilities(e.target.value)} />
-                      <input type="number" className="border p-2 w-full mb-2 rounded" placeholder="Volume" value={chapterAppearance} onChange={e => setChapterAppearance(e.target.value)} />
-                      <button onClick={addCharacter} className="float-right bg-black border border-black text-white px-4 py-2 rounded-md hover:bg-gray-800 transition">Confirm</button>
-                  </div>
-              )}
 
               {/* CHARACTER GRID TITLE */}
               <h3 className="text-semibold mb-1 ml-2">Character Grid</h3>
@@ -1119,7 +1236,7 @@ export default function ExperimentPage() {
                             {char.name}
                           </h3>
                           <p className="text-xs text-gray-400 line-clamp-1">
-                            • {char.role || "Character Role"}
+                            • {char.role || "Role unknown"}
                           </p>
                           <p className="text-xs text-gray-400 line-clamp-1">
                             • {upcaseLetter(char.status)}
@@ -1134,7 +1251,7 @@ export default function ExperimentPage() {
               </div>
 
               {/* // PAGINATION   */}
-              {character.length >= 13 && (
+              {character.length >= 15 && (
                   <div className="flex items-center justify-between pb-2 flex-wrap">
 
                   {/* Previous */}
@@ -1156,7 +1273,7 @@ export default function ExperimentPage() {
                           >
                           1
                           </button>
-                          <span>...</span>
+                          <span>-</span>
                       </>
                       )}
 
@@ -1178,7 +1295,7 @@ export default function ExperimentPage() {
                       {/* Last page shortcut */}
                       {currentPage < totalPages - 2 && (
                       <>
-                          <span>...</span>
+                          <span>-</span>
                           <button
                           onClick={() => setCurrentPage(totalPages)}
                           className="px-3 py-1 bg-gray-300 dark:bg-gray-500 rounded"
@@ -1205,10 +1322,71 @@ export default function ExperimentPage() {
 
             </div>
 
+            {/* WORLD BUILDING DeTAILS */}
+            {/* <aside>
+              <div className="rounded-md border border-gray-200 bg-white/90 p-4 shadow-lg dark:border-gray-800 dark:bg-gray-900/90">
+                <h2 className="text-sm uppercase tracking-wider text-gray-500 dark:text-gray-400">Wiki Sidebar (Sample)</h2>
+                <h3 className="mt-1 text-lg font-semibold text-gray-900 dark:text-gray-100">Worldbuilding Details</h3>
+                <p className="mt-2 text-xs text-gray-600 dark:text-gray-400">
+                  Example content preview for the character page. Later this can be replaced with user-saved world facts.
+                </p>
+
+                <div className="mt-4 space-y-4">
+                  {sampleWorldWiki.map((section) => (
+                    <section key={section.title} className="rounded-md border border-gray-200 bg-gray-50 p-3 dark:border-gray-700 dark:bg-gray-800/60">
+                      <h4 className="text-sm font-semibold text-blue-700 dark:text-blue-300">{section.title}</h4>
+                      <dl className="mt-2 space-y-2">
+                        {section.entries.map((entry) => (
+                          <div key={entry.label}>
+                            <dt className="text-xs font-medium uppercase tracking-wide text-gray-500 dark:text-gray-400">{entry.label}</dt>
+                            <dd className="text-sm text-gray-700 dark:text-gray-200">{entry.value}</dd>
+                          </div>
+                        ))}
+                      </dl>
+                    </section>
+                  ))}
+                </div>
+              </div>
+            </aside> */}
+            <div className="rounded-md shadow-lg p-4 mb-2 bg-gray-100 dark:bg-gray-900 transition duration-300">
+              <div className="flex items-center justify-between gap-2">
+                <div>
+                  <label className="text-sm font-semibold">Worldbuilding Wiki</label>
+                  <p className="text-xs text-gray-500 dark:text-gray-400">Book-level facts and lore reference</p>
+                </div>
+              </div>
+
+              <div className="mt-3 space-y-2">
+                {worldbuildingSections.map(section => (
+                  <div key={section.id} className="rounded border border-gray-300 dark:border-gray-700 bg-white/60 dark:bg-gray-800/60">
+                    <button
+                      type="button"
+                      className="w-full flex items-center justify-between px-3 py-2 text-left"
+                      onClick={() => toggleWorldSection(section.id)}
+                    >
+                      <span className="text-sm font-medium text-blue-700 dark:text-blue-300">{section.title}</span>
+                      <span className="text-sm font-bold">{openWorldSections[section.id] ? "−" : "+"}</span>
+                    </button>
+
+                    {openWorldSections[section.id] && (
+                      <dl className="px-3 pb-3 space-y-2">
+                        {section.entries.map((entry, index) => (
+                          <div key={`${section.id}-${entry.label}-${index}`}>
+                            <dt className="text-[11px] uppercase tracking-wide text-gray-500 dark:text-gray-400">{entry.label}</dt>
+                            <dd className="text-sm text-gray-700 dark:text-gray-200">{entry.value}</dd>
+                          </div>
+                        ))}
+                      </dl>
+                    )}
+                  </div>
+                ))}
+              </div>
+            </div>
+
           </div>
 
           {/* RIGHT SIDE CONTAINER */}
-          <div className="hidden lg:sticky lg:top-15 col-span-2 xs:flex flex-col relative animate-fadeRight transition delay-500 duration-900">
+          <div className="hidden lg:sticky lg:top-30 col-span-2 xs:flex flex-col relative animate-fadeRight transition delay-500 duration-900">
             
             {/* NOTES CONTAINER */}
             <div className="rounded-md pl-2 pr-1 pt-2 mb-2 bg-gray-100 dark:bg-gray-900 transition duration-300">
@@ -1419,6 +1597,7 @@ export default function ExperimentPage() {
           </div>
           )}
 
+          {/* MOBILE NOTES */}
           {createPortal(
             <>
               {/* MOBILE NOTES TOGGLE */}
@@ -1534,6 +1713,108 @@ export default function ExperimentPage() {
               )}
             </>,
             document.body
+          )}
+
+          {/* WORLD BUILDING INPUT MODAL */}
+          {showWorldbuildingModal && (
+            <div
+              className="fixed inset-0 z-50 bg-black/50 flex items-center justify-center p-3"
+              onMouseDown={(e) => {
+                if (e.target === e.currentTarget) {
+                  setShowWorldbuildingModal(false);
+                }
+              }}
+            >
+              <div className="w-full max-w-2xl max-h-[90vh] overflow-y-auto rounded-md bg-white dark:bg-gray-900 p-4 shadow-2xl" onMouseDown={(e) => e.stopPropagation()}>
+                <div className="flex items-start justify-between gap-3">
+                  <div>
+                    <h2 className="text-lg font-semibold">Add Worldbuilding Section</h2>
+                    <p className="text-xs text-gray-500 dark:text-gray-400">Add a title, then as many label/value facts as you need.</p>
+                  </div>
+                  <button
+                    type="button"
+                    className="px-2 py-1 rounded border border-gray-400 hover:bg-gray-200 dark:hover:bg-gray-700"
+                    onClick={() => setShowWorldbuildingModal(false)}
+                  >
+                    Close
+                  </button>
+                </div>
+
+                <div className="mt-4 space-y-3">
+                  <div>
+                    <label className="text-sm font-medium">Section Title</label>
+                    <input
+                      type="text"
+                      className="mt-1 w-full rounded border border-gray-300 dark:border-gray-700 px-3 py-2 bg-transparent"
+                      placeholder="ex: Economy, Politics, Religion..."
+                      value={worldSectionTitle}
+                      onChange={(e) => setWorldSectionTitle(e.target.value)}
+                    />
+                  </div>
+
+                  <div className="space-y-2">
+                    <div className="flex items-center justify-between">
+                      <label className="text-sm font-medium">Entries (Label + Value)</label>
+                      <button
+                        type="button"
+                        className="text-xs px-2 py-1 rounded border border-gray-400 hover:bg-gray-200 dark:hover:bg-gray-700"
+                        onClick={addWorldDraftEntry}
+                      >
+                        <FontAwesomeIcon icon={faPlus} /> Add entry
+                      </button>
+                    </div>
+
+                    {worldDraftEntries.map((entry, index) => (
+                      <div key={`draft-entry-${index}`} className="rounded border border-gray-300 dark:border-gray-700 p-2 space-y-2">
+                        <div className="flex items-center justify-between">
+                          <span className="text-xs text-gray-500">Entry #{index + 1}</span>
+                          <button
+                            type="button"
+                            className="text-xs text-red-500 disabled:opacity-40"
+                            onClick={() => removeWorldDraftEntry(index)}
+                            disabled={worldDraftEntries.length === 1}
+                          >
+                            Remove
+                          </button>
+                        </div>
+
+                        <input
+                          type="text"
+                          className="w-full rounded border border-gray-300 dark:border-gray-700 px-2 py-1 bg-transparent"
+                          placeholder="Label (ex: Cost, Rule, Limitation)"
+                          value={entry.label}
+                          onChange={(e) => updateWorldDraftEntry(index, "label", e.target.value)}
+                        />
+                        <textarea
+                          rows={2}
+                          className="w-full rounded border border-gray-300 dark:border-gray-700 px-2 py-1 bg-transparent"
+                          placeholder="Value / detail"
+                          value={entry.value}
+                          onChange={(e) => updateWorldDraftEntry(index, "value", e.target.value)}
+                        />
+                      </div>
+                    ))}
+                  </div>
+
+                  <div className="flex justify-end gap-2 pt-1">
+                    <button
+                      type="button"
+                      className="px-3 py-1 rounded bg-gray-500 text-white hover:bg-gray-600"
+                      onClick={() => setShowWorldbuildingModal(false)}
+                    >
+                      Cancel
+                    </button>
+                    <button
+                      type="button"
+                      className="px-3 py-1 rounded bg-blue-600 text-white hover:bg-blue-700"
+                      onClick={saveWorldbuildingSection}
+                    >
+                      Save Section
+                    </button>
+                  </div>
+                </div>
+              </div>
+            </div>
           )}
           
 

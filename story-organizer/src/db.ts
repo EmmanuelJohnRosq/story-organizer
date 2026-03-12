@@ -89,6 +89,17 @@ export type Book = {
   status: string; // completed | ongoing | hiatus | dropped
 };
 
+export type WorldbuildingEntry = {
+  label: string;
+  value: string;
+};
+
+export type WorldbuildingSection = {
+  id: string;
+  title: string;
+  entries: WorldbuildingEntry[];
+};
+
 export type Images = {
   imageId: string; // created string crypto.UUID
   charId: number; // character ids for matching characters

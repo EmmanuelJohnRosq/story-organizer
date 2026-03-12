@@ -1,7 +1,7 @@
 import { useNavigate, useParams } from "react-router-dom";
 import { useState, useEffect, useCallback, useRef } from "react";
 
-import { db, type Character, type EditableCharacter, type Notes, type CharacterDescription, type CharImage } from "../db";
+import { db, type Character, type EditableCharacter, type Notes, type CharacterDescription, type CharImage, type WorldbuildingSection, type WorldbuildingEntry } from "../db";
 
 import { FontAwesomeIcon} from "@fortawesome/react-fontawesome";
 import { faTrashCan, faCheck, faSpinner, faPlus, faGear, faMinus } from "@fortawesome/free-solid-svg-icons";
@@ -869,16 +869,181 @@ const [charDescription, setCharDescription] = useState<CharacterDescription>({
     }
   }
 
+  const sampleWorldWiki: WorldbuildingSection[] = [
+    {
+      id: "Rules",
+      title: "World Rules",
+      entries: [
+        { label: "Year", value: "Aster Cycle 472" },
+        { label: "Travel", value: "Gateways open only during moonrise tides." },
+        { label: "Law", value: "Memory-forging magic is forbidden in all Free Cities." },
+      ],
+    },
+    {
+      id: "Power System",
+      title: "Power System",
+      entries: [
+        { label: "Source", value: "Aether Threads woven through the sky." },
+        { label: "Cost", value: "Every cast consumes heat from the body and short-term memory." },
+        { label: "Ranks", value: "Sparkborn → Channeler → Warden → Astral" },
+      ],
+    },
+    {
+      id: "Factions",
+      title: "Factions & Culture",
+      entries: [
+        { label: "Dominant Faction", value: "The Cartographer Guild controls map-gates and sea routes." },
+        { label: "Religion", value: "The Nine Lantern rites guide mourning, naming, and oath-binding." },
+        { label: "Current Conflict", value: "A civil split over opening the sealed northern ruins." },
+      ],
+    },
+    {
+      id: "Hooks",
+      title: "Story Hooks",
+      entries: [
+        { label: "Secret", value: "The protagonist's bloodline can restore dead gateways." },
+        { label: "Foreshadow", value: "Black snow appears one day before a realm fracture." },
+      ],
+    },
+    {
+      id: "Source",
+      title: "Power Source",
+      entries: [
+        { label: "Mana", value: "Mana is the Universe's General Energy." },
+        { label: "Divine power", value: "Divine Power is an energy level higher than Mana." },
+        { label: "Bloodline", value: "Beasts, Demons, and Hell Spawns have bloodline powers, advantage of some other races unlike humans." },
+      ],
+    },
+    {
+      id: "Level",
+      title: "Power Level",
+      entries: [
+        { label: "Tier 0", value: "Mortal/Human/Animals/Items" },
+        { label: "Tier 1", value: "Awakener/Knight and Mage Apprentice/Beast/Items" },
+        { label: "Tier 2", value: "Knight/Mage/Beast" },
+        { label: "Tier 3", value: "GrandKnight/GrandMage/Magic Beast" },
+        { label: "Tier 4", value: "Supreme Mage/Knight" },
+        { label: "Tier 5", value: "Saint Domain" },
+        { label: "Tier 6", value: "Demigod" },
+        { label: "Tier 7", value: "Godhood" },
+      ],
+    },
+  ];
+
+  const [worldbuildingSections, setWorldbuildingSections] = useState<WorldbuildingSection[]>(sampleWorldWiki);
+  const [showWorldbuildingModal, setShowWorldbuildingModal] = useState(false);
+  const [openWorldSections, setOpenWorldSections] = useState<Record<string, boolean>>({});
+  
+  const [worldSectionTitle, setWorldSectionTitle] = useState("");
+    const [worldDraftEntries, setWorldDraftEntries] = useState<WorldbuildingEntry[]>([{ label: "", value: "" }]);
+
+    const openWorldbuildingModal = () => {
+      setWorldSectionTitle("");
+      setWorldDraftEntries([{ label: "", value: "" }]);
+      setShowWorldbuildingModal(true);
+    };
+
+    const addWorldDraftEntry = () => {
+      setWorldDraftEntries(prev => [...prev, { label: "", value: "" }]);
+    };
+
+    const updateWorldDraftEntry = (index: number, key: "label" | "value", newValue: string) => {
+      setWorldDraftEntries(prev => prev.map((entry, i) => (
+        i === index ? { ...entry, [key]: newValue } : entry
+      )));
+    };
+
+    const removeWorldDraftEntry = (index: number) => {
+      setWorldDraftEntries(prev => {
+        if (prev.length === 1) return prev;
+        return prev.filter((_, i) => i !== index);
+      });
+    };
+
+    const saveWorldbuildingSection = () => {
+      const normalizedTitle = normalizeWhitespace(worldSectionTitle);
+      const cleanEntries = worldDraftEntries
+        .map(entry => ({
+          label: normalizeWhitespace(entry.label),
+          value: entry.value.trim().replace(/\s+/g, " "),
+        }))
+        .filter(entry => entry.label && entry.value);
+
+      if (!normalizedTitle || cleanEntries.length === 0) {
+        return;
+      }
+
+      const sectionId = `${normalizedTitle.toLowerCase().replace(/[^a-z0-9]+/g, "-")}-${Date.now()}`;
+
+      setWorldbuildingSections(prev => [
+        ...prev,
+        {
+          id: sectionId,
+          title: normalizedTitle,
+          entries: cleanEntries,
+        },
+      ]);
+
+      setOpenWorldSections(prev => ({ ...prev, [sectionId]: true }));
+      setShowWorldbuildingModal(false);
+    };
+
+    const toggleWorldSection = (sectionId: string) => {
+      setOpenWorldSections(prev => ({ ...prev, [sectionId]: !prev[sectionId] }));
+    };
+
   return (
     //MAIN PARENT CONTAINER
     <div className="w-full mx-auto pt-15 px-2">
       
       {/* CONTENT CONTAINER */}
-      <div className="grid xxs:grid-cols-4 xs:grid-cols-10 gap-2 items-start">
+      <div className="grid grid-cols-1 xxs:grid-cols-4 xs:grid-cols-10 xxs:gap-2 items-start">
 
         {/* LEFT LEFT SIDE WIKI BAR */}
-        <div className="lg:sticky lg:top-15 col-span-1 xs:col-span-2 flex-1 relative bg-red-500 h-screen">
+        <div className="hidden xxs:block lg:sticky lg:top-15 col-span-1 xs:col-span-2 flex-1 relative">
+          <aside className="rounded-2xl border border-slate-200/70 bg-white/85 shadow-xl backdrop-blur-sm overflow-contain dark:border-slate-800 dark:bg-[#0f172a]/95">
+            <div className="sticky top-15 max-h-[calc(100vh-4rem)] overflow-y-auto notes-scroll rounded-md border border-gray-200 bg-white/90 p-4 shadow-lg dark:border-gray-800 dark:bg-gray-900/90">
+              <div className="flex items-center justify-between gap-2">
+              <div>
+                <label className="text-sm font-semibold">World Building Setting</label>
+                <p className="text-xs text-gray-500 dark:text-gray-400">Story's facts and lore references</p>
+              </div>
+              <button
+                type="button"
+                className="px-2 py-1 text-xs rounded border border-gray-400 hover:bg-gray-200 dark:hover:bg-gray-700"
+                onClick={openWorldbuildingModal}
+              >
+                <FontAwesomeIcon icon={faPlus} /> Add
+              </button>
+            </div>
 
+            <div className="mt-3 space-y-2">
+              {worldbuildingSections.map(section => (
+                <div key={section.id} className="rounded border border-gray-300 dark:border-gray-700 bg-white/60 dark:bg-gray-800/60">
+                  <button
+                    type="button"
+                    className="w-full flex items-center justify-between px-3 py-2 text-left"
+                    onClick={() => toggleWorldSection(section.id)}
+                  >
+                    <span className="text-sm font-medium text-blue-700 dark:text-blue-300">{section.title}</span>
+                    <span className="text-sm font-bold">{openWorldSections[section.id] ? "−" : "+"}</span>
+                  </button>
+
+                  {openWorldSections[section.id] && (
+                    <dl className="px-3 pb-3 space-y-2">
+                      {section.entries.map((entry, index) => (
+                        <div key={`${section.id}-${entry.label}-${index}`}>
+                          <dt className="text-[11px] uppercase tracking-wide text-gray-500 dark:text-gray-400">{entry.label}</dt>
+                          <dd className="text-sm text-gray-700 dark:text-gray-200">{entry.value}</dd>
+                        </div>
+                      ))}
+                    </dl>
+                  )}
+                </div>
+              ))}
+            </div>
+            </div>
+          </aside>
         </div>
 
         {/* LEFT SIDE CONTAINER */}
@@ -971,7 +1136,7 @@ const [charDescription, setCharDescription] = useState<CharacterDescription>({
                   Related Characters
                 </h3>
 
-                <div className="grid grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 w-full justify-items-center">
+                <div className="grid grid-cols-4 xxs:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 w-full justify-items-center">
                   {originalCharacter.relationships?.slice(0, 4).map((rel, i) => (
                     <div
                       key={i}
@@ -1258,7 +1423,7 @@ const [charDescription, setCharDescription] = useState<CharacterDescription>({
                   )}
 
                   {activeCharacterTab === "appearance" && (
-                    <div className="space-y-2 rounded-xl border border-slate-200 bg-white p-3 shadow-sm dark:border-slate-700 dark:bg-slate-900/70">
+                    <div className="space-y-2 shadow-sm dark:border-slate-700 dark:bg-slate-900/70">
                       {([
                         ["basic", originalCharacter.description?.basic],
                         ["face", originalCharacter.description?.face],
@@ -1885,6 +2050,108 @@ const [charDescription, setCharDescription] = useState<CharacterDescription>({
           )}
         </>,
         document.body
+      )}
+
+      {/* WORLD BUILDING INPUT MODAL */}
+      {showWorldbuildingModal && (
+        <div
+          className="fixed inset-0 z-50 bg-black/50 flex items-center justify-center p-3"
+          onMouseDown={(e) => {
+            if (e.target === e.currentTarget) {
+              setShowWorldbuildingModal(false);
+            }
+          }}
+        >
+          <div className="w-full max-w-2xl max-h-[90vh] overflow-y-auto rounded-md bg-white dark:bg-gray-900 p-4 shadow-2xl" onMouseDown={(e) => e.stopPropagation()}>
+            <div className="flex items-start justify-between gap-3">
+              <div>
+                <h2 className="text-lg font-semibold">Add Worldbuilding Section</h2>
+                <p className="text-xs text-gray-500 dark:text-gray-400">Add a title, then as many label/value facts as you need.</p>
+              </div>
+              <button
+                type="button"
+                className="px-2 py-1 rounded border border-gray-400 hover:bg-gray-200 dark:hover:bg-gray-700"
+                onClick={() => setShowWorldbuildingModal(false)}
+              >
+                Close
+              </button>
+            </div>
+
+            <div className="mt-4 space-y-3">
+              <div>
+                <label className="text-sm font-medium">Section Title</label>
+                <input
+                  type="text"
+                  className="mt-1 w-full rounded border border-gray-300 dark:border-gray-700 px-3 py-2 bg-transparent"
+                  placeholder="ex: Economy, Politics, Religion..."
+                  value={worldSectionTitle}
+                  onChange={(e) => setWorldSectionTitle(e.target.value)}
+                />
+              </div>
+
+              <div className="space-y-2">
+                <div className="flex items-center justify-between">
+                  <label className="text-sm font-medium">Entries (Label + Value)</label>
+                  <button
+                    type="button"
+                    className="text-xs px-2 py-1 rounded border border-gray-400 hover:bg-gray-200 dark:hover:bg-gray-700"
+                    onClick={addWorldDraftEntry}
+                  >
+                    <FontAwesomeIcon icon={faPlus} /> Add entry
+                  </button>
+                </div>
+
+                {worldDraftEntries.map((entry, index) => (
+                  <div key={`draft-entry-${index}`} className="rounded border border-gray-300 dark:border-gray-700 p-2 space-y-2">
+                    <div className="flex items-center justify-between">
+                      <span className="text-xs text-gray-500">Entry #{index + 1}</span>
+                      <button
+                        type="button"
+                        className="text-xs text-red-500 disabled:opacity-40"
+                        onClick={() => removeWorldDraftEntry(index)}
+                        disabled={worldDraftEntries.length === 1}
+                      >
+                        Remove
+                      </button>
+                    </div>
+
+                    <input
+                      type="text"
+                      className="w-full rounded border border-gray-300 dark:border-gray-700 px-2 py-1 bg-transparent"
+                      placeholder="Label (ex: Cost, Rule, Limitation)"
+                      value={entry.label}
+                      onChange={(e) => updateWorldDraftEntry(index, "label", e.target.value)}
+                    />
+                    <textarea
+                      rows={2}
+                      className="w-full rounded border border-gray-300 dark:border-gray-700 px-2 py-1 bg-transparent"
+                      placeholder="Value / detail"
+                      value={entry.value}
+                      onChange={(e) => updateWorldDraftEntry(index, "value", e.target.value)}
+                    />
+                  </div>
+                ))}
+              </div>
+
+              <div className="flex justify-end gap-2 pt-1">
+                <button
+                  type="button"
+                  className="px-3 py-1 rounded bg-gray-500 text-white hover:bg-gray-600"
+                  onClick={() => setShowWorldbuildingModal(false)}
+                >
+                  Cancel
+                </button>
+                <button
+                  type="button"
+                  className="px-3 py-1 rounded bg-blue-600 text-white hover:bg-blue-700"
+                  onClick={saveWorldbuildingSection}
+                >
+                  Save Section
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
       )}
 
     {/* MAIN PARENT CONTAINER DIV CLOSER */}
