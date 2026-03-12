@@ -874,7 +874,12 @@ const [charDescription, setCharDescription] = useState<CharacterDescription>({
     <div className="w-full mx-auto pt-15 px-2">
       
       {/* CONTENT CONTAINER */}
-      <div className="grid xxs:grid-cols-2 xs:grid-cols-10 gap-2 items-start">
+      <div className="grid xxs:grid-cols-4 xs:grid-cols-10 gap-2 items-start">
+
+        {/* LEFT LEFT SIDE WIKI BAR */}
+        <div className="lg:sticky lg:top-15 col-span-1 xs:col-span-2 flex-1 relative bg-red-500 h-screen">
+
+        </div>
 
         {/* LEFT SIDE CONTAINER */}
         <div className="lg:sticky lg:top-15 col-span-1 xs:col-span-2 flex-1 relative">
@@ -1003,7 +1008,7 @@ const [charDescription, setCharDescription] = useState<CharacterDescription>({
         </div>
       
         {/* CENTER CONTAINER */}
-        <div className="col-span-1 xs:col-span-4 w-full">
+        <div className="col-span-2 xs:col-span-4 w-full">
 
           {/* CHARACTER DATA PAGE / EDIT CHAR DETAILS */}
           { originalCharacter && editingCharacter && (
@@ -1060,26 +1065,33 @@ const [charDescription, setCharDescription] = useState<CharacterDescription>({
                         <label className="text-sm font-semibold text-gray-500 dark:text-gray-300">Quick Info</label>
 
                         <div className="flex flex-wrap gap-2 mt-1">
-                          {originalCharacter.powerLevel && (
-                            <span className="cursor-pointer rounded-2xl bg-indigo-100 px-2 py-1 text-sm text-indigo-700 transition hover:bg-indigo-200 dark:bg-slate-700 dark:text-slate-200 dark:hover:bg-sky-800">
-                              {originalCharacter.powerLevel}
-                            </span>
-                          )}
+                          {originalCharacter.powerLevel || originalCharacter.occupation || originalCharacter.titles?.length > 0 ? (
+                          <>
+                            {originalCharacter.powerLevel && (
+                              <span className="cursor-pointer rounded-2xl bg-indigo-100 px-2 py-1 text-sm text-indigo-700 transition hover:bg-indigo-200 dark:bg-slate-700 dark:text-slate-200 dark:hover:bg-sky-800">
+                                {originalCharacter.powerLevel}
+                              </span>
+                            )}
 
-                          {originalCharacter.occupation && (
-                            <span className="cursor-pointer rounded-2xl bg-indigo-100 px-2 py-1 text-sm text-indigo-700 transition hover:bg-indigo-200 dark:bg-slate-700 dark:text-slate-200 dark:hover:bg-sky-800">
-                              {originalCharacter.occupation}
-                            </span>
-                          )}
+                            {originalCharacter.occupation && (
+                              <span className="cursor-pointer rounded-2xl bg-indigo-100 px-2 py-1 text-sm text-indigo-700 transition hover:bg-indigo-200 dark:bg-slate-700 dark:text-slate-200 dark:hover:bg-sky-800">
+                                {originalCharacter.occupation}
+                              </span>
+                            )}
 
-                          {originalCharacter.titles?.map((title, i) => (
-                            <span
-                              key={i}
-                              className="cursor-pointer rounded-2xl bg-indigo-100 px-2 py-1 text-sm text-indigo-700 transition hover:bg-indigo-200 dark:bg-slate-700 dark:text-slate-200 dark:hover:bg-sky-800"
-                            >
-                              {title}
-                            </span>
-                          ))}
+                            {originalCharacter.titles?.map((title, i) => (
+                              <span
+                                key={i}
+                                className="cursor-pointer rounded-2xl bg-indigo-100 px-2 py-1 text-sm text-indigo-700 transition hover:bg-indigo-200 dark:bg-slate-700 dark:text-slate-200 dark:hover:bg-sky-800"
+                              >
+                                {title}
+                              </span>
+                            ))}
+                          </>
+                        ) : ( 
+                        <span className="text-sm text-gray-700 dark:text-gray-300">Add character details...</span>
+                        )}
+                        
                         </div>
                       </div>
 
@@ -1124,29 +1136,30 @@ const [charDescription, setCharDescription] = useState<CharacterDescription>({
                         <label className="text-sm font-semibold text-gray-500 dark:text-gray-300">Race</label>
 
                         <div className="flex flex-wrap gap-2 mt-1">
-                          {originalCharacter.setRace?.map((race, i) => (
-                            <span
-                              key={i}
-                              className="cursor-pointer rounded-2xl bg-indigo-100 px-2 py-1 text-sm text-indigo-700 transition hover:bg-indigo-200 dark:bg-slate-700 dark:text-slate-200 dark:hover:bg-sky-800"
-                            >
-                              {race}
-                            </span>
-                          ))}
+                          {originalCharacter.setRace && originalCharacter.setRace.length > 0 ? (
+                            originalCharacter.setRace.map((race, i) => (
+                              <span key={i} className="cursor-pointer rounded-2xl bg-indigo-100 px-2 py-1 text-sm text-indigo-700 transition hover:bg-indigo-200 dark:bg-slate-700 dark:text-slate-200 dark:hover:bg-sky-800">
+                                {race}
+                              </span>
+                            ))
+                          ) : (
+                            <span className="text-sm text-gray-700 dark:text-gray-300">No race set</span>
+                          )}
                         </div>
                       </div>
 
                       <div className="rounded-xl border border-slate-200 bg-white p-3 shadow-sm dark:border-slate-700 dark:bg-slate-900/70">
                         <label className="text-sm font-semibold text-gray-500 dark:text-gray-300">Abilities/Skills</label>
                         <div className="flex flex-wrap gap-2 pt-1">
-                          {originalCharacter.abilities?.map((ability, i) => (
-                            <span
-                              key={i}
-                              title={ability.description}
-                              className="cursor-pointer rounded-2xl bg-indigo-100 px-2 py-1 text-sm text-indigo-700 transition hover:bg-indigo-200 dark:bg-slate-700 dark:text-slate-200 dark:hover:bg-sky-800"
-                            >
-                              {ability.ability}
-                            </span>
-                          ))}
+                          {originalCharacter.abilities && originalCharacter.abilities.length > 0 ? (
+                            originalCharacter.abilities.map((ability, i) => (
+                              <span key={i} className="cursor-pointer rounded-2xl bg-indigo-100 px-2 py-1 text-sm text-indigo-700 transition hover:bg-indigo-200 dark:bg-slate-700 dark:text-slate-200 dark:hover:bg-sky-800">
+                                {ability.ability}
+                              </span>
+                            ))
+                          ) : (
+                            <span className="text-sm text-gray-700 dark:text-gray-300">No ability set</span>
+                          )}
                         </div>
                       </div>
 
@@ -1310,7 +1323,7 @@ const [charDescription, setCharDescription] = useState<CharacterDescription>({
 
               {charNotes.length < 1 && !draftNote && (
                 <div className="text-sm text-gray-500 p-5">
-                  Add notes, references, future scenarios, book plans, etc...
+                  Add notes, references, future scenarios, character plans, etc...
                 </div>
               )}
 
@@ -1725,65 +1738,147 @@ const [charDescription, setCharDescription] = useState<CharacterDescription>({
                     </div>
                   )}
 
-                  <div>
-                    {[ ...(draftNote ? [draftNote] : []), ...charNotes ].map(notes => (
-                      <div
-                        className={`${colorMap[notes.color]} relative p-1 rounded-md shadow-md mb-2 bg-gray-100 dark:bg-gray-900 cursor-pointer animate-fadeDown`}
-                        key={`mobile-${notes.id ?? notes.notesId}`}
-                      >
-                        <div className="flex justify-between pb-1">
-                          <span className="text-xs text-gray-800 dark:text-gray-400">
-                            {new Date(notes.createdAt).toLocaleString("en-US", {
-                              month: "short",
-                              day: "numeric",
-                              hour: "numeric",
-                              minute: "2-digit",
-                            })}
-                          </span>
+                  {/* THIS IS THE BOOK NOTES */}
+              <div className="">
+                {[ ...(draftNote ? [draftNote] : []), ...charNotes ].map(notes => (
+                <div 
+                    className={`${colorMap[notes.color]} relative p-1 rounded-md shadow-md mb-2 bg-gray-100 dark:bg-gray-900 cursor-pointer animate-fadeDown`}
+                    key={notes.id ?? notes.notesId}
+                    data-id={notes.id}
+                >
 
-                          <button onClick={() => setNoteToDelete(notes)}>
-                            <FontAwesomeIcon icon={faMinus} size="sm" className="text-gray-700 dark:text-gray-300 hover:text-red-500" />
-                          </button>
+                    <div className="flex justify-between pb-1"> 
+                    
+                    <span className="text-xs text-gray-800 dark:text-gray-400">
+                        {new Date(notes.createdAt).toLocaleString("en-US", {
+                        month: "short",
+                        day: "numeric",
+                        year: "numeric",
+                        hour: "2-digit",
+                        minute: "2-digit",
+                        })}
+                    </span>
+
+                    <button 
+                        className="hover:bg-neutral-300/50 rounded-2xl group"
+                        onClick={() => setNoteToDelete(notes)}>
+                        <svg
+                        xmlns="http://www.w3.org/2000/svg"
+                        className="h-5 w-5 text-gray-700 dark:text-gray-400 group-hover:text-red-500"
+                        fill="none"
+                        viewBox="0 0 24 24"
+                        stroke="currentColor"
+                        strokeWidth={2}
+                        >
+                        <path strokeLinecap="round" strokeLinejoin="round" d="M6 6l12 12M6 18L18 6" />
+                        </svg>
+                    </button>
+
+                    </div>
+                    
+                    <textarea
+                    onInput={(e: React.FormEvent<HTMLTextAreaElement>) => {
+                      const target = e.currentTarget;
+                      target.style.height = '';
+                      target.style.height = target.scrollHeight + 'px';
+                    }}
+                    className="
+                    w-full text-sm
+                    rounded-md 
+                    px-1
+                    focus:outline-none focus:ring-1 focus:ring-gray-400 
+                    hover:ring-gray-400 hover:ring-1
+                    resize-none
+                    overflow-hidden
+                    transition-all duration-200
+                    "
+                    ref={!notes.id ? draftTextareaRef : null}
+                    placeholder="Enter Notes"
+                    onFocus={(e) => {autoResize(e); setOnFocusId(String(notes.id!)); setNoteContent(notes.content); setHideSave(true); 
+                        if (notes.id) {
+                        setDraftstate(false);
+                        }
+                        else {
+                        setDraftstate(true);
+                        }
+                    }}
+                    rows={3}
+                    value={notes.content}
+                    onChange={(e) => {
+                        if (!notes.id) {
+                        // This is draft
+                        setDraftNote(prev =>
+                            prev ? { ...prev, content: e.target.value } : prev
+                        );
+                        } else {
+                        // This is saved note
+                        setCharNotes(prev =>
+                            prev.map(note =>
+                            note.id === notes.id
+                                ? { ...note, content: e.target.value }
+                                : note
+                            )
+                        );
+                        }
+                    }}
+                    onKeyDown={(e) => {
+                        if (e.key === "Enter" && !e.shiftKey) {
+                        e.preventDefault();
+                        (e.target as HTMLElement).blur();
+                        (saveNote(notes));
+                        }
+                    }}
+                    onBlur={(e) => { e.currentTarget.style.height = "auto";}}
+                    />
+
+                    {(hideSave && (notes.id ? Number(onFocusId) === notes.id : draftNoteState) &&
+                    <div className="flex justify-end gap-1">
+                        {/* {(notSaved &&
+                        <span>Not saved</span>
+                        )} */}
+
+                        <button 
+                        className="flex px-4 py-1 bg-neutral-500 rounded-xl hover:bg-neutral-600"
+                        onMouseDown={() => {setHideSave(false); setDraftNote(null);}}
+                        >
+                        Cancel
+                        </button>
+
+                        <button 
+                        className="flex px-4 py-1 bg-blue-700 rounded-xl"
+                        onMouseDown={() => {saveNote(notes);}}
+                        disabled={noteContent === notes.content}
+                        >
+                        Save 
+                        </button> 
+                    </div>
+                    )}
+
+                    {noteToDelete && noteToDelete.id === notes.id && (
+                    <div className="absolute inset-0 bg-black/40 backdrop-blur-sm flex items-center justify-center rounded-md z-10">
+                        <div className="bg-white dark:bg-gray-800 p-3 rounded-md shadow-lg text-center w-40">
+                        <p className="text-sm mb-2">Delete this note?</p>
+                        <div className="flex justify-between">
+                            <button
+                            onClick={() => handleDeleteNote(noteToDelete!)}
+                            className="text-red-500 text-sm hover:scale-105"
+                            >
+                            Delete
+                            </button>
+                            <button
+                            onClick={() => setNoteToDelete(null)}
+                            className="text-gray-500 text-sm"
+                            >
+                            Cancel
+                            </button>
                         </div>
+                        </div>
+                    </div>
+                    )}
+                </div>
+                ))}
+              </div>
 
-                        <textarea
-                          className="w-full text-sm p-1 outline-none border-none rounded text-area-scroll resize-none"
-                          rows={3}
-                          value={notes.content}
-                          onChange={(e) => {
-                            if (!notes.id) {
-                              setDraftNote(prev => prev ? { ...prev, content: e.target.value } : prev);
-                            } else {
-                              setCharNotes(prev => prev.map(note => note.id === notes.id ? { ...note, content: e.target.value } : note));
-                            }
-                          }}
-                          onBlur={() => saveNote(notes)}
-                        />
-
-                        {noteToDelete && noteToDelete.id === notes.id && (
-                          <div className="absolute inset-0 bg-black/40 backdrop-blur-sm flex items-center justify-center rounded-md z-10">
-                            <div className="bg-white dark:bg-gray-800 p-3 rounded-md shadow-lg text-center w-40">
-                              <p className="text-sm mb-2">Delete this note?</p>
-                              <div className="flex justify-between">
-                                <button
-                                  onClick={() => handleDeleteNote(noteToDelete!)}
-                                  className="text-red-500 text-sm hover:scale-105"
-                                >
-                                  Delete
-                                </button>
-                                <button
-                                  onClick={() => setNoteToDelete(null)}
-                                  className="text-gray-500 text-sm"
-                                >
-                                  Cancel
-                                </button>
-                              </div>
-                            </div>
-                          </div>
-                        )}
-                      </div>
-                    ))}
-                  </div>
                 </div>
               </div>
             </div>

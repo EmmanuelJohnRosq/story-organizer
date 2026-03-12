@@ -171,6 +171,11 @@ export default function Header() {
             logIn();
             return;
         }
+        if(displayExpiringAuth) {
+            alert("Google Authentication required.");
+            logIn();
+            return;
+        }
         setShowGoogleSaveModal(state);
         document.body.classList.toggle('overflow-hidden', state);
     }
@@ -872,7 +877,7 @@ export default function Header() {
             )}
 
             {/* DISPLAY RECONNECT TO GOOGLE ACCOUNT WHEN AUTH EXPIRES */}
-            {displayExpiringAuth && (
+            {/* {displayExpiringAuth && (
             <div className="fixed z-50 top-15 left-1/2 bg-gray-300 py-1 px-4 transform -translate-x-1/2 rounded shadow-lg animate-fadeDown flex justify-between">
                 <span className="flex place-items-center mr-2">
                     Google Auth Expired: Reconnect to Google Drive
@@ -883,7 +888,7 @@ export default function Header() {
                      Reconnect
                 </button>
             </div>
-            )}
+            )} */}
 
         </>
     );

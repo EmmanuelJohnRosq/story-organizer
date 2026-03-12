@@ -752,7 +752,7 @@ export default function ExperimentPage() {
         <div className="pb-3 grid grid-cols-6 gap-3 items-center relative">
           <button 
           type="button" 
-          className="rounded-lg bg-green-800 px-3 py-3  text-base font-semibold text-white hover:bg-green-700"
+          className="rounded-lg bg-green-800 px-3 py-3 text-xs xs:text-base font-semibold text-white hover:bg-green-700"
           onClick={() => addNewcharacter()}
           >
             {!addCharacterState ? "Create Character" : "Minimize Form"}
@@ -801,10 +801,18 @@ export default function ExperimentPage() {
         </div>
 
         {/* CONTENT CONTAINER */}
-        <div className="grid xxs:grid-cols-2 xs:grid-cols-10 gap-2 items-start">
+        <div className="grid xxs:grid-cols-6 xs:grid-cols-10 gap-2 items-start">
+
+          {/* LEFT LEFT SIDEBAR */}
+          <div className="lg:sticky lg:top-15 col-span-1 flex-1 relative bg-green-300 w-full">
+
+            <div>
+              BUTTON
+            </div>
+          </div>
     
           {/* LEFT SIDE CONTAINER */}
-          <div className="lg:sticky lg:top-15 col-span-1 xs:col-span-3 flex-1 relative">
+          <div className="lg:sticky lg:top-15 col-span-2 xs:col-span-3 flex-1 relative">
 
               {/* BOOK AND CHARACTER FORMS LEFT PANEL */}
               <div className="sticky top-15 w-full">
@@ -1027,7 +1035,7 @@ export default function ExperimentPage() {
           </div>
           
           {/* CENTER CONTAINER */}
-          <div className="col-span-1 xs:col-span-5 w-full">
+          <div className="col-span-3 xs:col-span-4 w-full">
 
             {/* CHARACTER DATA COMPLETION PROGRESS BAR */}
             <div className="rounded-md shadow-lg p-4 mb-2 bg-gray-100 dark:bg-gray-900 transition duration-300">
