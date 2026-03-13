@@ -212,8 +212,9 @@ export default function ExperimentPage() {
     }
   
     // create new character to save to db
-    async function addCharacter() {
+    async function addCharacter(event: any) {
       if (!name || currentBookId === undefined) return;
+      event.preventDefault();
   
       const newCharacter: Character = {
         id: Date.now(),
@@ -461,10 +462,11 @@ export default function ExperimentPage() {
       }
     }
   
-    const [Addnewbooks, setAddnewBooks] = useState(false);
     const [notesShowState, setNotesShowState] = useState(false);
     const [addCharacterState, setAddCharState] = useState(false);
     const [showSettingsMenu, setShowSettingsMenu] = useState(false);
+    const [editBookContent, setEditBookContent] = useState(false);
+ 
     const [isNotesDrawerMounted, setIsNotesDrawerMounted] = useState(false);
     const [isNotesDrawerVisible, setIsNotesDrawerVisible] = useState(false);
 
@@ -477,17 +479,17 @@ export default function ExperimentPage() {
         document.body.classList.remove("overflow-hidden");
       };
     }, [notesShowState]);
-
-    // SHOW/HIDE CREATE NEW BOOK FORM
-    const addBooksState = () => {
-        setAddnewBooks(!Addnewbooks);
-        setAddCharState(true);
-    };
   
     // SHOW/HIDE ADD CHARACTER FORM
     const addNewcharacter = () => {
         setAddCharState(!addCharacterState);
-        setAddnewBooks(true);
+        setEditBookContent(false);
+    };
+
+    // SHOW/HIDE EDIT CONTENT FORM
+    const editBook = () => {
+        setEditBookContent(!editBookContent);
+        setAddCharState(false);
     };
 
     const notesDrawerTimeoutRef = useRef<number | null>(null);
@@ -948,9 +950,9 @@ export default function ExperimentPage() {
                 <div className="xxs:max-h-[calc(100vh-7.5rem)] overflow-y-auto overflow-x-hidden notes-scroll overflow-contain">
                   {/* ADD CHARACTER FORM */}
                   {(addCharacterState &&
-                    <div 
+                    <form
                       className="flex-1 rounded-xl shadow-2xl p-6 mb-2 bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 transition-all duration-300 animate-fadeDown"
-                      onKeyDown={(e) => {if (e.key === "Enter") addCharacter();}}
+                      onSubmit={addCharacter}
                     >
                       <div className="flex items-center justify-between mb-6">
                         <h2 className="text-lg font-bold text-gray-800 dark:text-gray-100">Add New Character</h2>
@@ -967,7 +969,8 @@ export default function ExperimentPage() {
                             className="rounded-lg border border-gray-300 dark:border-gray-700 p-2.5 dark:bg-gray-800 w-full focus:ring-2 focus:ring-blue-500 outline-none transition" 
                             placeholder="e.g. Artorius Pendragon" 
                             value={name} 
-                            onChange={e => setName(e.target.value)} 
+                            onChange={e => setName(e.target.value)}
+                            required 
                           />
                         </div>
 
@@ -979,6 +982,7 @@ export default function ExperimentPage() {
                               className="rounded-lg border border-gray-300 dark:border-gray-700 p-2.5 dark:bg-gray-800 w-full focus:ring-2 focus:ring-blue-500 outline-none transition appearance-none cursor-pointer"
                               value={role} 
                               onChange={e => setRole(e.target.value)}
+                              required
                             >
                               <option value="">Select Role</option>
                               <option value="protagonist">Protagonist</option>
@@ -1000,6 +1004,7 @@ export default function ExperimentPage() {
                               className="rounded-lg border border-gray-300 dark:border-gray-700 p-2.5 dark:bg-gray-800 w-full focus:ring-2 focus:ring-blue-500 outline-none transition appearance-none cursor-pointer"
                               value={race} 
                               onChange={e => setRace(e.target.value)}
+                              required
                             >
                               <option value="">Select Race</option>
                               <option value="human">Human</option>
@@ -1020,6 +1025,7 @@ export default function ExperimentPage() {
                               className="rounded-lg border border-gray-300 dark:border-gray-700 p-2.5 dark:bg-gray-800 w-full focus:ring-2 focus:ring-blue-500 outline-none transition appearance-none cursor-pointer"
                               value={status} 
                               onChange={e => setStatus(e.target.value)}
+                              required
                             >
                               <option value="Alive">Alive</option>
                               <option value="Deceased">Deceased</option>
@@ -1036,19 +1042,128 @@ export default function ExperimentPage() {
                               placeholder="Ch. #" 
                               value={chapterAppearance} 
                               onChange={e => setChapterAppearance(e.target.value)} 
+                              required
                             />
                           </div>
                         </div>
                       </div>
 
                       <button
-                        type="button"
+                        type="submit"
                         className="w-full mt-6 bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 rounded-lg shadow-lg hover:shadow-blue-500/30 transform hover:-translate-y-0.5 transition-all active:scale-95"
-                        onClick={addCharacter}
                       >
                         Create Character
                       </button>
-                    </div>
+                    </form>
+                  )}
+
+                  {/* EDIT BOOK CONTENT FORM */}
+                  {(editBookContent &&
+                    <form
+                      className="flex-1 rounded-xl shadow-2xl p-6 mb-2 bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 transition-all duration-300 animate-fadeDown"
+                      onSubmit={addCharacter}
+                    >
+                      <div className="flex items-center justify-between mb-6">
+                        <h2 className="text-lg font-bold text-gray-800 dark:text-gray-100">Edit Book Details</h2>
+                        <span className="px-2 py-1 text-xs font-medium bg-blue-100 text-blue-600 rounded-full dark:bg-blue-900/30 dark:text-blue-400">
+                          Draft Mode
+                        </span>
+                      </div>
+
+                      <div className="space-y-5 my-2">
+                        {/* Name Input */}
+                        <div>
+                          <label className="block text-xs font-semibold uppercase tracking-wider text-gray-500 mb-1 ml-1">Full Name</label>
+                          <input 
+                            className="rounded-lg border border-gray-300 dark:border-gray-700 p-2.5 dark:bg-gray-800 w-full focus:ring-2 focus:ring-blue-500 outline-none transition" 
+                            placeholder="e.g. Artorius Pendragon" 
+                            value={name} 
+                            onChange={e => setName(e.target.value)}
+                            required 
+                          />
+                        </div>
+
+                        {/* Row for Role & Race */}
+                        <div className="grid grid-cols-2 gap-4">
+                          <div>
+                            <label className="block text-xs font-semibold uppercase tracking-wider text-gray-500 mb-1 ml-1">Role</label>
+                            <select 
+                              className="rounded-lg border border-gray-300 dark:border-gray-700 p-2.5 dark:bg-gray-800 w-full focus:ring-2 focus:ring-blue-500 outline-none transition appearance-none cursor-pointer"
+                              value={role} 
+                              onChange={e => setRole(e.target.value)}
+                              required
+                            >
+                              <option value="">Select Role</option>
+                              <option value="protagonist">Protagonist</option>
+                              <option value="antagonist">Antagonist</option>
+                              <option value="supporting">Supporting character</option>
+                              <option value="confidant">Confidant</option>
+                              <option value="mentor">Mentor</option>
+                              <option value="love interest">Love interest</option>
+                              <option value="background">Background character</option>
+                              <option value="rival">Rival</option>
+                              <option value="side character">Side character</option>
+                              <option value="unknown">Unknown</option>
+                            </select>
+                          </div> 
+
+                          <div>
+                            <label className="block text-xs font-semibold uppercase tracking-wider text-gray-500 mb-1 ml-1">Race</label>
+                            <select 
+                              className="rounded-lg border border-gray-300 dark:border-gray-700 p-2.5 dark:bg-gray-800 w-full focus:ring-2 focus:ring-blue-500 outline-none transition appearance-none cursor-pointer"
+                              value={race} 
+                              onChange={e => setRace(e.target.value)}
+                              required
+                            >
+                              <option value="">Select Race</option>
+                              <option value="human">Human</option>
+                              <option value="elf">Elf</option>
+                              <option value="dwarf">Dwarf</option>
+                              <option value="orc">Orc</option>
+                              <option value="dragon">Dragon</option>
+                              <option value="Other">Other</option>
+                            </select>
+                          </div>
+                        </div>
+
+                        {/* Row for Status & Appearance */}
+                        <div className="grid grid-cols-2 gap-4">
+                          <div>
+                            <label className="block text-xs font-semibold uppercase tracking-wider text-gray-500 mb-1 ml-1">Status</label>
+                            <select 
+                              className="rounded-lg border border-gray-300 dark:border-gray-700 p-2.5 dark:bg-gray-800 w-full focus:ring-2 focus:ring-blue-500 outline-none transition appearance-none cursor-pointer"
+                              value={status} 
+                              onChange={e => setStatus(e.target.value)}
+                              required
+                            >
+                              <option value="Alive">Alive</option>
+                              <option value="Deceased">Deceased</option>
+                              <option value="Deceased">Undead</option>
+                              <option value="Unknown">Unknown</option>
+                            </select>
+                          </div>
+
+                          <div>
+                            <label className="block text-xs font-semibold uppercase tracking-wider text-gray-500 mb-1 ml-1">First Chapter Appearance</label>
+                            <input 
+                              type="number" 
+                              className="rounded-lg border border-gray-300 dark:border-gray-700 p-2.5 dark:bg-gray-800 w-full focus:ring-2 focus:ring-blue-500 outline-none transition" 
+                              placeholder="Ch. #" 
+                              value={chapterAppearance} 
+                              onChange={e => setChapterAppearance(e.target.value)} 
+                              required
+                            />
+                          </div>
+                        </div>
+                      </div>
+
+                      <button
+                        type="submit"
+                        className="w-full mt-6 bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 rounded-lg shadow-lg hover:shadow-blue-500/30 transform hover:-translate-y-0.5 transition-all active:scale-95"
+                      >
+                        Create Character
+                      </button>
+                    </form>
                   )}
 
                   {/* BOOK SUMMARY FORM */}
@@ -1062,52 +1177,54 @@ export default function ExperimentPage() {
                               {titleDraft || currentBook?.title || "Book Content"}
                             </label>
 
-                            <button
-                              className="border-gray-500 text-black rounded-xl px-1 dark:text-gray-500 hover:text-white"
-                              onClick={() => setShowSettingsMenu(prev => !prev)}
-                              title="Book settings"
-                            >
-                              <FontAwesomeIcon icon={faEllipsis} size="lg"/>
-                            </button>
+                            <div className="relative inline-block"> 
+                              <button
+                                className="border-gray-500 text-black rounded-xl px-1 dark:text-gray-500 hover:text-white"
+                                onClick={() => setShowSettingsMenu(prev => !prev)}
+                                title="Book settings"
+                              >
+                                <FontAwesomeIcon icon={faEllipsis} size="lg"/>
+                              </button>
 
-                            {showSettingsMenu && (
-                              <div className="absolute top-13 right-3 z-30 w-56 rounded-md border bg-white dark:bg-gray-800 dark:border-gray-600 shadow-xl p-2 space-y-1">
-                                <button
-                                  className="w-full text-left px-3 py-2 rounded hover:bg-gray-200 dark:hover:bg-gray-700"
-                                  onClick={() => {
-                                    addBooksState();
-                                    setShowSettingsMenu(false);
-                                  }}
-                                >
-                                  Edit book details
-                                </button>
-                                <button
-                                  className="w-full text-left px-3 py-2 rounded hover:bg-gray-200 dark:hover:bg-gray-700"
-                                  onClick={() => {
-                                    addNewcharacter();
-                                    setShowSettingsMenu(false);
-                                  }}
-                                >
-                                  Add character
-                                </button>
+                              {showSettingsMenu && (
+                                <div className="absolute top-9 right-1 z-30 w-56 rounded-md border bg-white dark:bg-gray-800 dark:border-gray-600 shadow-xl p-2 space-y-1">
+                                  <button
+                                    className="w-full text-left px-3 py-2 rounded hover:bg-gray-200 dark:hover:bg-gray-700"
+                                    onClick={() => {
+                                      editBook()
+                                      setShowSettingsMenu(false);
+                                    }}
+                                  >
+                                    Edit book details
+                                  </button>
+                                  <button
+                                    className="w-full text-left px-3 py-2 rounded hover:bg-gray-200 dark:hover:bg-gray-700"
+                                    onClick={() => {
+                                      addNewcharacter();
+                                      setShowSettingsMenu(false);
+                                    }}
+                                  >
+                                    Add character
+                                  </button>
 
-                                <button
-                                  className="hidden xs:block w-full text-left px-3 py-2 rounded hover:bg-gray-200 dark:hover:bg-sky-700/50"
-                                  onClick={() => {addDraftNotes(); setShowSettingsMenu(false)}}
-                                >
-                                  Add draft note
-                                </button>
+                                  <button
+                                    className="hidden xs:block w-full text-left px-3 py-2 rounded hover:bg-gray-200 dark:hover:bg-sky-700/50"
+                                    onClick={() => {addDraftNotes(); setShowSettingsMenu(false)}}
+                                  >
+                                    Add draft note
+                                  </button>
 
-                                <button
-                                  className="w-full text-left px-3 py-2 rounded text-red-600 hover:bg-red-100 dark:hover:bg-red-900/30"
-                                  onClick={() => {
-                                    if (currentBook?.id) deleteBook(currentBook.id);
-                                  }}
-                                >
-                                  Delete book
-                                </button>
-                              </div>
-                            )}
+                                  <button
+                                    className="w-full text-left px-3 py-2 rounded text-red-600 hover:bg-red-100 dark:hover:bg-red-900/30"
+                                    onClick={() => {
+                                      if (currentBook?.id) deleteBook(currentBook.id);
+                                    }}
+                                  >
+                                    Delete book
+                                  </button>
+                                </div>
+                              )}
+                            </div>
                           </div>
                           
 
@@ -1322,37 +1439,12 @@ export default function ExperimentPage() {
 
             </div>
 
-            {/* WORLD BUILDING DeTAILS */}
-            {/* <aside>
-              <div className="rounded-md border border-gray-200 bg-white/90 p-4 shadow-lg dark:border-gray-800 dark:bg-gray-900/90">
-                <h2 className="text-sm uppercase tracking-wider text-gray-500 dark:text-gray-400">Wiki Sidebar (Sample)</h2>
-                <h3 className="mt-1 text-lg font-semibold text-gray-900 dark:text-gray-100">Worldbuilding Details</h3>
-                <p className="mt-2 text-xs text-gray-600 dark:text-gray-400">
-                  Example content preview for the character page. Later this can be replaced with user-saved world facts.
-                </p>
-
-                <div className="mt-4 space-y-4">
-                  {sampleWorldWiki.map((section) => (
-                    <section key={section.title} className="rounded-md border border-gray-200 bg-gray-50 p-3 dark:border-gray-700 dark:bg-gray-800/60">
-                      <h4 className="text-sm font-semibold text-blue-700 dark:text-blue-300">{section.title}</h4>
-                      <dl className="mt-2 space-y-2">
-                        {section.entries.map((entry) => (
-                          <div key={entry.label}>
-                            <dt className="text-xs font-medium uppercase tracking-wide text-gray-500 dark:text-gray-400">{entry.label}</dt>
-                            <dd className="text-sm text-gray-700 dark:text-gray-200">{entry.value}</dd>
-                          </div>
-                        ))}
-                      </dl>
-                    </section>
-                  ))}
-                </div>
-              </div>
-            </aside> */}
+            {/* WORLD BUILDING DETAILS */}
             <div className="rounded-md shadow-lg p-4 mb-2 bg-gray-100 dark:bg-gray-900 transition duration-300">
               <div className="flex items-center justify-between gap-2">
                 <div>
-                  <label className="text-sm font-semibold">Worldbuilding Wiki</label>
-                  <p className="text-xs text-gray-500 dark:text-gray-400">Book-level facts and lore reference</p>
+                  <label className="text-sm font-semibold">World Setting</label>
+                  <p className="text-xs text-gray-500 dark:text-gray-400">Your story's facts and lore references</p>
                 </div>
               </div>
 

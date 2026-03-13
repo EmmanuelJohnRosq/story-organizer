@@ -324,6 +324,9 @@ async function confirmDisplayImage() {
       { label: "Backstory Notes", value: editingCharacter.notes },
       { label: "Future Notes", value: editingCharacter.futureNotes },
       { label: "Character Arc", value: editingCharacter.characterArc },
+      { label: "First Chapter Appearance", value: editingCharacter.chapters },
+      { label: "Net Worth", value: editingCharacter.netWorth },
+      { label: "Chapter Appearances", value: editingCharacter.chapterAppearances.length},
       { label: "Titles", value: editingCharacter.titles.length },
       { label: "Traits", value: editingCharacter.personalityTraits.length },
       { label: "Tags", value: editingCharacter.tags.length },
@@ -332,9 +335,19 @@ async function confirmDisplayImage() {
       { label: "Appearance • Age", value: editingCharacter.description.basic.age },
       { label: "Appearance • Race", value: editingCharacter.description.basic.race },
       { label: "Appearance • Gender", value: editingCharacter.description.basic.gender },
-      { label: "Appearance • Eye Color", value: editingCharacter.description.face.eyeColor },
-      { label: "Appearance • Hair Color", value: editingCharacter.description.hair.hairColor },
       { label: "Appearance • Body Type", value: editingCharacter.description.body.bodyType },
+      { label: "Appearance • Height", value: editingCharacter.description.body.height },
+      { label: "Appearance • Skin Tone", value: editingCharacter.description.body.skinTone },
+      { label: "Appearance • Eye Color", value: editingCharacter.description.face.eyeColor },
+      { label: "Appearance • Eye Shape", value: editingCharacter.description.face.eyeShape },
+      { label: "Appearance • Face Shape", value: editingCharacter.description.face.faceShape },
+      { label: "Appearance • Mouth Size", value: editingCharacter.description.face.mouthSize },
+      { label: "Appearance • Nose Shape", value: editingCharacter.description.face.noseShape },
+      { label: "Appearance • Hair Color", value: editingCharacter.description.hair.hairColor },
+      { label: "Appearance • Hair Style", value: editingCharacter.description.hair.hairStyle },
+      { label: "Appearance • Accessories", value: editingCharacter.description.extras.accessories },
+      { label: "Appearance • Clothing Style", value: editingCharacter.description.extras.clothingStyle },
+      { label: "Appearance • Distinguishing Features", value: editingCharacter.description.extras.distinguishingFeatures },
     ];
 
     return checks
@@ -425,6 +438,22 @@ async function confirmDisplayImage() {
     setEditingCharacter(cleanedCharacter);
     setSuccess("Character progression saved!");
     setTimeout(() => setSuccess(""), 1800);
+  }
+
+  // delete character block
+  async function deleteCharacter(characterId: number) {
+    if (!currentBookId || !editingCharacter) return;
+
+    const confirmed = window.confirm("Remove this character? No takebacks.");
+
+    if (!confirmed) return;
+
+    // THIS DELETES USING PRIMARY KEY/CHARACTER ID
+    await db.characters.delete(characterId);
+
+    setOriginalCharacter(null);
+    setEditingCharacter(null);
+    navigate(`/book/${currentBookId}`);
   }
 
   function updateDescription(path: keyof CharacterDescription, key: string, value: string) {
@@ -560,7 +589,7 @@ async function confirmDisplayImage() {
             {activeTab === "abilities" && (
               <div className="space-y-3">
                 {editingCharacter.abilities.map((ability, index) => (
-                  <div key={`${ability.ability}-${index}`} className="rounded-lg border border-gray-200 p-3 dark:border-gray-700">
+                  <div key={index} className="rounded-lg border border-gray-200 p-3 dark:border-gray-700">
                     <div className="flex gap-2">
                       <input className="w-1/3 rounded-lg border p-2 dark:bg-gray-800" value={ability.ability} placeholder="Ability" onChange={(event) => {
                         const next = [...editingCharacter.abilities];
@@ -716,6 +745,9 @@ async function confirmDisplayImage() {
             <div className="flex flex-col gap-2 pt-1">
               <button type="button" className="rounded-lg bg-indigo-600 px-3 py-2 text-sm font-semibold text-white hover:bg-indigo-700" onClick={() => void saveCharacter()}>Save Build</button>
               <button type="button" className="rounded-lg border border-gray-300 px-3 py-2 text-sm dark:border-gray-600" onClick={() => navigate(`/book/${currentBookId}/${editingCharacter.id}-${editingCharacter.name.toLowerCase().replace(/[^a-z0-9]+/g, "-")}`)}>Back to Character</button>
+              
+              <span className="border-t-1 text-xs text-gray-500 mt-3 pb-3"></span>
+              <button type="button" className="rounded-lg bg-red-700 px-3 py-2 text-sm font-semibold text-white hover:bg-red-600 w-full" onClick={() => void deleteCharacter(editingCharacter.id)}>Delete Character</button>
             </div>
           </aside>
 

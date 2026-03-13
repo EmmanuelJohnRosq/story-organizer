@@ -935,62 +935,64 @@ const [charDescription, setCharDescription] = useState<CharacterDescription>({
   const [openWorldSections, setOpenWorldSections] = useState<Record<string, boolean>>({});
   
   const [worldSectionTitle, setWorldSectionTitle] = useState("");
-    const [worldDraftEntries, setWorldDraftEntries] = useState<WorldbuildingEntry[]>([{ label: "", value: "" }]);
+  const [worldDraftEntries, setWorldDraftEntries] = useState<WorldbuildingEntry[]>([{ label: "", value: "" }]);
 
-    const openWorldbuildingModal = () => {
-      setWorldSectionTitle("");
-      setWorldDraftEntries([{ label: "", value: "" }]);
-      setShowWorldbuildingModal(true);
-    };
+  const [abilityTooltip, setAbilityTooltip] = useState<number | null>(null);
 
-    const addWorldDraftEntry = () => {
-      setWorldDraftEntries(prev => [...prev, { label: "", value: "" }]);
-    };
+  const openWorldbuildingModal = () => {
+    setWorldSectionTitle("");
+    setWorldDraftEntries([{ label: "", value: "" }]);
+    setShowWorldbuildingModal(true);
+  };
 
-    const updateWorldDraftEntry = (index: number, key: "label" | "value", newValue: string) => {
-      setWorldDraftEntries(prev => prev.map((entry, i) => (
-        i === index ? { ...entry, [key]: newValue } : entry
-      )));
-    };
+  const addWorldDraftEntry = () => {
+    setWorldDraftEntries(prev => [...prev, { label: "", value: "" }]);
+  };
 
-    const removeWorldDraftEntry = (index: number) => {
-      setWorldDraftEntries(prev => {
-        if (prev.length === 1) return prev;
-        return prev.filter((_, i) => i !== index);
-      });
-    };
+  const updateWorldDraftEntry = (index: number, key: "label" | "value", newValue: string) => {
+    setWorldDraftEntries(prev => prev.map((entry, i) => (
+      i === index ? { ...entry, [key]: newValue } : entry
+    )));
+  };
 
-    const saveWorldbuildingSection = () => {
-      const normalizedTitle = normalizeWhitespace(worldSectionTitle);
-      const cleanEntries = worldDraftEntries
-        .map(entry => ({
-          label: normalizeWhitespace(entry.label),
-          value: entry.value.trim().replace(/\s+/g, " "),
-        }))
-        .filter(entry => entry.label && entry.value);
+  const removeWorldDraftEntry = (index: number) => {
+    setWorldDraftEntries(prev => {
+      if (prev.length === 1) return prev;
+      return prev.filter((_, i) => i !== index);
+    });
+  };
 
-      if (!normalizedTitle || cleanEntries.length === 0) {
-        return;
-      }
+  const saveWorldbuildingSection = () => {
+    const normalizedTitle = normalizeWhitespace(worldSectionTitle);
+    const cleanEntries = worldDraftEntries
+      .map(entry => ({
+        label: normalizeWhitespace(entry.label),
+        value: entry.value.trim().replace(/\s+/g, " "),
+      }))
+      .filter(entry => entry.label && entry.value);
 
-      const sectionId = `${normalizedTitle.toLowerCase().replace(/[^a-z0-9]+/g, "-")}-${Date.now()}`;
+    if (!normalizedTitle || cleanEntries.length === 0) {
+      return;
+    }
 
-      setWorldbuildingSections(prev => [
-        ...prev,
-        {
-          id: sectionId,
-          title: normalizedTitle,
-          entries: cleanEntries,
-        },
-      ]);
+    const sectionId = `${normalizedTitle.toLowerCase().replace(/[^a-z0-9]+/g, "-")}-${Date.now()}`;
 
-      setOpenWorldSections(prev => ({ ...prev, [sectionId]: true }));
-      setShowWorldbuildingModal(false);
-    };
+    setWorldbuildingSections(prev => [
+      ...prev,
+      {
+        id: sectionId,
+        title: normalizedTitle,
+        entries: cleanEntries,
+      },
+    ]);
 
-    const toggleWorldSection = (sectionId: string) => {
-      setOpenWorldSections(prev => ({ ...prev, [sectionId]: !prev[sectionId] }));
-    };
+    setOpenWorldSections(prev => ({ ...prev, [sectionId]: true }));
+    setShowWorldbuildingModal(false);
+  };
+
+  const toggleWorldSection = (sectionId: string) => {
+    setOpenWorldSections(prev => ({ ...prev, [sectionId]: !prev[sectionId] }));
+  };
 
   return (
     //MAIN PARENT CONTAINER
@@ -1005,8 +1007,8 @@ const [charDescription, setCharDescription] = useState<CharacterDescription>({
             <div className="sticky top-15 max-h-[calc(100vh-4rem)] overflow-y-auto notes-scroll rounded-md border border-gray-200 bg-white/90 p-4 shadow-lg dark:border-gray-800 dark:bg-gray-900/90">
               <div className="flex items-center justify-between gap-2">
               <div>
-                <label className="text-sm font-semibold">World Building Setting</label>
-                <p className="text-xs text-gray-500 dark:text-gray-400">Story's facts and lore references</p>
+                <label className="text-sm font-semibold">World Setting</label>
+                <p className="text-xs text-gray-500 dark:text-gray-400">Your story's facts and lore references</p>
               </div>
               <button
                 type="button"
@@ -1221,7 +1223,7 @@ const [charDescription, setCharDescription] = useState<CharacterDescription>({
 
                 </div>  
 
-                <div className="space-y-4 px-4 pb-5 pt-1">
+                <div className="space-y-4 px-4 pb-5 pt-1 select-none">
                   {activeCharacterTab === "overview" && (
                     <div className="space-y-2">
 
@@ -1260,6 +1262,7 @@ const [charDescription, setCharDescription] = useState<CharacterDescription>({
                         </div>
                       </div>
 
+                      {/* BACKGROUND */}
                       <div className="rounded-xl border border-slate-200 bg-white p-3 shadow-sm dark:border-slate-700 dark:bg-slate-900/70">
                         <label className="text-sm font-semibold text-gray-500 dark:text-gray-300">Background</label>
                         <p className="mt-1 text-sm text-gray-700 dark:text-gray-300">
@@ -1269,6 +1272,7 @@ const [charDescription, setCharDescription] = useState<CharacterDescription>({
                         </p>
                       </div>
 
+                      {/* PERSONALITY TRAITS */}
                       <div className="rounded-xl border border-slate-200 bg-white p-3 shadow-sm dark:border-slate-700 dark:bg-slate-900/70">
                         <label className="text-sm font-semibold text-gray-500 dark:text-gray-300">Personality Traits</label>
                         <p className="mt-1 text-sm text-gray-700 dark:text-gray-300">
@@ -1278,6 +1282,7 @@ const [charDescription, setCharDescription] = useState<CharacterDescription>({
                         </p>
                       </div>
 
+                      {/* CORE MOTIVATION */}
                       <div className="rounded-xl border border-slate-200 bg-white p-3 shadow-sm dark:border-slate-700 dark:bg-slate-900/70">
                         <label className="text-sm font-semibold text-gray-500 dark:text-gray-300">Core Motivation</label>
                         <p className="mt-1 text-sm text-gray-700 dark:text-gray-300">
@@ -1285,6 +1290,7 @@ const [charDescription, setCharDescription] = useState<CharacterDescription>({
                         </p>
                       </div>
 
+                      {/* SUMMARY */}
                       <div className="rounded-xl border border-slate-200 bg-white p-3 shadow-sm dark:border-slate-700 dark:bg-slate-900/70">
                         <label className="text-sm font-semibold text-gray-500 dark:text-gray-300">Character Arc Summary</label>
                         <p className="mt-1 text-sm text-gray-700 dark:text-gray-300">
@@ -1313,14 +1319,44 @@ const [charDescription, setCharDescription] = useState<CharacterDescription>({
                         </div>
                       </div>
 
+                      {/* ABILITIES */}
                       <div className="rounded-xl border border-slate-200 bg-white p-3 shadow-sm dark:border-slate-700 dark:bg-slate-900/70">
                         <label className="text-sm font-semibold text-gray-500 dark:text-gray-300">Abilities/Skills</label>
                         <div className="flex flex-wrap gap-2 pt-1">
                           {originalCharacter.abilities && originalCharacter.abilities.length > 0 ? (
                             originalCharacter.abilities.map((ability, i) => (
-                              <span key={i} className="cursor-pointer rounded-2xl bg-indigo-100 px-2 py-1 text-sm text-indigo-700 transition hover:bg-indigo-200 dark:bg-slate-700 dark:text-slate-200 dark:hover:bg-sky-800">
-                                {ability.ability}
-                              </span>
+                              <div 
+                                key={i}  
+                                className="relative group select-none"
+                              >
+                                <span 
+                                  className="cursor-pointer rounded-2xl bg-indigo-100 px-2 py-1 text-sm text-indigo-700 transition hover:bg-indigo-200 dark:bg-slate-700 dark:text-slate-200 dark:hover:bg-sky-800"
+                                  title={ability.description}
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    setAbilityTooltip(abilityTooltip === i ? null : i);
+                                  }}
+                                >
+                                  {ability.ability}
+                                </span>
+
+                                {/* The Tooltip Popover */}
+                                {abilityTooltip === i && (
+                                  <>
+                                    {/* Invisible backdrop to close when clicking outside */}
+                                    <div className="fixed inset-0 z-10" onClick={() => setAbilityTooltip(null)} />
+                                    
+                                    <div 
+                                      className="pointer-events-none absolute bottom-full left-1/2 z-20 mb-2 w-48 -translate-x-1/2 rounded-lg bg-gray-900 p-2 text-xs text-white shadow-xl dark:bg-slate-800
+                                      animate-in fade-in zoom-in duration-200 origin-bottom"
+                                    >
+                                      {ability.description || "No description yet."}
+                                      {/* Small arrow/tail */}
+                                      <div className="absolute -bottom-1 left-1/2 h-2 w-2 -translate-x-1/2 rotate-45 bg-gray-900 dark:bg-slate-800" />
+                                    </div>
+                                  </>
+                                )}
+                              </div>
                             ))
                           ) : (
                             <span className="text-sm text-gray-700 dark:text-gray-300">No ability set</span>
@@ -1328,13 +1364,15 @@ const [charDescription, setCharDescription] = useState<CharacterDescription>({
                         </div>
                       </div>
 
+                      {/* POWER LEVEL */}
                       <div className="rounded-xl border border-slate-200 bg-white p-3 shadow-sm dark:border-slate-700 dark:bg-slate-900/70">
                         <label className="text-sm font-semibold text-gray-500 dark:text-gray-300">Power System / Power Level</label>
                         <p className="mt-1 text-sm text-gray-700 dark:text-gray-300">
                           {originalCharacter.powerLevel || "No power system details added."}
                         </p>
                       </div>
-
+                        
+                      {/* NET WORTH */}
                       <div className="rounded-xl border border-slate-200 bg-white p-3 shadow-sm dark:border-slate-700 dark:bg-slate-900/70">
                         <label className="text-sm font-semibold text-gray-500 dark:text-gray-300">Net Worth</label>
                         <p className="mt-1 text-sm text-gray-700 dark:text-gray-300">
@@ -1342,6 +1380,7 @@ const [charDescription, setCharDescription] = useState<CharacterDescription>({
                         </p>
                       </div>
 
+                      {/* TAGS */}
                       <div className="rounded-xl border border-slate-200 bg-white p-3 shadow-sm dark:border-slate-700 dark:bg-slate-900/70">
                         <label className="text-sm font-semibold text-gray-500 dark:text-gray-300">Character Tags</label>
                         <p className="mt-1 text-sm text-gray-700 dark:text-gray-300">
@@ -1351,6 +1390,7 @@ const [charDescription, setCharDescription] = useState<CharacterDescription>({
                         </p>
                       </div>
 
+                      {/* TITLES */}
                       <div className="rounded-xl border border-slate-200 bg-white p-3 shadow-sm dark:border-slate-700 dark:bg-slate-900/70">
                         <label className="text-sm font-semibold text-gray-500 dark:text-gray-300">Titles</label>
                         <p className="mt-1 text-sm text-gray-700 dark:text-gray-300">
@@ -1360,6 +1400,7 @@ const [charDescription, setCharDescription] = useState<CharacterDescription>({
                         </p>
                       </div>
 
+                      {/* APPEARANCE */}
                       <div className="rounded-xl border border-slate-200 bg-white p-3 shadow-sm dark:border-slate-700 dark:bg-slate-900/70">
                         <label className="text-sm font-semibold text-gray-500 dark:text-gray-300">Chapter Appearances</label>
                         <p className="mt-1 text-sm text-gray-700 dark:text-gray-300">
