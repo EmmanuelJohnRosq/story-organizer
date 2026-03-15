@@ -75,11 +75,135 @@ export default function ExperimentPage() {
       "Romance", "Sci-Fi", "Shoujo", "Shounen", "Slice-Of-Life", "Sports", "Tragedy", "Wuxia", "Xuanhuan", "Yuri",
     ];
 
-    const tagOptions = [
-      "Reincarnation", "System", "Overpowered MC", "Slow Burn", "Dark Fantasy", "Kingdom Building", 
-      "Academy", "Cultivation", "Time Travel", "Isekai", "Villainess", "Enemies to Lovers", "Found Family", 
-      "Political Intrigue", "Dungeon", "Survival", "Mystery Arc", "Revenge", "Magic", "Sword & Sorcery",
-    ];
+    const tagOptions = {
+      Story_Tropes: [
+      "Reincarnation", 
+      "System", 
+      "Overpowered MC", 
+      "Villain MC",
+      "Slow Burn", 
+      "Dark Fantasy", 
+      "Kingdom Building", 
+      "Academy", 
+      "Cultivation", 
+      "Time Travel", 
+      "Isekai", 
+      "Game Elements",
+      "Villainess", 
+      "Enemies to Lovers", 
+      "Found Family", 
+      "Political Intrigue", 
+      "Dungeon", 
+      "Survival", 
+      "Mystery Arc", 
+      "Revenge", 
+      "Magic", 
+      "Sword & Sorcery",
+      ],
+
+      // Fantasy & Power Systems
+      Fantasy: [
+      "Elemental Magic",
+      "Necromancy",
+      "Summoning",
+      "Artifact Hunting",
+      "Ancient Relics",
+      "Divine Powers",
+      "Forbidden Magic",
+      "Bloodline Powers",
+      "Legendary Weapons",
+      "Spirit Contracts",
+      ],
+
+      // Character Progression
+      Progression: [
+      "Character Growth",
+      "Training Arc",
+      "Weak to Strong",
+      "Hidden Power",
+      "Secret Identity",
+      "Chosen One",
+      "Redemption Arc",
+      "Fallen Hero",
+      "Reluctant Hero",
+      "Evil Mc",
+      ],
+
+      // Story Tone / Theme
+      Theme: [
+      "Tragedy",
+      "Comedy",
+      "Dark Themes",
+      "Wholesome",
+      "Psychological",
+      "Philosophical",
+      "Moral Dilemma",
+      "Hopeful",
+      "Bittersweet",
+      "Epic Journey",
+      ],
+
+      // Romance Tropes
+      Romance_Tropes: [
+      "Slow Romance",
+      "Love Triangle",
+      "Forbidden Love",
+      "Childhood Friends",
+      "Fake Relationship",
+      "Opposites Attract",
+      "Second Chance Romance",
+      "Tragic Romance",
+      ],
+
+      // Worldbuilding
+      Worldbuidling: [
+      "Empire Politics",
+      "Guild System",
+      "Adventurers",
+      "Noble Society",
+      "Royal Court",
+      "Rebellion",
+      "War",
+      "Empire Building",
+      "Exploration",
+      "Lost Civilization",
+      ],
+
+      // Adventure & Conflict
+      Adventure: [
+      "Treasure Hunt",
+      "Monster Hunting",
+      "War Strategy",
+      "Assassination",
+      "Espionage",
+      "Bounty Hunters",
+      "Mercenaries",
+      "Battle Tournament",
+      "Questing",
+      ],
+
+      // Mystery & Thriller
+      Mystery: [
+      "Investigation",
+      "Secret Conspiracy",
+      "Hidden Truth",
+      "Plot Twists",
+      "Mind Games",
+      "Unreliable Narrator",
+      ],
+
+      // Emotional Themes
+      Emotional: [
+      "Betrayal",
+      "Friendship",
+      "Sacrifice",
+      "Identity Crisis",
+      "Self Discovery",
+      "Family Drama",
+      "Loss",
+      "Loneliness",
+      ],
+    };
   
     // CHARACTER DETAILS INITIALIZE
     const [name, setName] = useState("");
@@ -309,29 +433,6 @@ export default function ExperimentPage() {
         setBookStatus(currentBook.status ?? "ongoing");
       }
     }, [currentBook]);
-  
-    // SAVE BOOK TITLE on DB when called
-    async function saveBookTitle() {
-      if (!titleDraft.trim() || titleDraft.trim() === currentBook?.title) {
-        setTitleDraft(currentBook!.title); //Revert to previous title
-        setSavedTitle(false);
-        settitleEditing(false);
-        return;
-      }
-  
-      const titleUpdate = { title: normalizeWhitespace(titleDraft)};
-  
-      await db.books.update(currentBookId, titleUpdate);
-  
-    //   setBooks(prev => prev.map(book => book.id === currentBookId ? {...book, title: titleDraft.trim().replace(/\s+/g, " ")} : book));
-    //   CHANGE THIS TO ONLY UPDATE THE CURRENT BOOK IN THE VARIABLE SET STATE
-  
-      setSavedTitle(true);
-      setAlert("Changes Saved");
-      setStatePopup(true);
-      settitleEditing(true);
-      setTimeout(() => {setSavedTitle(false), settitleEditing(false), setStatePopup(false), setAlert("");}, 2000);
-    }
 
     // SAVE EDIT BOOK DETAILS
     async function saveBookDetails(event: FormEvent<HTMLFormElement>) {
@@ -371,6 +472,19 @@ export default function ExperimentPage() {
       }
 
       setEditBookContent(false);
+    }
+
+    function cancelCharacterAdd() {
+      if (currentBook) {
+        setName("");
+        setRole("");     
+        setCharStatus("unknown");
+        setCharImportance("unknown");
+        setChapterAppearance("");
+        setRace("");
+      }
+
+      setAddCharState(false);
     }
   
     // DEFAULT CHAR IMAGE FORMAT
@@ -914,114 +1028,116 @@ export default function ExperimentPage() {
         <div className="hidden xxs:block sticky top-0 p-7 bg-gray-800"></div>
 
         {/* PAGE BUTTONS */}
-        <div className="hidden xxs:block sticky top-14 z-20 pb-2">
+        {location.pathname !== "/" && (
+          <div className="hidden xxs:block sticky top-14 z-20 pb-2">
 
-          <div className="rounded-xl border border-gray-200/80 bg-white/85 dark:border-gray-800 dark:bg-gray-900/85 backdrop-blur-sm shadow-md p-1">
-            <div className="grid grid-cols-3 md:grid-cols-8 gap-2 items-stretch">
-              {/* add character */}
-              <button
-                type="button"
-                onClick={addNewcharacter}
-                className={`group flex flex-col items-center justify-center gap-1 rounded-lg border px-2 py-2.5 transition-all ${
-                  addCharacterState
-                    ? "border-emerald-500 bg-emerald-50 text-emerald-700 dark:border-emerald-500/60 dark:bg-emerald-500/10 dark:text-emerald-300"
-                    : "border-gray-200 bg-white text-gray-700 hover:border-emerald-300 hover:bg-emerald-50 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-200 dark:hover:border-emerald-500/50 dark:hover:bg-emerald-500/10"
-                }`}
-                title={!addCharacterState ? "Open add character form" : "Minimize add character form"}
-              >
-                <FontAwesomeIcon icon={faUserPlus} className="text-sm" />
-                <span className="text-[11px] xs:text-xs font-semibold leading-tight text-center">{!addCharacterState ? "Create Character" : "Hide Character Form"}</span>
-              </button>
+            <div className="rounded-xl border border-gray-200/80 bg-white/85 dark:border-gray-800 dark:bg-gray-900/85 backdrop-blur-sm shadow-md p-1">
+              <div className="grid grid-cols-3 md:grid-cols-8 gap-2 items-stretch">
+                {/* add character */}
+                <button
+                  type="button"
+                  onClick={addNewcharacter}
+                  className={`group flex flex-col items-center justify-center gap-1 rounded-lg border px-2 py-2.5 transition-all ${
+                    addCharacterState
+                      ? "border-emerald-500 bg-emerald-50 text-emerald-700 dark:border-emerald-500/60 dark:bg-emerald-500/10 dark:text-emerald-300"
+                      : "border-gray-200 bg-white text-gray-700 hover:border-emerald-300 hover:bg-emerald-50 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-200 dark:hover:border-emerald-500/50 dark:hover:bg-emerald-500/10"
+                  }`}
+                  title={!addCharacterState ? "Open add character form" : "Minimize add character form"}
+                >
+                  <FontAwesomeIcon icon={faUserPlus} className="text-sm" />
+                  <span className="text-[11px] xs:text-xs font-semibold leading-tight text-center">{!addCharacterState ? "Create Character" : "Hide Character Form"}</span>
+                </button>
 
-              {/* edit book */}
-              <button
-                type="button"
-                onClick={editBook}
-                className={`group flex flex-col items-center justify-center gap-1 rounded-lg border px-2 py-2.5 transition-all ${
-                  editBookContent
-                    ? "border-cyan-500 bg-cyan-50 text-emerald-700 dark:border-cyan-500/60 dark:bg-cyan-500/10 dark:text-cyan-300"
-                    : "border-cyan-200 bg-white text-gray-700 hover:border-cyan-300 hover:bg-cyan-50 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-200 dark:hover:border-cyan-500/50 dark:hover:bg-cyan-500/10"
-                }`}
-                title={!editBookContent ? "Open edit book form" : "Minimize edit book form"}
-              >
-                <FontAwesomeIcon icon={faPenToSquare} className="text-sm" />
-                <span className="text-[11px] xs:text-xs font-semibold leading-tight text-center">{!editBookContent ? "Edit Book" : "Hide Edit Form"}</span>
-              </button>
+                {/* edit book */}
+                <button
+                  type="button"
+                  onClick={editBook}
+                  className={`group flex flex-col items-center justify-center gap-1 rounded-lg border px-2 py-2.5 transition-all ${
+                    editBookContent
+                      ? "border-cyan-500 bg-cyan-50 text-emerald-700 dark:border-cyan-500/60 dark:bg-cyan-500/10 dark:text-cyan-300"
+                      : "border-cyan-200 bg-white text-gray-700 hover:border-cyan-300 hover:bg-cyan-50 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-200 dark:hover:border-cyan-500/50 dark:hover:bg-cyan-500/10"
+                  }`}
+                  title={!editBookContent ? "Open edit book form" : "Minimize edit book form"}
+                >
+                  <FontAwesomeIcon icon={faPenToSquare} className="text-sm" />
+                  <span className="text-[11px] xs:text-xs font-semibold leading-tight text-center">{!editBookContent ? "Edit Book" : "Hide Edit Form"}</span>
+                </button>
 
-              {/* add draft note */}
-              <button
-                type="button"
-                onClick={addDraftNotes}
-                className="group flex flex-col items-center justify-center gap-1 rounded-lg border border-gray-200 bg-white px-2 py-2.5 text-gray-700 hover:border-blue-300 hover:bg-blue-50 transition-all dark:border-gray-700 dark:bg-gray-900 dark:text-gray-200 dark:hover:border-blue-500/50 dark:hover:bg-blue-500/10"
-                title="Add a draft note"
-              >
-                <FontAwesomeIcon icon={faNoteSticky} className="text-sm" />
-                <span className="text-[11px] xs:text-xs font-semibold">Add Note</span>
-              </button>
+                {/* add draft note */}
+                <button
+                  type="button"
+                  onClick={addDraftNotes}
+                  className="group flex flex-col items-center justify-center gap-1 rounded-lg border border-gray-200 bg-white px-2 py-2.5 text-gray-700 hover:border-blue-300 hover:bg-blue-50 transition-all dark:border-gray-700 dark:bg-gray-900 dark:text-gray-200 dark:hover:border-blue-500/50 dark:hover:bg-blue-500/10"
+                  title="Add a draft note"
+                >
+                  <FontAwesomeIcon icon={faNoteSticky} className="text-sm" />
+                  <span className="text-[11px] xs:text-xs font-semibold">Add Note</span>
+                </button>
 
-              {/* world settings */}
-              <button
-                type="button"
-                onClick={openWorldbuildingModal}
-                className="group flex flex-col items-center justify-center gap-1 rounded-lg border border-gray-200 bg-white px-2 py-2.5 text-gray-700 hover:border-indigo-300 hover:bg-indigo-50 transition-all dark:border-gray-700 dark:bg-gray-900 dark:text-gray-200 dark:hover:border-indigo-500/50 dark:hover:bg-indigo-500/10"
-                title="Open world building modal"
-              >
-                <FontAwesomeIcon icon={faGlobe} className="text-sm" />
-                <span className="text-[11px] xs:text-xs font-semibold">World Building</span>
-              </button>
+                {/* world settings */}
+                <button
+                  type="button"
+                  onClick={openWorldbuildingModal}
+                  className="group flex flex-col items-center justify-center gap-1 rounded-lg border border-gray-200 bg-white px-2 py-2.5 text-gray-700 hover:border-indigo-300 hover:bg-indigo-50 transition-all dark:border-gray-700 dark:bg-gray-900 dark:text-gray-200 dark:hover:border-indigo-500/50 dark:hover:bg-indigo-500/10"
+                  title="Open world building modal"
+                >
+                  <FontAwesomeIcon icon={faGlobe} className="text-sm" />
+                  <span className="text-[11px] xs:text-xs font-semibold">World Building</span>
+                </button>
 
-              {/* dashboard */}
-              <button
-                type="button"
-                onClick={() => alert("Currently, in development...")}
-                className="group flex flex-col items-center justify-center gap-1 rounded-lg border border-gray-200 bg-white px-2 py-2.5 text-gray-700 hover:border-amber-300 hover:bg-amber-50 transition-all dark:border-gray-700 dark:bg-gray-900 dark:text-gray-200 dark:hover:border-amber-500/50 dark:hover:bg-amber-500/10"
-                title="Dashboard (coming soon)"
-              >
-                <FontAwesomeIcon icon={faTableColumns} className="text-sm" />
-                <span className="text-[11px] xs:text-xs font-semibold">Dashboard</span>
-                <span className="text-[10px] text-gray-400 dark:text-gray-500">Soon</span>
-              </button>
+                {/* dashboard */}
+                <button
+                  type="button"
+                  onClick={() => alert("Currently, in development...")}
+                  className="group flex flex-col items-center justify-center gap-1 rounded-lg border border-gray-200 bg-white px-2 py-2.5 text-gray-700 hover:border-amber-300 hover:bg-amber-50 transition-all dark:border-gray-700 dark:bg-gray-900 dark:text-gray-200 dark:hover:border-amber-500/50 dark:hover:bg-amber-500/10"
+                  title="Dashboard (coming soon)"
+                >
+                  <FontAwesomeIcon icon={faTableColumns} className="text-sm" />
+                  <span className="text-[11px] xs:text-xs font-semibold">Dashboard</span>
+                  <span className="text-[10px] text-gray-400 dark:text-gray-500">Soon</span>
+                </button>
 
-              {/* Ai assist */}
-              <button
-                type="button"
-                onClick={() => {alert("Currently, in development...");}}
-                className="group flex flex-col items-center justify-center gap-1 rounded-lg border border-gray-200 bg-white px-2 py-2.5 text-gray-700 hover:border-fuchsia-300 hover:bg-fuchsia-50 transition-all dark:border-gray-700 dark:bg-gray-900 dark:text-gray-200 dark:hover:border-fuchsia-500/50 dark:hover:bg-fuchsia-500/10"
-                title="AI assist (coming soon)"
-              >
-                <FontAwesomeIcon icon={faWandMagicSparkles} className="text-sm" />
-                <span className="text-[11px] xs:text-xs font-semibold">AI Assist</span>
-                <span className="text-[10px] text-gray-400 dark:text-gray-500">Soon</span>
-              </button>
+                {/* Ai assist */}
+                <button
+                  type="button"
+                  onClick={() => {alert("Currently, in development...");}}
+                  className="group flex flex-col items-center justify-center gap-1 rounded-lg border border-gray-200 bg-white px-2 py-2.5 text-gray-700 hover:border-fuchsia-300 hover:bg-fuchsia-50 transition-all dark:border-gray-700 dark:bg-gray-900 dark:text-gray-200 dark:hover:border-fuchsia-500/50 dark:hover:bg-fuchsia-500/10"
+                  title="AI assist (coming soon)"
+                >
+                  <FontAwesomeIcon icon={faWandMagicSparkles} className="text-sm" />
+                  <span className="text-[11px] xs:text-xs font-semibold">AI Assist</span>
+                  <span className="text-[10px] text-gray-400 dark:text-gray-500">Soon</span>
+                </button>
 
-              {/* graph */}
-              <button
-                type="button"
-                onClick={() => alert("Currently, in development...")}
-                className="group flex flex-col items-center justify-center gap-1 rounded-lg border border-gray-200 bg-white px-2 py-2.5 text-gray-700 hover:border-cyan-300 hover:bg-cyan-50 transition-all dark:border-gray-700 dark:bg-gray-900 dark:text-gray-200 dark:hover:border-cyan-500/50 dark:hover:bg-cyan-500/10"
-                title="Character graph (coming soon)"
-              >
-                <FontAwesomeIcon icon={faProjectDiagram} className="text-sm" />
-                <span className="text-[11px] xs:text-xs font-semibold">Character Graph</span>
-                <span className="text-[10px] text-gray-400 dark:text-gray-500">Soon</span>
-              </button>
-              
-              {/* prep new chapter */}
-              <button
-                type="button"
-                onClick={() => alert("Currently, in development...")}
-                className="group flex flex-col items-center justify-center gap-1 rounded-lg border border-gray-200 bg-white px-2 py-2.5 text-gray-700 hover:border-violet-300 hover:bg-violet-50 transition-all dark:border-gray-700 dark:bg-gray-900 dark:text-gray-200 dark:hover:border-violet-500/50 dark:hover:bg-violet-500/10"
-                title="Prep New Chapter (coming soon)"
-              >
-                <FontAwesomeIcon icon={faFileLines} className="text-sm" />
-                <span className="text-[11px] xs:text-xs font-semibold">Prep New Chapter</span>
-                <span className="text-[10px] text-gray-400 dark:text-gray-500">Soon</span>
-              </button>
-              
+                {/* graph */}
+                <button
+                  type="button"
+                  onClick={() => alert("Currently, in development...")}
+                  className="group flex flex-col items-center justify-center gap-1 rounded-lg border border-gray-200 bg-white px-2 py-2.5 text-gray-700 hover:border-cyan-300 hover:bg-cyan-50 transition-all dark:border-gray-700 dark:bg-gray-900 dark:text-gray-200 dark:hover:border-cyan-500/50 dark:hover:bg-cyan-500/10"
+                  title="Character graph (coming soon)"
+                >
+                  <FontAwesomeIcon icon={faProjectDiagram} className="text-sm" />
+                  <span className="text-[11px] xs:text-xs font-semibold">Character Graph</span>
+                  <span className="text-[10px] text-gray-400 dark:text-gray-500">Soon</span>
+                </button>
+                
+                {/* prep new chapter */}
+                <button
+                  type="button"
+                  onClick={() => alert("Currently, in development...")}
+                  className="group flex flex-col items-center justify-center gap-1 rounded-lg border border-gray-200 bg-white px-2 py-2.5 text-gray-700 hover:border-violet-300 hover:bg-violet-50 transition-all dark:border-gray-700 dark:bg-gray-900 dark:text-gray-200 dark:hover:border-violet-500/50 dark:hover:bg-violet-500/10"
+                  title="Prep New Chapter (coming soon)"
+                >
+                  <FontAwesomeIcon icon={faFileLines} className="text-sm" />
+                  <span className="text-[11px] xs:text-xs font-semibold">Prep New Chapter</span>
+                  <span className="text-[10px] text-gray-400 dark:text-gray-500">Soon</span>
+                </button>
+                
+              </div>
             </div>
-          </div>
 
-        </div>
+          </div>
+        )}
 
         {/* CONTENT CONTAINER */}
         <div className="grid grid-cols-1 xxs:grid-cols-6 xs:grid-cols-10 gap-2 items-start">
@@ -1031,7 +1147,7 @@ export default function ExperimentPage() {
 
               {/* BOOK AND CHARACTER FORMS LEFT PANEL */}
               <div className="sticky top-15 w-full">
-                <div className="xxs:max-h-[calc(100vh-7.5rem)] overflow-y-auto overflow-x-hidden notes-scroll overflow-contain">
+                <div className="xxs:max-h-[calc(100vh-9.5rem)] overflow-y-auto overflow-x-hidden notes-scroll overflow-contain">
                   {/* ADD CHARACTER FORM */}
                   {(addCharacterState &&
                     <form
@@ -1096,7 +1212,7 @@ export default function ExperimentPage() {
                               <option value="dwarf">Dwarf</option>
                               <option value="orc">Orc</option>
                               <option value="dragon">Dragon</option>
-                              <option value="Other">Other</option>
+                              <option value="other">Other</option>
                             </select>
                           </div>
                         </div>
@@ -1137,6 +1253,14 @@ export default function ExperimentPage() {
                         className="w-full mt-6 bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 rounded-lg shadow-lg hover:shadow-blue-500/30 transform hover:-translate-y-0.5 transition-all active:scale-95"
                       >
                         Create Character
+                      </button>
+
+                      <button
+                        type="button"
+                        className="w-full my-3 bg-gray-600 hover:bg-gray-700 text-white font-bold py-3 rounded-lg shadow-lg hover:shadow-gray-700/30 transform transition-all5"
+                        onClick={cancelCharacterAdd}
+                      >
+                        Cancel
                       </button>
                     </form>
                   )}
@@ -1239,6 +1363,7 @@ export default function ExperimentPage() {
 
                         {/* Genre check list */}
                         <div>
+                          <label className="block text-xs font-semibold uppercase tracking-wider text-gray-500 mb-1 ml-1">Genre</label>
                           <div className="grid grid-cols-2 gap-x-10 gap-y-1 overflow-y-auto rounded-lg border border-gray-200 dark:border-gray-700 p-3">
                             {genreOptions.map(option => (
                               <label key={option} className="flex items-center gap-2 text-sm text-gray-700 dark:text-gray-200">
@@ -1256,6 +1381,7 @@ export default function ExperimentPage() {
 
                         {/* Tags dropdown select */}
                         <div>
+                          <label className="block text-xs font-semibold uppercase tracking-wider text-gray-500 mb-1 ml-1">Tags</label>
                           <select
                             className="rounded-lg border border-gray-300 dark:border-gray-700 p-2.5 dark:bg-gray-800 w-full focus:ring-2 focus:ring-blue-500 outline-none transition"
                             value=""
@@ -1264,9 +1390,15 @@ export default function ExperimentPage() {
                               toggleBookArrayValue(e.target.value, bookTags, setBookTags);
                             }}
                           >
-                            <option value="">Select...</option>
-                            {tagOptions.map(option => (
-                              <option key={option} value={option}>{option}</option>
+                            <option value="">Select tags...</option>
+                            {Object.entries(tagOptions).map(([category, tags]) => (
+                              <optgroup className="text-sm text-gray-500 font-semibold" key={category} label={category.replace("_", " ")}>
+                                {tags.map((tag) => (
+                                  <option className="text-black dark:text-white" key={tag} value={tag}>
+                                    {tag}
+                                  </option>
+                                ))}
+                              </optgroup>
                             ))}
                           </select>
 
@@ -1645,7 +1777,7 @@ export default function ExperimentPage() {
               </div>
 
               {/* NOTES CONTENTS */}
-              <div className="max-h-[calc(100vh-11rem)] overflow-y-auto overflow-x-hidden notes-scroll overflow-contain mt-2">
+              <div className="max-h-[calc(100vh-12.5rem)] overflow-y-auto overflow-x-hidden notes-scroll overflow-contain mt-2">
 
                 {bookNotes.length < 1 && !draftNote && (
                   <div className="text-sm text-gray-500 p-5">
@@ -1829,7 +1961,7 @@ export default function ExperimentPage() {
 
           {/* CHANGES SAVED POPUP */}
           {showStatePopup && (
-          <div className="fixed top-14 left-1/2 bg-gray-300 py-1 px-5 transform -translate-x-1/2 rounded shadow-lg flex justify-center space-x-4 animate-fadeDown">
+          <div className="fixed top-14 z-30 left-1/2 bg-gray-300 py-1 px-5 transform -translate-x-1/2 rounded shadow-lg flex justify-center space-x-4 animate-fadeDown">
               <span>
               {alertMessage}
               <FontAwesomeIcon className="text-green-500" size="lg" icon={faCheck}/>

@@ -1,4 +1,4 @@
-import { Routes, Route } from "react-router-dom";
+import { Routes, Route, useLocation } from "react-router-dom";
 import Layout from "./components/Layout";
 
 import UserPage from "./pages/UserPage";
@@ -46,6 +46,12 @@ export default function StoryOrganizer() {
 
   checkBackup();
 }, []);
+
+const { pathname } = useLocation();
+
+useEffect(() => {
+  window.scrollTo(0, 0);
+}, [pathname]);
 
   // ROUTING CODE
   return (

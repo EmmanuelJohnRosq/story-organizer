@@ -999,11 +999,11 @@ const [charDescription, setCharDescription] = useState<CharacterDescription>({
     <div className="w-full mx-auto pt-15 px-2">
       
       {/* CONTENT CONTAINER */}
-      <div className="grid grid-cols-1 xxs:grid-cols-4 xs:grid-cols-10 xxs:gap-2 items-start">
+      <div className="grid grid-cols-1 xxs:grid-cols-4 xs:grid-cols-10 xxs:gap-1 items-start">
 
         {/* LEFT LEFT SIDE WIKI BAR */}
         <div className="hidden xxs:block lg:sticky lg:top-15 col-span-1 xs:col-span-2 flex-1 relative">
-          <aside className="rounded-2xl border border-slate-200/70 bg-white/85 shadow-xl backdrop-blur-sm overflow-contain dark:border-slate-800 dark:bg-[#0f172a]/95">
+          <aside className="rounded-md border border-slate-200/70 bg-white/85 shadow-xl backdrop-blur-sm overflow-contain dark:border-slate-800 dark:bg-[#0f172a]/95">
             <div className="sticky top-15 max-h-[calc(100vh-4rem)] overflow-y-auto notes-scroll rounded-md border border-gray-200 bg-white/90 p-4 shadow-lg dark:border-gray-800 dark:bg-gray-900/90">
               <div className="flex items-center justify-between gap-2">
               <div>
@@ -1053,7 +1053,7 @@ const [charDescription, setCharDescription] = useState<CharacterDescription>({
 
           {/* CHARACTER CARD IN CHAR PAGE, left side */}
           { originalCharacter && (
-          <div className="lg:sticky top-15 h-fit rounded-2xl border border-slate-200/70 bg-white/85 shadow-xl backdrop-blur-sm overflow-contain dark:border-slate-800 dark:bg-[#0f172a]/95">
+          <div className="lg:sticky top-15 h-fit rounded-md border border-slate-200/70 bg-white/85 shadow-xl backdrop-blur-sm overflow-contain dark:border-slate-800 dark:bg-[#0f172a]/95">
 
             <div className="px-2 py-4">
 
@@ -1123,8 +1123,8 @@ const [charDescription, setCharDescription] = useState<CharacterDescription>({
                     {originalCharacter.importance}
                   </span>
 
-                  <span className="px-3 py-1 text-xs rounded-full bg-sky-500/20 text-sky-800 dark:text-sky-300 border border-sky-700/30">
-                    {upcaseLetter(originalCharacter.setRace[0] || originalCharacter.description.basic.race || "Unknown")}
+                  <span className="px-3 py-1 text-xs rounded-full bg-teal-400/20 text-teal-800 dark:text-teal-300 border border--700/30">
+                    {upcaseLetter(originalCharacter.setRace[0] || originalCharacter.description.basic.race || "unknown")}
                   </span> 
                 </div>
               </div>
@@ -1174,12 +1174,12 @@ const [charDescription, setCharDescription] = useState<CharacterDescription>({
 
         </div>
       
-        {/* CENTER CONTAINER */}
+        {/* RIGHT CENTER CONTAINER */}
         <div className="col-span-2 xs:col-span-4 w-full">
 
           {/* CHARACTER DATA PAGE / EDIT CHAR DETAILS */}
           { originalCharacter && editingCharacter && (
-            <div className="mb-3 rounded-2xl border border-slate-200/70 bg-white/90 pt-3 shadow-xl backdrop-blur-sm dark:border-slate-800 dark:bg-gray-900/90">
+            <div className="mb-3 rounded-md border border-slate-200/70 bg-white/90 pt-3 shadow-xl backdrop-blur-sm dark:border-slate-800 dark:bg-gray-900/90">
 
               {/* CHARACTER CARD AND IMAGE FORMAT */}
               <div

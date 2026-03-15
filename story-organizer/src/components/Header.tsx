@@ -413,11 +413,11 @@ export default function Header() {
             {/* //Title/Menu/HEADER */}
             <header 
                 className={`
-                fixed top-0 left-0 w-full h-13 z-50
+                fixed top-0 left-0 w-full h-12 z-50
                 bg-gray-950 backdrop-blur-md
                 transition-transform duration-300 ease-in-out
                 `}>
-                <div className="flex justify-between place-items-center py-2 px-1 md:py-2 md:px-5 w-full sm:w-full mx-auto">
+                <div className="flex justify-between place-items-center py-1 px-1 md:px-5 w-full sm:w-full mx-auto">
                 
                     {isBookContext ? (
                         <div className="flex items-center text-white min-w-0">
@@ -456,14 +456,20 @@ export default function Header() {
                         </div>
                     ) : (
                         <>
-                            <h1
-                                className="text-white cursor-pointer hidden md:flex md:text-2xl sm:text-lg"
-                                onClick={() => {navigate("/")}}
+                            <div 
+                                className="flex gap-1 text-white cursor-pointer select-none"
                             >
-                                📖StoryDreamer
-                            </h1>
-
-                            <p className="md:hidden flex items-center justify-center text-2xl">📖</p>
+                                <div className="h-10 overflow-hidden">
+                                    <img 
+                                    src="/textures/logo/logo2.png" 
+                                    alt="📖" 
+                                    className="w-full h-full object-cover" 
+                                    />
+                                </div>
+                                <span className="hidden md:block text-xl font-semibold tracking-tight pt-1">
+                                    Story Dreamer
+                                </span>
+                            </div>
                         </>
                     )}
 
