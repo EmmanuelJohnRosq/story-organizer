@@ -1023,131 +1023,17 @@ export default function ExperimentPage() {
 
   return (
     // MAIN PARENT CONTAINER DIV CLOSER
-    <div className="pt-15 xxs:pt-0 w-full mx-auto px-2">
-        {/* padding for the scroll background */}
-        <div className="hidden xxs:block sticky top-0 p-7 bg-gray-800"></div>
-
-        {/* PAGE BUTTONS */}
-        {location.pathname !== "/" && (
-          <div className="hidden xxs:block sticky top-14 z-20 pb-2">
-
-            <div className="rounded-xl border border-gray-200/80 bg-white/85 dark:border-gray-800 dark:bg-gray-900/85 backdrop-blur-sm shadow-md p-1">
-              <div className="grid grid-cols-3 md:grid-cols-8 gap-2 items-stretch">
-                {/* add character */}
-                <button
-                  type="button"
-                  onClick={addNewcharacter}
-                  className={`group flex flex-col items-center justify-center gap-1 rounded-lg border px-2 py-2.5 transition-all ${
-                    addCharacterState
-                      ? "border-emerald-500 bg-emerald-50 text-emerald-700 dark:border-emerald-500/60 dark:bg-emerald-500/10 dark:text-emerald-300"
-                      : "border-gray-200 bg-white text-gray-700 hover:border-emerald-300 hover:bg-emerald-50 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-200 dark:hover:border-emerald-500/50 dark:hover:bg-emerald-500/10"
-                  }`}
-                  title={!addCharacterState ? "Open add character form" : "Minimize add character form"}
-                >
-                  <FontAwesomeIcon icon={faUserPlus} className="text-sm" />
-                  <span className="text-[11px] xs:text-xs font-semibold leading-tight text-center">{!addCharacterState ? "Create Character" : "Hide Character Form"}</span>
-                </button>
-
-                {/* edit book */}
-                <button
-                  type="button"
-                  onClick={editBook}
-                  className={`group flex flex-col items-center justify-center gap-1 rounded-lg border px-2 py-2.5 transition-all ${
-                    editBookContent
-                      ? "border-cyan-500 bg-cyan-50 text-emerald-700 dark:border-cyan-500/60 dark:bg-cyan-500/10 dark:text-cyan-300"
-                      : "border-cyan-200 bg-white text-gray-700 hover:border-cyan-300 hover:bg-cyan-50 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-200 dark:hover:border-cyan-500/50 dark:hover:bg-cyan-500/10"
-                  }`}
-                  title={!editBookContent ? "Open edit book form" : "Minimize edit book form"}
-                >
-                  <FontAwesomeIcon icon={faPenToSquare} className="text-sm" />
-                  <span className="text-[11px] xs:text-xs font-semibold leading-tight text-center">{!editBookContent ? "Edit Book" : "Hide Edit Form"}</span>
-                </button>
-
-                {/* add draft note */}
-                <button
-                  type="button"
-                  onClick={addDraftNotes}
-                  className="group flex flex-col items-center justify-center gap-1 rounded-lg border border-gray-200 bg-white px-2 py-2.5 text-gray-700 hover:border-blue-300 hover:bg-blue-50 transition-all dark:border-gray-700 dark:bg-gray-900 dark:text-gray-200 dark:hover:border-blue-500/50 dark:hover:bg-blue-500/10"
-                  title="Add a draft note"
-                >
-                  <FontAwesomeIcon icon={faNoteSticky} className="text-sm" />
-                  <span className="text-[11px] xs:text-xs font-semibold">Add Note</span>
-                </button>
-
-                {/* world settings */}
-                <button
-                  type="button"
-                  onClick={openWorldbuildingModal}
-                  className="group flex flex-col items-center justify-center gap-1 rounded-lg border border-gray-200 bg-white px-2 py-2.5 text-gray-700 hover:border-indigo-300 hover:bg-indigo-50 transition-all dark:border-gray-700 dark:bg-gray-900 dark:text-gray-200 dark:hover:border-indigo-500/50 dark:hover:bg-indigo-500/10"
-                  title="Open world building modal"
-                >
-                  <FontAwesomeIcon icon={faGlobe} className="text-sm" />
-                  <span className="text-[11px] xs:text-xs font-semibold">World Building</span>
-                </button>
-
-                {/* dashboard */}
-                <button
-                  type="button"
-                  onClick={() => alert("Currently, in development...")}
-                  className="group flex flex-col items-center justify-center gap-1 rounded-lg border border-gray-200 bg-white px-2 py-2.5 text-gray-700 hover:border-amber-300 hover:bg-amber-50 transition-all dark:border-gray-700 dark:bg-gray-900 dark:text-gray-200 dark:hover:border-amber-500/50 dark:hover:bg-amber-500/10"
-                  title="Dashboard (coming soon)"
-                >
-                  <FontAwesomeIcon icon={faTableColumns} className="text-sm" />
-                  <span className="text-[11px] xs:text-xs font-semibold">Dashboard</span>
-                  <span className="text-[10px] text-gray-400 dark:text-gray-500">Soon</span>
-                </button>
-
-                {/* Ai assist */}
-                <button
-                  type="button"
-                  onClick={() => {alert("Currently, in development...");}}
-                  className="group flex flex-col items-center justify-center gap-1 rounded-lg border border-gray-200 bg-white px-2 py-2.5 text-gray-700 hover:border-fuchsia-300 hover:bg-fuchsia-50 transition-all dark:border-gray-700 dark:bg-gray-900 dark:text-gray-200 dark:hover:border-fuchsia-500/50 dark:hover:bg-fuchsia-500/10"
-                  title="AI assist (coming soon)"
-                >
-                  <FontAwesomeIcon icon={faWandMagicSparkles} className="text-sm" />
-                  <span className="text-[11px] xs:text-xs font-semibold">AI Assist</span>
-                  <span className="text-[10px] text-gray-400 dark:text-gray-500">Soon</span>
-                </button>
-
-                {/* graph */}
-                <button
-                  type="button"
-                  onClick={() => alert("Currently, in development...")}
-                  className="group flex flex-col items-center justify-center gap-1 rounded-lg border border-gray-200 bg-white px-2 py-2.5 text-gray-700 hover:border-cyan-300 hover:bg-cyan-50 transition-all dark:border-gray-700 dark:bg-gray-900 dark:text-gray-200 dark:hover:border-cyan-500/50 dark:hover:bg-cyan-500/10"
-                  title="Character graph (coming soon)"
-                >
-                  <FontAwesomeIcon icon={faProjectDiagram} className="text-sm" />
-                  <span className="text-[11px] xs:text-xs font-semibold">Character Graph</span>
-                  <span className="text-[10px] text-gray-400 dark:text-gray-500">Soon</span>
-                </button>
-                
-                {/* prep new chapter */}
-                <button
-                  type="button"
-                  onClick={() => alert("Currently, in development...")}
-                  className="group flex flex-col items-center justify-center gap-1 rounded-lg border border-gray-200 bg-white px-2 py-2.5 text-gray-700 hover:border-violet-300 hover:bg-violet-50 transition-all dark:border-gray-700 dark:bg-gray-900 dark:text-gray-200 dark:hover:border-violet-500/50 dark:hover:bg-violet-500/10"
-                  title="Prep New Chapter (coming soon)"
-                >
-                  <FontAwesomeIcon icon={faFileLines} className="text-sm" />
-                  <span className="text-[11px] xs:text-xs font-semibold">Prep New Chapter</span>
-                  <span className="text-[10px] text-gray-400 dark:text-gray-500">Soon</span>
-                </button>
-                
-              </div>
-            </div>
-
-          </div>
-        )}
+    <div className="pt-15 w-full mx-auto px-2">
 
         {/* CONTENT CONTAINER */}
-        <div className="grid grid-cols-1 xxs:grid-cols-6 xs:grid-cols-10 gap-2 items-start">
+        <div className="grid grid-cols-9 gap-2 justify-center">
     
           {/* LEFT SIDE CONTAINER */}
-          <div className="lg:sticky lg:top-37 cols-span-1 xxs:col-span-2 xs:col-span-3 flex-1 relative">
+          <div className="lg:sticky col-start-2 col-span-3 flex-1 relative">
 
               {/* BOOK AND CHARACTER FORMS LEFT PANEL */}
               <div className="sticky top-15 w-full">
-                <div className="xxs:max-h-[calc(100vh-9.5rem)] overflow-y-auto overflow-x-hidden notes-scroll overflow-contain">
+                <div className="">
                   {/* ADD CHARACTER FORM */}
                   {(addCharacterState &&
                     <form
@@ -1441,118 +1327,118 @@ export default function ExperimentPage() {
 
                   {/* BOOK SUMMARY FORM */}
                   {!editBookContent && (
-                  <>
-                    <div className="flex-1 rounded-md shadow-lg pt-4 px-4 pb-1 mb-1 bg-gray-100 dark:bg-gray-900 transition duration-300 animate-fadeDown">
-                      <div className="space-y-2">
+                    <div className="xxs:h-[calc(100vh-4rem)] overflow-y-auto overflow-x-hidden notes-scroll overflow-contain">
+                      <div className="flex-1 rounded-md shadow-lg pt-4 px-4 pb-1 mb-1 bg-gray-100 dark:bg-gray-900 transition duration-300 animate-fadeDown ">
+                        <div className="space-y-2">
 
-                          {/* Summary */}
-                          <div>
-                            <div className="flex justify-between">
-                              <label className="text-xl font-semibold truncate">
-                                {titleDraft || currentBook?.title || "Book Content"}
-                              </label>
+                            {/* Summary */}
+                            <div>
+                              <div className="flex justify-between">
+                                <label className="text-xl font-semibold truncate">
+                                  {titleDraft || currentBook?.title || "Book Content"}
+                                </label>
 
-                              <div className="relative inline-block"> 
-                                <button
-                                  className="border-gray-500 text-black rounded-xl px-1 dark:text-gray-500 hover:text-white"
-                                  onClick={() => setShowSettingsMenu(prev => !prev)}
-                                  title="Book settings"
-                                >
-                                  <FontAwesomeIcon icon={faEllipsis} size="lg"/>
-                                </button>
+                                <div className="relative inline-block"> 
+                                  <button
+                                    className="border-gray-500 text-black rounded-xl px-1 dark:text-gray-500 hover:text-white"
+                                    onClick={() => setShowSettingsMenu(prev => !prev)}
+                                    title="Book settings"
+                                  >
+                                    <FontAwesomeIcon icon={faEllipsis} size="lg"/>
+                                  </button>
 
-                                {showSettingsMenu && (
-                                  <div className="absolute top-9 right-1 z-30 w-56 rounded-md border bg-white dark:bg-gray-800 dark:border-gray-600 shadow-xl p-2 space-y-1">
-                                    <button
-                                      className="w-full text-left px-3 py-2 rounded hover:bg-gray-200 dark:hover:bg-gray-700"
-                                      onClick={() => {
-                                        editBook()
-                                        setShowSettingsMenu(false);
-                                      }}
-                                    >
-                                      Edit book details
-                                    </button>
-                                    <button
-                                      className="w-full text-left px-3 py-2 rounded hover:bg-gray-200 dark:hover:bg-gray-700"
-                                      onClick={() => {
-                                        addNewcharacter();
-                                        setShowSettingsMenu(false);
-                                      }}
-                                    >
-                                      Add character
-                                    </button>
+                                  {showSettingsMenu && (
+                                    <div className="absolute top-9 right-1 z-30 w-56 rounded-md border bg-white dark:bg-gray-800 dark:border-gray-600 shadow-xl p-2 space-y-1">
+                                      <button
+                                        className="w-full text-left px-3 py-2 rounded hover:bg-gray-200 dark:hover:bg-gray-700"
+                                        onClick={() => {
+                                          editBook()
+                                          setShowSettingsMenu(false);
+                                        }}
+                                      >
+                                        Edit book details
+                                      </button>
+                                      <button
+                                        className="w-full text-left px-3 py-2 rounded hover:bg-gray-200 dark:hover:bg-gray-700"
+                                        onClick={() => {
+                                          addNewcharacter();
+                                          setShowSettingsMenu(false);
+                                        }}
+                                      >
+                                        Add character
+                                      </button>
 
-                                    <button
-                                      className="hidden xs:block w-full text-left px-3 py-2 rounded hover:bg-gray-200 dark:hover:bg-sky-700/50"
-                                      onClick={() => {addDraftNotes(); setShowSettingsMenu(false)}}
-                                    >
-                                      Add draft note
-                                    </button>
+                                      <button
+                                        className="hidden xs:block w-full text-left px-3 py-2 rounded hover:bg-gray-200 dark:hover:bg-sky-700/50"
+                                        onClick={() => {addDraftNotes(); setShowSettingsMenu(false)}}
+                                      >
+                                        Add draft note
+                                      </button>
 
-                                    <button
-                                      className="w-full text-left px-3 py-2 rounded text-red-600 hover:bg-red-100 dark:hover:bg-red-900/30"
-                                      onClick={() => {
-                                        if (currentBook?.id) deleteBook(currentBook.id);
-                                      }}
-                                    >
-                                      Delete book
-                                    </button>
-                                  </div>
-                                )}
+                                      <button
+                                        className="w-full text-left px-3 py-2 rounded text-red-600 hover:bg-red-100 dark:hover:bg-red-900/30"
+                                        onClick={() => {
+                                          if (currentBook?.id) deleteBook(currentBook.id);
+                                        }}
+                                      >
+                                        Delete book
+                                      </button>
+                                    </div>
+                                  )}
+                                </div>
                               </div>
-                            </div>
-                            
-                            <div className="flex justify-between mb-1">
-                              <label className="text-xs text-neutral-400">
-                                Volume {bookVolume || "0"} • {bookVolName || "Volume Name"} • {upcaseLetter(bookStatus) || "unknown"}
-                              </label>
                               
-                              <label className="text-xs text-neutral-400">{"Chapter count: " + bookChapterCount || "add chapter count"}</label>
+                              <div className="flex justify-between mb-1">
+                                <label className="text-xs text-neutral-400">
+                                  Volume {bookVolume || "0"} • {bookVolName || "Volume Name"} • {upcaseLetter(bookStatus) || "unknown"}
+                                </label>
+                                
+                                <label className="text-xs text-neutral-400">{"Chapter count: " + bookChapterCount || "add chapter count"}</label>
+                              </div>
+
+                              <textarea
+                                  rows={12}
+                                  className="font-serif text-sm leading-6 w-full px-1 py-1 focus:outline-none text-sm placeholder-gray-400 dark:placeholder-gray-600 text-area-scroll resize-none"
+                                  placeholder="Update book summary"
+                                  value={bookSummary}
+                                  onFocus={(e) => autoResize(e)}
+                                  onBlur={(e) => { e.currentTarget.style.height = "auto";}}
+                                  readOnly
+                              />
                             </div>
+                        </div>
+                      </div>
 
-                            <textarea
-                                rows={12}
-                                className="w-full px-1 py-1 focus:outline-none text-sm placeholder-gray-400 dark:placeholder-gray-600 text-area-scroll resize-none"
-                                placeholder="Update book summary"
-                                value={bookSummary}
-                                onFocus={(e) => autoResize(e)}
-                                onBlur={(e) => { e.currentTarget.style.height = "auto";}}
-                                readOnly
-                            />
-                          </div>
+                      {/* CHARACTER GENRE AND TAGS */}
+                      <div className="rounded-md shadow-lg p-4 mb-2 bg-gray-100 dark:bg-gray-900 transition duration-300">
+                        <label className="text-sm font-semibold">Book Classification</label>
+
+                        <div className="block mb-1 -mt-1">
+                          <label className="text-xs text-blue-900 dark:text-blue-400">Genre</label>
+                          <label className="text-xs text-gray-300"> • </label>
+                          <label className="text-xs text-purple-900 dark:text-purple-400">Tags</label>
+                        </div>
+                        
+                        <div className="flex flex-wrap gap-2">
+                          {bookChips.length ? (
+                            bookChips.map((chip, index) => (
+                              <span 
+                                key={`${chip.type}-${chip.text}-${index}`} 
+                                className={`px-3 py-1 rounded-full text-sm ${
+                                  chip.type === 'genre' 
+                                    ? "bg-blue-200 text-blue-900 dark:bg-blue-900/40 dark:text-blue-200" // Genre Style
+                                    : "bg-purple-200 text-purple-900 dark:bg-purple-900/40 dark:text-purple-200" // Tag Style
+                                }`}
+                              >
+                                {upcaseLetter(chip.text)}
+                              </span>
+                            ))
+                          ) : (
+                            <span className="text-sm text-gray-500 dark:text-gray-400">No data yet.</span>
+                          )}
+                        </div>
                       </div>
                     </div>
-
-                    {/* CHARACTER GENRE AND TAGS */}
-                    <div className="rounded-md shadow-lg p-4 mb-2 bg-gray-100 dark:bg-gray-900 transition duration-300">
-                      <label className="text-sm font-semibold">Book Classification</label>
-
-                      <div className="block mb-1 -mt-1">
-                        <label className="text-xs text-blue-900 dark:text-blue-400">Genre</label>
-                        <label className="text-xs text-gray-300"> • </label>
-                        <label className="text-xs text-purple-900 dark:text-purple-400">Tags</label>
-                      </div>
-                      
-                      <div className="flex flex-wrap gap-2">
-                        {bookChips.length ? (
-                          bookChips.map((chip, index) => (
-                            <span 
-                              key={`${chip.type}-${chip.text}-${index}`} 
-                              className={`px-3 py-1 rounded-full text-sm ${
-                                chip.type === 'genre' 
-                                  ? "bg-blue-200 text-blue-900 dark:bg-blue-900/40 dark:text-blue-200" // Genre Style
-                                  : "bg-purple-200 text-purple-900 dark:bg-purple-900/40 dark:text-purple-200" // Tag Style
-                              }`}
-                            >
-                              {upcaseLetter(chip.text)}
-                            </span>
-                          ))
-                        ) : (
-                          <span className="text-sm text-gray-500 dark:text-gray-400">No data yet.</span>
-                        )}
-                      </div>
-                    </div>
-                  </>
                   )}
 
                 </div>
@@ -1562,7 +1448,7 @@ export default function ExperimentPage() {
           </div>
           
           {/* CENTER CONTAINER */}
-          <div className="xxs:col-span-4 xs:col-span-5 w-full">
+          <div className="col-span-4 w-full">
 
             {/* character data and grid display */}
             <div className="rounded-md shadow-lg p-4 mb-2 bg-gray-100 dark:bg-gray-900 transition duration-300">
@@ -1757,180 +1643,6 @@ export default function ExperimentPage() {
             </div>
 
           </div>
-
-          {/* RIGHT SIDE CONTAINER */}
-          <div className="hidden lg:sticky lg:top-37 col-span-2 xs:flex flex-col relative animate-fadeRight transition delay-500 duration-900">
-            
-            {/* NOTES CONTAINER */}
-            <div className="rounded-md pl-2 pr-1 pt-2 mb-2 bg-gray-100 dark:bg-gray-900 transition duration-300">
-              <div className="flex justify-between"> 
-                <label className="text-sm font-semibold">{"Book"} Notes</label>
-                
-                <div className="flex justify-center">
-                  <button 
-                    className="border-gray-500 border text-black rounded hover:bg-gray-200/50 hover:text-gray-950 px-2 transition hover:border-white dark:text-white"
-                    onClick={addDraftNotes}
-                  >
-                    <FontAwesomeIcon icon={faPlus} size="xs"/>
-                  </button>
-                </div>
-              </div>
-
-              {/* NOTES CONTENTS */}
-              <div className="max-h-[calc(100vh-12.5rem)] overflow-y-auto overflow-x-hidden notes-scroll overflow-contain mt-2">
-
-                {bookNotes.length < 1 && !draftNote && (
-                  <div className="text-sm text-gray-500 p-5">
-                    Add notes, references, future scenarios, book plans, etc...
-                  </div>
-                )}
-
-                {/* THIS IS THE BOOK NOTES */}
-                <div className="overflow-contain">
-                    {[ ...(draftNote ? [draftNote] : []), ...bookNotes ].map(notes => (
-                    <div 
-                        className={`${colorMap[notes.color]} relative p-1 rounded-md shadow-md mb-2 bg-gray-100 dark:bg-gray-900 cursor-pointer animate-fadeDown`}
-                        key={notes.id ?? notes.notesId}
-                        data-id={notes.id}
-                    >
-
-                        <div className="flex justify-between pb-1"> 
-                        
-                        <span className="text-xs text-gray-800 dark:text-gray-400">
-                            {new Date(notes.createdAt).toLocaleString("en-US", {
-                            month: "short",
-                            day: "numeric",
-                            year: "numeric",
-                            hour: "2-digit",
-                            minute: "2-digit",
-                            })}
-                        </span>
-
-                        <button 
-                            className="hover:bg-neutral-300/50 rounded-2xl group"
-                            onClick={() => setNoteToDelete(notes)}>
-                            <svg
-                            xmlns="http://www.w3.org/2000/svg"
-                            className="h-5 w-5 text-gray-700 dark:text-gray-400 group-hover:text-red-500"
-                            fill="none"
-                            viewBox="0 0 24 24"
-                            stroke="currentColor"
-                            strokeWidth={2}
-                            >
-                            <path strokeLinecap="round" strokeLinejoin="round" d="M6 6l12 12M6 18L18 6" />
-                            </svg>
-                        </button>
-
-                        </div>
-                        
-                        <textarea
-                        onInput={(e: React.FormEvent<HTMLTextAreaElement>) => {
-                          const target = e.currentTarget;
-                          target.style.height = '';
-                          target.style.height = target.scrollHeight + 'px';
-                        }}
-                        className="
-                        w-full text-sm
-                        rounded-md 
-                        px-1
-                        focus:outline-none focus:ring-1 focus:ring-gray-400 
-                        hover:ring-gray-400 hover:ring-1
-                        resize-none
-                        overflow-hidden
-                        transition-all duration-200
-                        "
-                        ref={!notes.id ? draftTextareaRef : null}
-                        placeholder="Enter Notes"
-                        onFocus={(e) => {autoResize(e); setOnFocusId(String(notes.id!)); setNoteContent(notes.content); setHideSave(true); 
-                            if (notes.id) {
-                            setDraftstate(false);
-                            }
-                            else {
-                            setDraftstate(true);
-                            }
-                        }}
-                        rows={3}
-                        value={notes.content}
-                        onChange={(e) => {
-                            if (!notes.id) {
-                            // This is draft
-                            setDraftNote(prev =>
-                                prev ? { ...prev, content: e.target.value } : prev
-                            );
-                            } else {
-                            // This is saved note
-                            setBookNotes(prev =>
-                                prev.map(note =>
-                                note.id === notes.id
-                                    ? { ...note, content: e.target.value }
-                                    : note
-                                )
-                            );
-                            }
-                        }}
-                        onKeyDown={(e) => {
-                            if (e.key === "Enter" && !e.shiftKey) {
-                            e.preventDefault();
-                            (e.target as HTMLElement).blur();
-                            (saveNote(notes));
-                            }
-                        }}
-                        onBlur={(e) => { e.currentTarget.style.height = "auto";}}
-                        />
-
-                        {(hideSave && (notes.id ? Number(onFocusId) === notes.id : draftNoteState) &&
-                        <div className="flex justify-end gap-1">
-                            {/* {(notSaved &&
-                            <span>Not saved</span>
-                            )} */}
-
-                            <button 
-                            className="flex px-4 py-1 bg-neutral-500 rounded-xl hover:bg-neutral-600"
-                            onMouseDown={() => {setHideSave(false); setDraftNote(null);}}
-                            >
-                            Cancel
-                            </button>
-
-                            <button 
-                            className="flex px-4 py-1 bg-blue-700 rounded-xl"
-                            onMouseDown={() => {saveNote(notes);}}
-                            disabled={noteContent === notes.content}
-                            >
-                            Save 
-                            </button> 
-                        </div>
-                        )}
-
-                        {noteToDelete && noteToDelete.id === notes.id && (
-                        <div className="absolute inset-0 bg-black/40 backdrop-blur-sm flex items-center justify-center rounded-md z-10">
-                            <div className="bg-white dark:bg-gray-800 p-3 rounded-md shadow-lg text-center w-40">
-                            <p className="text-sm mb-2">Delete this note?</p>
-                            <div className="flex justify-between">
-                                <button
-                                onClick={() => handleDeleteNote(noteToDelete!)}
-                                className="text-red-500 text-sm hover:scale-105"
-                                >
-                                Delete
-                                </button>
-                                <button
-                                onClick={() => setNoteToDelete(null)}
-                                className="text-gray-500 text-sm"
-                                >
-                                Cancel
-                                </button>
-                            </div>
-                            </div>
-                        </div>
-                        )}
-                    </div>
-                    ))}
-                </div>
-
-              </div>
-
-            </div>
-
-          </div>
           
         </div>
       
@@ -1969,22 +1681,22 @@ export default function ExperimentPage() {
           </div>
           )}
 
-          {/* MOBILE NOTES */}
+          {/* NOTES */}
           {createPortal(
             <>
               {/* MOBILE NOTES TOGGLE */}
               <button
                 onClick={displayNotes}
-                className="xs:hidden fixed bottom-5 right-5 z-50 bg-blue-600 hover:bg-blue-700 text-white rounded-full p-4 shadow-xl"
+                className="fixed bottom-5 right-5 z-50 bg-blue-600 hover:bg-blue-700 text-white rounded-full p-4 shadow-xl"
                 title={notesShowState ? "Close notes" : "Open notes"}
               >
                 <FontAwesomeIcon icon={notesShowState ? faMinus : faPlus} />
               </button>
 
-              {/* MOBILE NOTES DRAWER */}
+              {/* Collapsible notes drawer*/}
               {isNotesDrawerMounted && (
                 <div
-                  className={`xs:hidden text-black dark:text-white fixed inset-0 z-40 transition-opacity duration-300 justify-items-center ${isNotesDrawerVisible ? "opacity-100" : "opacity-0"}`}
+                  className={`text-black dark:text-white fixed inset-0 z-40 transition-opacity duration-300 justify-items-center ${isNotesDrawerVisible ? "opacity-100" : "opacity-0"}`}
                   role="dialog"
                   aria-modal="true"
                 >
@@ -1994,93 +1706,176 @@ export default function ExperimentPage() {
                     onClick={closeNotesDrawer}
                   />
 
-                  <div className={`absolute bottom-0 rounded-t-2xl bg-gray-100 dark:bg-gray-800 shadow-2xl p-3 w-full max-w-[65vh] max-h-[75vh] transition-transform duration-300 ${isNotesDrawerVisible ? "translate-y-0" : "translate-y-full"}`}>
-                <div className="flex items-center justify-between mb-2">
-                  <h2 className="text-sm font-semibold">Notes</h2>
-                  <div className="flex gap-2">
-                    <button
-                      onClick={addDraftNotes}
-                      className="text-xs bg-blue-600 hover:bg-blue-700 text-white px-3 py-1 rounded-md"
-                    >
-                      Add
-                    </button>
-                    <button
-                      onClick={closeNotesDrawer}
-                      className="text-xs bg-gray-400 hover:bg-gray-500 text-white px-3 py-1 rounded-md"
-                    >
-                      Close
-                    </button>
-                  </div>
-                </div>
-
-                <div className="h-[calc(75vh-3.5rem)] overflow-y-auto overflow-x-hidden notes-scroll overflow-contain mt-2">
-                  {bookNotes.length < 1 && !draftNote && (
-                    <div className="text-sm text-gray-500">
-                      Add notes, references, future scenarios, book plans, etc...
-                    </div>
-                  )}
-
-                  <div>
-                    {[ ...(draftNote ? [draftNote] : []), ...bookNotes ].map(notes => (
-                      <div
-                        className={`${colorMap[notes.color]} relative p-1 rounded-md shadow-md mb-2 bg-gray-100 dark:bg-gray-900 cursor-pointer animate-fadeDown`}
-                        key={`mobile-${notes.id ?? notes.notesId}`}
-                      >
-                        <div className="flex justify-between pb-1">
-                          <span className="text-xs text-gray-800 dark:text-gray-400">
-                            {new Date(notes.createdAt).toLocaleString("en-US", {
-                              month: "short",
-                              day: "numeric",
-                              hour: "numeric",
-                              minute: "2-digit",
-                            })}
-                          </span>
-
-                          <button onClick={() => setNoteToDelete(notes)}>
-                            <FontAwesomeIcon icon={faMinus} size="sm" className="text-gray-700 dark:text-gray-300 hover:text-red-500" />
-                          </button>
-                        </div>
-
-                        <textarea
-                          className="w-full text-sm p-1 outline-none border-none rounded text-area-scroll resize-none"
-                          rows={3}
-                          value={notes.content}
-                          onChange={(e) => {
-                            if (!notes.id) {
-                              setDraftNote(prev => prev ? { ...prev, content: e.target.value } : prev);
-                            } else {
-                              setBookNotes(prev => prev.map(note => note.id === notes.id ? { ...note, content: e.target.value } : note));
-                            }
-                          }}
-                          onBlur={() => saveNote(notes)}
-                        />
-
-                        {noteToDelete && noteToDelete.id === notes.id && (
-                          <div className="absolute inset-0 bg-black/40 backdrop-blur-sm flex items-center justify-center rounded-md z-10">
-                            <div className="bg-white dark:bg-gray-800 p-3 rounded-md shadow-lg text-center w-40">
-                              <p className="text-sm mb-2">Delete this note?</p>
-                              <div className="flex justify-between">
-                                <button
-                                  onClick={() => handleDeleteNote(noteToDelete!)}
-                                  className="text-red-500 text-sm hover:scale-105"
-                                >
-                                  Delete
-                                </button>
-                                <button
-                                  onClick={() => setNoteToDelete(null)}
-                                  className="text-gray-500 text-sm"
-                                >
-                                  Cancel
-                                </button>
-                              </div>
-                            </div>
-                          </div>
-                        )}
+                  {/* notes content */}
+                  <div className={`absolute bottom-0 rounded-t-2xl bg-gray-100 dark:bg-gray-800 shadow-2xl p-3 w-full max-w-[80vh] max-h-[75vh] transition-transform duration-300 ${isNotesDrawerVisible ? "translate-y-0" : "translate-y-full"}`}>
+                    <div className="flex items-center justify-between mb-2">
+                      <h2 className="text-sm font-semibold">Notes</h2>
+                      <div className="flex gap-2">
+                        <button
+                          onClick={addDraftNotes}
+                          className="text-xs bg-blue-600 hover:bg-blue-700 text-white px-3 py-1 rounded-md"
+                        >
+                          Add
+                        </button>
+                        <button
+                          onClick={closeNotesDrawer}
+                          className="text-xs bg-gray-400 hover:bg-gray-500 text-white px-3 py-1 rounded-md"
+                        >
+                          Close
+                        </button>
                       </div>
-                    ))}
+                    </div>
+
+                    <div className="h-[calc(75vh-3.5rem)] overflow-y-auto overflow-x-hidden notes-scroll overflow-contain mt-2">
+                      {bookNotes.length < 1 && !draftNote && (
+                        <div className="text-sm text-gray-500 p-5">
+                          Add notes, references, future scenarios, book plans, etc...
+                        </div>
+                      )}
+
+                      {/* // THIS IS THE BOOK NOTES */}
+                      <div>
+                          {[ ...(draftNote ? [draftNote] : []), ...bookNotes ].map(notes => (
+                            <div 
+                                className={`${colorMap[notes.color]} relative p-1 rounded-md shadow-md mb-2 bg-gray-100 dark:bg-gray-900 cursor-pointer animate-fadeDown`}
+                                key={notes.id ?? notes.notesId}
+                                data-id={notes.id}
+                            >
+
+                                <div className="flex justify-between pb-1"> 
+                                
+                                <span className="text-xs text-gray-800 dark:text-gray-400">
+                                    {new Date(notes.createdAt).toLocaleString("en-US", {
+                                    month: "short",
+                                    day: "numeric",
+                                    year: "numeric",
+                                    hour: "2-digit",
+                                    minute: "2-digit",
+                                    })}
+                                </span>
+
+                                <button 
+                                    className="hover:bg-neutral-300/50 rounded-2xl group"
+                                    onMouseDown={() => setNoteToDelete(notes)}>
+                                    <svg
+                                    xmlns="http://www.w3.org/2000/svg"
+                                    className="h-5 w-5 text-gray-700 dark:text-gray-400 group-hover:text-red-500"
+                                    fill="none"
+                                    viewBox="0 0 24 24"
+                                    stroke="currentColor"
+                                    strokeWidth={2}
+                                    >
+                                    <path strokeLinecap="round" strokeLinejoin="round" d="M6 6l12 12M6 18L18 6" />
+                                    </svg>
+                                </button>
+
+                                </div>
+                                
+                                <textarea
+                                onInput={(e: React.FormEvent<HTMLTextAreaElement>) => {
+                                  const target = e.currentTarget;
+                                  target.style.height = '';
+                                  target.style.height = target.scrollHeight + 'px';
+                                }}
+                                className="
+                                w-full text-sm
+                                rounded-md 
+                                px-1
+                                focus:outline-none focus:ring-1 focus:ring-gray-400 
+                                hover:ring-gray-400 hover:ring-1
+                                resize-none
+                                overflow-hidden
+                                transition-all duration-200
+                                "
+                                ref={!notes.id ? draftTextareaRef : null}
+                                placeholder="Enter Notes"
+                                onFocus={(e) => {autoResize(e); setOnFocusId(String(notes.id!)); setNoteContent(notes.content); setHideSave(true); 
+                                    if (notes.id) {
+                                    setDraftstate(false);
+                                    }
+                                    else {
+                                    setDraftstate(true);
+                                    }
+                                }}
+                                rows={3}
+                                value={notes.content}
+                                onChange={(e) => {
+                                    if (!notes.id) {
+                                    // This is draft
+                                    setDraftNote(prev =>
+                                        prev ? { ...prev, content: e.target.value } : prev
+                                    );
+                                    } else {
+                                    // This is saved note
+                                    setBookNotes(prev =>
+                                        prev.map(note =>
+                                        note.id === notes.id
+                                            ? { ...note, content: e.target.value }
+                                            : note
+                                        )
+                                    );
+                                    }
+                                }}
+                                onKeyDown={(e) => {
+                                    if (e.key === "Enter" && !e.shiftKey) {
+                                    e.preventDefault();
+                                    (e.target as HTMLElement).blur();
+                                    (saveNote(notes));
+                                    }
+                                }}
+                                onBlur={(e) => { e.currentTarget.style.height = "auto";}}
+                                />
+
+                                {(hideSave && (notes.id ? Number(onFocusId) === notes.id : draftNoteState) &&
+                                <div className="flex justify-end gap-1">
+
+                                    <button 
+                                    className="flex px-4 py-1 bg-neutral-500 rounded-xl hover:bg-neutral-600"
+                                    onMouseDown={() => {setHideSave(false); setDraftNote(null);}}
+                                    >
+                                    Cancel
+                                    </button>
+
+                                    <button 
+                                    className="flex px-4 py-1 bg-blue-700 rounded-xl"
+                                    onMouseDown={() => {saveNote(notes);}}
+                                    disabled={noteContent === notes.content}
+                                    >
+                                    Save 
+                                    </button> 
+                                </div>
+                                )}
+
+                                {noteToDelete && noteToDelete.id === notes.id && (
+                                <div className="absolute inset-0 bg-black/40 backdrop-blur-sm flex items-center justify-center rounded-md z-10">
+                                    <div className="bg-white dark:bg-gray-800 p-3 rounded-md shadow-lg text-center w-40">
+                                    <p className="text-sm mb-2">Delete this note?</p>
+                                    <div className="flex justify-between">
+                                        <button
+                                        onClick={() => handleDeleteNote(noteToDelete!)}
+                                        className="text-red-500 text-sm hover:scale-105"
+                                        >
+                                        Delete
+                                        </button>
+                                        <button
+                                        onClick={() => setNoteToDelete(null)}
+                                        className="text-gray-500 text-sm"
+                                        >
+                                        Cancel
+                                        </button>
+                                    </div>
+                                    </div>
+                                </div>
+                                )}
+                            </div>
+                          ))}
+                      </div>
+                    </div>
+
+                  {/* notes content closer   */}
                   </div>
-                </div>
-                  </div>
+
+                {/* notes closer */}
                 </div>
               )}
             </>,
