@@ -96,6 +96,7 @@ export type WorldbuildingEntry = {
 
 export type WorldbuildingSection = {
   id: string;
+  bookId: string;
   title: string;
   entries: WorldbuildingEntry[];
 };
@@ -129,6 +130,7 @@ export type Notes = {
   color: string;
   bookId: string;
   charId: number | null;
+  pinned?: boolean;
 }
 
 class StoryDB extends Dexie {
@@ -136,32 +138,29 @@ class StoryDB extends Dexie {
   images!: Table<Images>;
   notes!: Table<Notes>;
   characters!: Table<Character>;
+  worldSetting!: Table<WorldbuildingSection>;
 
   constructor() {
     super("StoryDB");
 
-    this.version(20).stores({
+    this.version(21).stores({
       books: "id, title", 
       images: "imageId, charId, bookId",
-      notes: "++id, bookId, charId",
+      notes: "++id, bookId, charId, pinned",
       characters: "id, bookId, name, *chapterAppearances, status, *setRace",
+      worldSetting: "id, bookId, title",
       // ++id = auto increment
       // title = indexed (useful later for search)
     })
     
     .upgrade(async (tx) => {
-      const images = await tx.table("images").toArray();
-      const activeByChar = new Map<number, string>();
-
-      for (const image of images) {
-        const current = activeByChar.get(image.charId);
-        if (!current || image.createdAt > (images.find((item) => item.imageId === current)?.createdAt ?? 0)) {
-          activeByChar.set(image.charId, image.imageId);
+      // 1. Get the notes table as a collection
+      // 2. Use .modify() with a callback to update each record
+      return tx.table("notes").toCollection().modify(note => {
+        // Set default value only if it doesn't already exist
+        if (note.pinned === undefined) {
+          note.pinned = false;
         }
-      }
-
-      await tx.table("images").toCollection().modify((image: Images) => {
-        image.isDisplayed = activeByChar.get(image.charId) === image.imageId;
       });
     });
 

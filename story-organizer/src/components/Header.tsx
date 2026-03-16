@@ -212,6 +212,7 @@ export default function Header() {
         const allBooks = await db.books.toArray();
         const allCharacters = await db.characters.toArray();
         const allNotes = await db.notes.toArray();
+        const allworldSettings = await db.worldSetting.toArray();
 
         // Convert blobs to base64
         const imagesWithBase64 = await Promise.all(
@@ -232,6 +233,7 @@ export default function Header() {
             character: allCharacters,
             images: imagesWithBase64,
             allNotes,
+            allworldSettings,
         }; 
 
         return data;
@@ -270,11 +272,13 @@ export default function Header() {
             await db.images.clear();
             await db.notes.clear();
             await db.characters.clear();
+            await db.worldSetting.clear();
 
             // Restore data from json
             await db.books.bulkAdd(parsed.books);
             await db.notes.bulkAdd(parsed.allNotes);
             await db.characters.bulkAdd(parsed.character);
+            await db.worldSetting.bulkAdd(parsed.allworldSettings);
 
             // Restore images (if they exist)
             if (parsed.images && parsed.images.length > 0) {

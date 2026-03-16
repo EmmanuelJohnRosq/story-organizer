@@ -873,6 +873,7 @@ const [charDescription, setCharDescription] = useState<CharacterDescription>({
     {
       id: "Rules",
       title: "World Rules",
+      bookId: "",
       entries: [
         { label: "Year", value: "Aster Cycle 472" },
         { label: "Travel", value: "Gateways open only during moonrise tides." },
@@ -882,6 +883,7 @@ const [charDescription, setCharDescription] = useState<CharacterDescription>({
     {
       id: "Power System",
       title: "Power System",
+      bookId: "",
       entries: [
         { label: "Source", value: "Aether Threads woven through the sky." },
         { label: "Cost", value: "Every cast consumes heat from the body and short-term memory." },
@@ -891,6 +893,7 @@ const [charDescription, setCharDescription] = useState<CharacterDescription>({
     {
       id: "Factions",
       title: "Factions & Culture",
+      bookId: "",
       entries: [
         { label: "Dominant Faction", value: "The Cartographer Guild controls map-gates and sea routes." },
         { label: "Religion", value: "The Nine Lantern rites guide mourning, naming, and oath-binding." },
@@ -900,6 +903,7 @@ const [charDescription, setCharDescription] = useState<CharacterDescription>({
     {
       id: "Hooks",
       title: "Story Hooks",
+      bookId: "",
       entries: [
         { label: "Secret", value: "The protagonist's bloodline can restore dead gateways." },
         { label: "Foreshadow", value: "Black snow appears one day before a realm fracture." },
@@ -908,6 +912,7 @@ const [charDescription, setCharDescription] = useState<CharacterDescription>({
     {
       id: "Source",
       title: "Power Source",
+      bookId: "",
       entries: [
         { label: "Mana", value: "Mana is the Universe's General Energy." },
         { label: "Divine power", value: "Divine Power is an energy level higher than Mana." },
@@ -917,6 +922,7 @@ const [charDescription, setCharDescription] = useState<CharacterDescription>({
     {
       id: "Level",
       title: "Power Level",
+      bookId: "",
       entries: [
         { label: "Tier 0", value: "Mortal/Human/Animals/Items" },
         { label: "Tier 1", value: "Awakener/Knight and Mage Apprentice/Beast/Items" },
@@ -981,6 +987,7 @@ const [charDescription, setCharDescription] = useState<CharacterDescription>({
       ...prev,
       {
         id: sectionId,
+        bookId: String(currentBookId),
         title: normalizedTitle,
         entries: cleanEntries,
       },

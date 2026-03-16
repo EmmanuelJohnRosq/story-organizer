@@ -6,7 +6,7 @@ import Navbar, { type NavbarAction } from "../components/Navbar";
 import { db, type Book, type Character, type EditableCharacter, type Notes, type CharacterDescription, type CharImage, type WorldbuildingSection, type WorldbuildingEntry } from "../db";
 
 import { FontAwesomeIcon} from "@fortawesome/react-fontawesome";
-import { faCheck, faPlus, faMinus, faEllipsis, faUserPlus, faNoteSticky, faTableColumns, faWandMagicSparkles, faProjectDiagram, faGlobe, faPenToSquare, faFileLines, faHouse } from "@fortawesome/free-solid-svg-icons";
+import { faCheck, faPlus, faMinus, faEllipsis, faUserPlus, faNoteSticky, faTableColumns, faWandMagicSparkles, faProjectDiagram, faGlobe, faPenToSquare, faFileLines, faHouse, faStar } from "@fortawesome/free-solid-svg-icons";
 import { createPortal } from "react-dom";
 
 export default function ExperimentPage() {
@@ -569,6 +569,7 @@ export default function ExperimentPage() {
           isDraft: true,
           bookId: currentBookId ? currentBookId : "",
           charId: selectedCharacter ? selectedCharacter : null,
+          pinned: false,
         };
   
       // Update React state
@@ -609,17 +610,38 @@ export default function ExperimentPage() {
         }, 2000);
       }
     }
+
+    const togglePin = async (note: any) => {
+      const newPinnedStatus = !note.pinned;
+
+      // 1. Update UI State immediately (Optimistic UI)
+      setBookNotes(prev => 
+        prev.map(n => n.id === note.id ? { ...n, pinned: newPinnedStatus } : n)
+      );
+
+      // 2. Update Database
+      try {
+        await db.notes.update(note.id, { pinned: newPinnedStatus });
+      } catch (error) {
+        console.error("Failed to update pin status:", error);
+        // Optional: Revert state if DB update fails
+      }
+    };
   
     const [notesShowState, setNotesShowState] = useState(false);
     const [addCharacterState, setAddCharState] = useState(false);
     const [showSettingsMenu, setShowSettingsMenu] = useState(false);
     const [editBookContent, setEditBookContent] = useState(false);
+
+    const [showPinnedNotes, setShowPinnedNotes] = useState(true);
  
     const [isNotesDrawerMounted, setIsNotesDrawerMounted] = useState(false);
     const [isNotesDrawerVisible, setIsNotesDrawerVisible] = useState(false);
 
     const [isNotesDrawerClosing, setIsNotesDrawerClosing] = useState(false);
     const [notesDrawerCloseTransform, setNotesDrawerCloseTransform] = useState("");
+
+    const [showBookContent, setShowBookContent] = useState(false);
 
     const notesFabRef = useRef<HTMLButtonElement | null>(null);
     const notesDrawerPanelRef = useRef<HTMLDivElement | null>(null);
@@ -912,6 +934,7 @@ export default function ExperimentPage() {
       {
         id: "Rules",
         title: "World Rules",
+        bookId: "",
         entries: [
           { label: "Year", value: "Aster Cycle 472" },
           { label: "Travel", value: "Gateways open only during moonrise tides." },
@@ -921,6 +944,7 @@ export default function ExperimentPage() {
       {
         id: "Power System",
         title: "Power System",
+        bookId: "",
         entries: [
           { label: "Source", value: "Aether Threads woven through the sky." },
           { label: "Cost", value: "Every cast consumes heat from the body and short-term memory." },
@@ -930,6 +954,7 @@ export default function ExperimentPage() {
       {
         id: "Factions",
         title: "Factions & Culture",
+        bookId: "",
         entries: [
           { label: "Dominant Faction", value: "The Cartographer Guild controls map-gates and sea routes." },
           { label: "Religion", value: "The Nine Lantern rites guide mourning, naming, and oath-binding." },
@@ -939,6 +964,7 @@ export default function ExperimentPage() {
       {
         id: "Hooks",
         title: "Story Hooks",
+        bookId: "",
         entries: [
           { label: "Secret", value: "The protagonist's bloodline can restore dead gateways." },
           { label: "Foreshadow", value: "Black snow appears one day before a realm fracture." },
@@ -947,6 +973,7 @@ export default function ExperimentPage() {
       {
         id: "Source",
         title: "Power Source",
+        bookId: "",
         entries: [
           { label: "Mana", value: "Mana is the Universe's General Energy." },
           { label: "Divine power", value: "Divine Power is an energy level higher than Mana." },
@@ -956,6 +983,7 @@ export default function ExperimentPage() {
       {
         id: "Level",
         title: "Power Level",
+        bookId: "",
         entries: [
           { label: "Tier 0", value: "Mortal/Human/Animals/Items" },
           { label: "Tier 1", value: "Awakener/Knight and Mage Apprentice/Beast/Items" },
@@ -982,7 +1010,6 @@ export default function ExperimentPage() {
 
     const openWorldbuildingModal = () => {
       setWorldSectionTitle("");
-      setWorldDraftEntries([{ label: "", value: "" }]);
       setShowWorldbuildingModal(true);
       setShowSettingsMenu(false);
     };
@@ -1004,7 +1031,7 @@ export default function ExperimentPage() {
       });
     };
 
-    const saveWorldbuildingSection = () => {
+    const saveWorldbuildingSection = async () => {
       const normalizedTitle = normalizeWhitespace(worldSectionTitle);
       const cleanEntries = worldDraftEntries
         .map(entry => ({
@@ -1019,29 +1046,36 @@ export default function ExperimentPage() {
 
       const sectionId = `${normalizedTitle.toLowerCase().replace(/[^a-z0-9]+/g, "-")}-${Date.now()}`;
 
+      const newSettings = {
+        id: sectionId,
+        title: normalizedTitle,
+        bookId: String(currentBookId),
+        entries: cleanEntries,
+      }
+
       setWorldbuildingSections(prev => [
-        ...prev,
-        {
-          id: sectionId,
-          title: normalizedTitle,
-          entries: cleanEntries,
-        },
+        ...prev, newSettings
       ]);
 
+      await db.worldSetting.add(newSettings);
       setOpenWorldSections(prev => ({ ...prev, [sectionId]: true }));
       setShowWorldbuildingModal(false);
+
+      setWorldDraftEntries([{ label: "", value: "" }]);
     };
 
     const toggleWorldSection = (sectionId: string) => {
       setOpenWorldSections(prev => ({ ...prev, [sectionId]: !prev[sectionId] }));
     };
 
+    // navbar pass actions and logic
     const navbarActions: NavbarAction[] = [
       {
         id: "home",
         label: "Home",
         icon: faHouse,
         onClick: () => navigate("/"),
+        title: "Back to library",
       },
       {
         id: "create-character",
@@ -1049,6 +1083,7 @@ export default function ExperimentPage() {
         icon: faUserPlus,
         onClick: addNewcharacter,
         isActive: addCharacterState,
+        title: "Add character",
       },
       {
         id: "edit-book",
@@ -1056,12 +1091,15 @@ export default function ExperimentPage() {
         icon: faPenToSquare,
         onClick: editBook,
         isActive: editBookContent,
+        title: "Edit book content",
       },
       {
         id: "world-building",
         label: "World",
         icon: faGlobe,
         onClick: openWorldbuildingModal,
+        isActive: showWorldbuildingModal,
+        title: "Set book facts",
       },
       {
         id: "dashboard",
@@ -1069,6 +1107,7 @@ export default function ExperimentPage() {
         icon: faTableColumns,
         onClick: () => alert("Currently, in development..."),
         badge: "Soon",
+        title: "Dashboard",
       },
       {
         id: "ai-assist",
@@ -1076,6 +1115,7 @@ export default function ExperimentPage() {
         icon: faWandMagicSparkles,
         onClick: () => alert("Currently, in development..."),
         badge: "Soon",
+        title: "AI-assist",
       },
       {
         id: "character-graph",
@@ -1083,6 +1123,7 @@ export default function ExperimentPage() {
         icon: faProjectDiagram,
         onClick: () => alert("Currently, in development..."),
         badge: "Soon",
+        title: "Characters map graph",
       },
       {
         id: "chapter-prep",
@@ -1090,6 +1131,7 @@ export default function ExperimentPage() {
         icon: faFileLines,
         onClick: () => alert("Currently, in development..."),
         badge: "Soon",
+        title: "Chapter Preparation workspace",
       },
     ];
 
@@ -1406,6 +1448,8 @@ export default function ExperimentPage() {
 
                           {/* Summary */}
                           <div>
+
+                            {/* book title and settings dropdown */}
                             <div className="flex justify-between">
                               <label className="text-xl font-semibold truncate">
                                 {titleDraft || currentBook?.title || "Book Content"}
@@ -1422,6 +1466,18 @@ export default function ExperimentPage() {
 
                                 {showSettingsMenu && (
                                   <div className="absolute top-9 right-1 z-30 w-56 rounded-md border bg-white dark:bg-gray-800 dark:border-gray-600 shadow-xl p-2 space-y-1">
+                                    
+                                    {/* minimize book details */}
+                                    <button
+                                      className="w-full text-left px-3 py-2 rounded hover:bg-gray-200 dark:hover:bg-gray-700"
+                                      onClick={() => {
+                                        setShowBookContent(prev => !prev);
+                                      }}
+                                    >
+                                      {showBookContent ? "Maximize" : "Minimize"}
+                                    </button>
+                                    
+                                    {/* open edit book details */}
                                     <button
                                       className="w-full text-left px-3 py-2 rounded hover:bg-gray-200 dark:hover:bg-gray-700"
                                       onClick={() => {
@@ -1431,6 +1487,8 @@ export default function ExperimentPage() {
                                     >
                                       Edit book details
                                     </button>
+
+                                    {/* open add new character */}
                                     <button
                                       className="w-full text-left px-3 py-2 rounded hover:bg-gray-200 dark:hover:bg-gray-700"
                                       onClick={() => {
@@ -1441,13 +1499,7 @@ export default function ExperimentPage() {
                                       Add character
                                     </button>
 
-                                    <button
-                                      className="hidden xs:block w-full text-left px-3 py-2 rounded hover:bg-gray-200 dark:hover:bg-sky-700/50"
-                                      onClick={() => {addDraftNotes(); setShowSettingsMenu(false)}}
-                                    >
-                                      Add draft note
-                                    </button>
-
+                                    {/* delete the current book */}
                                     <button
                                       className="w-full text-left px-3 py-2 rounded text-red-600 hover:bg-red-100 dark:hover:bg-red-900/30"
                                       onClick={() => {
@@ -1461,6 +1513,7 @@ export default function ExperimentPage() {
                               </div>
                             </div>
                             
+                            {/* quick details */}
                             <div className="flex justify-between mb-1">
                               <label className="text-xs text-neutral-400">
                                 Volume {bookVolume || "0"} • {bookVolName || "Volume Name"} • {upcaseLetter(bookStatus) || "unknown"}
@@ -1471,7 +1524,7 @@ export default function ExperimentPage() {
 
                             <textarea
                                 rows={12}
-                                className="font-serif text-sm leading-6 w-full px-1 py-1 focus:outline-none text-sm placeholder-gray-400 dark:placeholder-gray-600 text-area-scroll resize-none"
+                                className={`${showBookContent ? "hidden" : ""} font-serif text-sm leading-6 w-full px-1 py-1 focus:outline-none text-sm placeholder-gray-400 dark:placeholder-gray-600 text-area-scroll transition-all duration-300 resize-none`}
                                 placeholder="Update book summary"
                                 value={bookSummary}
                                 onFocus={(e) => autoResize(e)}
@@ -1483,34 +1536,36 @@ export default function ExperimentPage() {
                     </div>
 
                     {/* CHARACTER GENRE AND TAGS */}
-                    <div className="rounded-md shadow-lg p-4 mb-2 bg-gray-100 dark:bg-gray-900 transition duration-300">
-                      <label className="text-sm font-semibold">Book Classification</label>
+                    {!showBookContent && (
+                      <div className="rounded-md shadow-lg p-4 mb-2 bg-gray-100 dark:bg-gray-900 transition duration-300">
+                        <label className="text-sm font-semibold">Book Classification</label>
 
-                      <div className="block mb-1 -mt-1">
-                        <label className="text-xs text-blue-900 dark:text-blue-400">Genre</label>
-                        <label className="text-xs text-gray-300"> • </label>
-                        <label className="text-xs text-purple-900 dark:text-purple-400">Tags</label>
+                        <div className="block mb-1 -mt-1">
+                          <label className="text-xs text-blue-900 dark:text-blue-400">Genre</label>
+                          <label className="text-xs text-gray-300"> • </label>
+                          <label className="text-xs text-purple-900 dark:text-purple-400">Tags</label>
+                        </div>
+                        
+                        <div className="flex flex-wrap gap-2">
+                          {bookChips.length ? (
+                            bookChips.map((chip, index) => (
+                              <span 
+                                key={`${chip.type}-${chip.text}-${index}`} 
+                                className={`px-3 py-1 rounded-full text-sm ${
+                                  chip.type === 'genre' 
+                                    ? "bg-blue-200 text-blue-900 dark:bg-blue-900/40 dark:text-blue-200" // Genre Style
+                                    : "bg-purple-200 text-purple-900 dark:bg-purple-900/40 dark:text-purple-200" // Tag Style
+                                }`}
+                              >
+                                {upcaseLetter(chip.text)}
+                              </span>
+                            ))
+                          ) : (
+                            <span className="text-sm text-gray-500 dark:text-gray-400">No data yet.</span>
+                          )}
+                        </div>
                       </div>
-                      
-                      <div className="flex flex-wrap gap-2">
-                        {bookChips.length ? (
-                          bookChips.map((chip, index) => (
-                            <span 
-                              key={`${chip.type}-${chip.text}-${index}`} 
-                              className={`px-3 py-1 rounded-full text-sm ${
-                                chip.type === 'genre' 
-                                  ? "bg-blue-200 text-blue-900 dark:bg-blue-900/40 dark:text-blue-200" // Genre Style
-                                  : "bg-purple-200 text-purple-900 dark:bg-purple-900/40 dark:text-purple-200" // Tag Style
-                              }`}
-                            >
-                              {upcaseLetter(chip.text)}
-                            </span>
-                          ))
-                        ) : (
-                          <span className="text-sm text-gray-500 dark:text-gray-400">No data yet.</span>
-                        )}
-                      </div>
-                    </div>
+                    )}
 
                   </div>
                 )}
@@ -1520,8 +1575,80 @@ export default function ExperimentPage() {
             </div>
 
             {/* display pinned notes */}
-            <div className="hidden xxs:flex xxs:sticky xxs:top-14 h-fit rounded-md shadow-lg p-4 xxs:mb-2 bg-gray-100 dark:bg-gray-900 transition duration-300">
-              <label className="text-sm font-semibold">✯ Pinned Notes</label>
+            <div className="hidden xxs:flex flex-col xxs:sticky xxs:top-13 h-fit w-full rounded-xl shadow-sm border border-gray-200 dark:border-gray-800 p-2 xxs:mb-4 bg-white dark:bg-gray-900 transition-all duration-300">
+              
+              <div className="flex items-center justify-between gap-1 mb-2 border-b border-gray-100 dark:border-gray-800">
+                
+                <label className="text-sm font-semibold">
+                  <span className="text-yellow-600 text-lg px-1">★
+                  </span>
+                  Pinned Notes
+                </label>
+
+                <button onClick={() => setShowPinnedNotes(prev => !prev)}> <FontAwesomeIcon icon={showPinnedNotes ? faMinus : faPlus}/> </button>
+              </div>
+
+              {showPinnedNotes && (
+                <div className="space-y-1 overflow-y-auto max-h-[calc(100vh-7rem)] pr-1 notes-scroll">
+                  {bookNotes.filter(note => note.pinned).length > 0 ? (
+                    bookNotes
+                      .filter(note => note.pinned)
+                      .map(notes => (
+                        <div 
+                          className={`${colorMap[notes.color] || 'bg-gray-50 dark:bg-gray-800'} relative p-2 rounded-lg border border-transparent hover:border-yellow-400/50 shadow-sm transition-all animate-fadeDown`}
+                          key={notes.id ?? notes.notesId}
+                        >
+                          {/* Header: Star & Date */}
+                          <div className="flex items-center mb-1"> 
+                            <div className="flex items-center gap-1">
+                              <button 
+                                onMouseDown={() => {
+                                  togglePin(notes);
+                                }}
+                                className="transition-transform hover:scale-110"
+                              >
+                                <FontAwesomeIcon icon={faStar} className="text-yellow-400 text-sm" />
+                              </button>
+
+                              <span className="text-xs text-gray-800 dark:text-gray-400">
+                                  {new Date(notes.createdAt).toLocaleString("en-US", {
+                                  month: "short",
+                                  day: "numeric",
+                                  year: "numeric",
+                                  hour: "2-digit",
+                                  minute: "2-digit",
+                                  })}
+                              </span>
+                            </div>
+                          </div>
+                          
+                          {/* Note Content */}
+                          <textarea
+                            value={notes.content}
+                            rows={3}
+                            readOnly // Pinned notes are often for reference; make editable on focus if needed
+                            onFocus={(e) => {
+                              autoResize(e); 
+                              setOnFocusId(String(notes.id!)); 
+                              setNoteContent(notes.content); 
+                              setHideSave(true);
+                            }}
+                            className="
+                              notes-scroll w-full text-sm bg-transparent border-none rounded-md
+                              focus:outline-none
+                              resize-none text-gray-800 dark:text-gray-200 placeholder-gray-400"
+                            placeholder="Note content..."
+                          />
+                        </div>
+                      ))
+                  ) : (
+                    <div className="py-8 text-center border-2 border-dashed border-gray-100 dark:border-gray-800 rounded-xl">
+                      <p className="text-xs text-gray-400 italic">No pinned notes yet</p>
+                    </div>
+                  )}
+                </div>
+              )}
+
             </div>
 
         </div>
@@ -1764,12 +1891,12 @@ export default function ExperimentPage() {
                 border border-blue-600 hover:border-blue-400
                 text-white rounded-full
                 px-4 py-3.5 shadow-xl
-                transition-transform duration-300
-                ${isNotesDrawerClosing ? "scale-105" : "scale-100"}
+                transition-transform duration-300 
+                ${isNotesDrawerClosing ? "rotate-[1200deg] transition-all duration-700 ease-in scale-115 bg-gray-900 hover:bg-gray-900 border-gray-800 hover:border-gray-800 shadow-4xl" : "scale-100"}
               `}
               title={notesShowState ? "Close notes" : "Open notes"}
             >
-              <FontAwesomeIcon icon={notesShowState ? faMinus : faPlus} />
+              <FontAwesomeIcon icon={notesShowState ? faMinus : faPlus} className={`${isNotesDrawerClosing ? "scale-400 text-gray-700" : "scale-100"}`}/>
             </button>
 
             {/* Collapsible notes drawer*/}
@@ -1828,8 +1955,8 @@ export default function ExperimentPage() {
 
                   <div className="h-[calc(75vh-3.5rem)] overflow-y-auto overflow-x-hidden notes-scroll overflow-contain mt-2">
                     {bookNotes.length < 1 && !draftNote && (
-                      <div className="text-sm text-gray-500 p-5">
-                        Add notes, references, future scenarios, book plans, etc...
+                      <div className="py-8 text-center border-2 border-dashed border-gray-100 dark:border-gray-500 rounded-xl">
+                        <p className="text-xs text-gray-300 italic">Add notes, references, future scenarios, book plans, etc...</p>
                       </div>
                     )}
 
@@ -1844,29 +1971,44 @@ export default function ExperimentPage() {
 
                               <div className="flex justify-between pb-1"> 
                               
-                              <span className="text-xs text-gray-800 dark:text-gray-400">
-                                  {new Date(notes.createdAt).toLocaleString("en-US", {
-                                  month: "short",
-                                  day: "numeric",
-                                  year: "numeric",
-                                  hour: "2-digit",
-                                  minute: "2-digit",
-                                  })}
-                              </span>
+                              <div className="flex items-center gap-1">
+                                {notes.id && (
+                                  <span> 
+                                    <FontAwesomeIcon icon={faStar} 
+                                      className={`${notes.pinned ? "text-yellow-400" : "text-gray-500"} hover:text-yellow-500 transition-transform hover:scale-110`}
+                                      onMouseDown={() => {
+                                        togglePin(notes);
+                                      }}
+                                    /> 
+                                  </span>
+                                )}
+
+                                <span className="text-xs text-gray-800 dark:text-gray-400">
+                                    {new Date(notes.createdAt).toLocaleString("en-US", {
+                                    month: "short",
+                                    day: "numeric",
+                                    year: "numeric",
+                                    hour: "2-digit",
+                                    minute: "2-digit",
+                                    })}
+                                </span>
+                              </div>
 
                               <button 
-                                  className="hover:bg-neutral-300/50 rounded-2xl group"
-                                  onMouseDown={() => setNoteToDelete(notes)}>
-                                  <svg
+                                className="rounded-full items-center px-0.5 group"
+                                onMouseDown={() => setNoteToDelete(notes)}
+                                disabled={!notes.id || notes.pinned === true}
+                              >
+                                <svg
                                   xmlns="http://www.w3.org/2000/svg"
                                   className="h-5 w-5 text-gray-700 dark:text-gray-400 group-hover:text-red-500"
                                   fill="none"
                                   viewBox="0 0 24 24"
                                   stroke="currentColor"
                                   strokeWidth={2}
-                                  >
-                                  <path strokeLinecap="round" strokeLinejoin="round" d="M6 6l12 12M6 18L18 6" />
-                                  </svg>
+                                >
+                                <path strokeLinecap="round" strokeLinejoin="round" d="M6 6l12 12M6 18L18 6" />
+                                </svg>
                               </button>
 
                               </div>
