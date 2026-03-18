@@ -6,7 +6,7 @@ import Navbar, { type NavbarAction } from "../components/Navbar";
 import { db, type Book, type Character, type EditableCharacter, type Notes, type CharacterDescription, type CharImage, type WorldbuildingSection, type WorldbuildingEntry } from "../db";
 
 import { FontAwesomeIcon} from "@fortawesome/react-fontawesome";
-import { faCheck, faPlus, faMinus, faEllipsis, faUserPlus, faNoteSticky, faTableColumns, faWandMagicSparkles, faProjectDiagram, faGlobe, faPenToSquare, faFileLines, faHouse, faStar } from "@fortawesome/free-solid-svg-icons";
+import { faCheck, faPlus, faMinus, faEllipsis, faUserPlus, faNoteSticky, faTableColumns, faWandMagicSparkles, faProjectDiagram, faGlobe, faPenToSquare, faFileLines, faHouse, faStar, faPen } from "@fortawesome/free-solid-svg-icons";
 import { createPortal } from "react-dom";
 
 export default function ExperimentPage() {
@@ -649,14 +649,20 @@ export default function ExperimentPage() {
   
     // SHOW/HIDE ADD CHARACTER FORM
     const addNewcharacter = () => {
-        setAddCharState(!addCharacterState);
-        setEditBookContent(false);
+      if (addCharacterState === false) {
+        goToTop();
+      };
+      setAddCharState(!addCharacterState);
+      setEditBookContent(false);
     };
 
     // SHOW/HIDE EDIT CONTENT FORM
     const editBook = () => {
-        setEditBookContent(!editBookContent);
-        setAddCharState(false);
+      if (editBookContent === false) {
+        goToTop();
+      };
+      setEditBookContent(!editBookContent);
+      setAddCharState(false);
     };
 
     const notesDrawerTimeoutRef = useRef<number | null>(null);
@@ -1045,6 +1051,13 @@ export default function ExperimentPage() {
         title: "Chapter Preparation workspace",
       },
     ];
+
+    const goToTop = () => {
+      window.scrollTo({
+        top: 0,
+        behavior: 'smooth', // 'smooth' for animation, 'auto' for instant jump
+      });
+    };
 
   return (
     // MAIN PARENT CONTAINER DIV CLOSER
@@ -1435,7 +1448,7 @@ export default function ExperimentPage() {
 
                             <textarea
                                 rows={bookSummary ? 12 : 1}
-                                className={`${showBookContent ? "hidden" : ""} font-serif text-sm leading-6 w-full px-1 py-1 focus:outline-none text-sm placeholder-gray-400 dark:placeholder-gray-600 text-area-scroll transition-all duration-300 resize-none placeholder:text-center placeholder:text-lg`}
+                                className={`${showBookContent ? "hidden" : ""} font-serif text-sm leading-6 w-full px-1 py-1 focus:outline-none text-sm placeholder-gray-400 dark:placeholder-gray-600 text-area-scroll transition-all duration-300 resize-none placeholder:text-center placeholder:text-lg placeholder:`}
                                 placeholder="Update book summary"
                                 value={bookSummary}
                                 onFocus={(e) => autoResize(e)}
@@ -1720,6 +1733,24 @@ export default function ExperimentPage() {
               <div>
                 <label className="text-sm font-semibold">World Setting</label>
                 <p className="text-xs text-gray-500 dark:text-gray-400">Your story's facts and lore references</p>
+              </div>
+              
+              <div className="flex gap-2">
+                <button
+                  type="button"
+                  className="px-2 py-1 text-xs rounded border border-gray-400 hover:bg-gray-200 dark:hover:bg-gray-700"
+                  onClick={() => alert("edit")}
+                >
+                  <FontAwesomeIcon icon={faPen} /> Edit
+                </button>
+
+                <button
+                  type="button"
+                  className="px-2 py-1 text-xs rounded border border-gray-400 hover:bg-gray-200 dark:hover:bg-gray-700"
+                  onClick={openWorldbuildingModal}
+                >
+                  <FontAwesomeIcon icon={faPlus} /> Add
+                </button>
               </div>
             </div>
 
