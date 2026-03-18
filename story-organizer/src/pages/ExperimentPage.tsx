@@ -32,6 +32,7 @@ export default function ExperimentPage() {
         setCurrentBook(book);
         loadBookNotes(currentBookId); 
         loadChars(currentBookId);
+        loadBookWorldSettings(currentBookId);
       };
 
       loadBook();
@@ -282,21 +283,24 @@ export default function ExperimentPage() {
       notes.sort((a, b) => b.createdAt - a.createdAt);
       setBookNotes(notes);
     };
+
+    const loadBookWorldSettings = async (bookId: string) => {
+      const setting = await db.worldSetting
+        .where("bookId")
+        .equals(bookId)
+        .toArray();
+
+      setting.sort((a, b) => {
+        const getTimestamp = (id: string) => parseInt(id.split('-').pop() || '0');
+        return getTimestamp(a.id) - getTimestamp(b.id);
+      });
+      setWorldbuildingSections(setting);
+    };
   
     function normalizeWhitespace(text: string) {
       return text
         .trim()                // remove start/end spaces
         .replace(/\s+/g, " "); // collapse multiple spaces into one
-    }
-  
-    function sanitizeCharacter(char: EditableCharacter): Character {
-      return {
-        ...char,
-        name: normalizeWhitespace(char.name),
-        role: normalizeWhitespace(char.role),
-        notes: char.notes.replace(/[^\S\r\n]+/g, " "),
-        chapters: normalizeWhitespace(char.chapters),
-      };
     }
   
     // DELETE BOOK
@@ -638,9 +642,6 @@ export default function ExperimentPage() {
     const [isNotesDrawerMounted, setIsNotesDrawerMounted] = useState(false);
     const [isNotesDrawerVisible, setIsNotesDrawerVisible] = useState(false);
 
-    const [isNotesDrawerClosing, setIsNotesDrawerClosing] = useState(false);
-    const [notesDrawerCloseTransform, setNotesDrawerCloseTransform] = useState("");
-
     const [showBookContent, setShowBookContent] = useState(false);
 
     const notesFabRef = useRef<HTMLButtonElement | null>(null);
@@ -668,7 +669,6 @@ export default function ExperimentPage() {
 
       setIsNotesDrawerMounted(true);
       setNotesShowState(true);
-      setIsNotesDrawerClosing(false);
       addDraftNotes();
 
       requestAnimationFrame(() => {
@@ -676,37 +676,13 @@ export default function ExperimentPage() {
       });
     };
 
-   const calculateCloseTransform = () => {
-    if (!notesFabRef.current || !notesDrawerPanelRef.current) return;
-
-    const fab = notesFabRef.current.getBoundingClientRect();
-    const panel = notesDrawerPanelRef.current.getBoundingClientRect();
-
-    const fabCenterX = fab.left + fab.width / 3;
-    const fabCenterY = fab.top + fab.height / 3;
-
-    const panelCenterX = panel.left + panel.width / 3;
-    const panelCenterY = panel.top + panel.height / 3;
-
-    const dx = fabCenterX - panelCenterX;
-    const dy = fabCenterY - panelCenterY;
-
-    setNotesDrawerCloseTransform(
-      `translate3d(${dx}px, ${dy}px, 0) scale(0.03) rotate(60deg)`
-    );
-  };
-
     const closeNotesDrawer = () => {
-      calculateCloseTransform();
-
-      setIsNotesDrawerClosing(true);
       setIsNotesDrawerVisible(false);
       setNotesShowState(false);
       setDraftNote(null)
 
       notesDrawerTimeoutRef.current = window.setTimeout(() => {
         setIsNotesDrawerMounted(false);
-        setIsNotesDrawerClosing(false);
         notesDrawerTimeoutRef.current = null;
       }, 300);
     };
@@ -930,83 +906,18 @@ export default function ExperimentPage() {
       ...(currentBook?.tags ?? []).map(text => ({ text, type: 'tag' }))
     ];
 
-    const sampleWorldWiki: WorldbuildingSection[] = [
-      {
-        id: "Rules",
-        title: "World Rules",
-        bookId: "",
-        entries: [
-          { label: "Year", value: "Aster Cycle 472" },
-          { label: "Travel", value: "Gateways open only during moonrise tides." },
-          { label: "Law", value: "Memory-forging magic is forbidden in all Free Cities." },
-        ],
-      },
-      {
-        id: "Power System",
-        title: "Power System",
-        bookId: "",
-        entries: [
-          { label: "Source", value: "Aether Threads woven through the sky." },
-          { label: "Cost", value: "Every cast consumes heat from the body and short-term memory." },
-          { label: "Ranks", value: "Sparkborn → Channeler → Warden → Astral" },
-        ],
-      },
-      {
-        id: "Factions",
-        title: "Factions & Culture",
-        bookId: "",
-        entries: [
-          { label: "Dominant Faction", value: "The Cartographer Guild controls map-gates and sea routes." },
-          { label: "Religion", value: "The Nine Lantern rites guide mourning, naming, and oath-binding." },
-          { label: "Current Conflict", value: "A civil split over opening the sealed northern ruins." },
-        ],
-      },
-      {
-        id: "Hooks",
-        title: "Story Hooks",
-        bookId: "",
-        entries: [
-          { label: "Secret", value: "The protagonist's bloodline can restore dead gateways." },
-          { label: "Foreshadow", value: "Black snow appears one day before a realm fracture." },
-        ],
-      },
-      {
-        id: "Source",
-        title: "Power Source",
-        bookId: "",
-        entries: [
-          { label: "Mana", value: "Mana is the Universe's General Energy." },
-          { label: "Divine power", value: "Divine Power is an energy level higher than Mana." },
-          { label: "Bloodline", value: "Beasts, Demons, and Hell Spawns have bloodline powers, advantage of some other races unlike humans." },
-        ],
-      },
-      {
-        id: "Level",
-        title: "Power Level",
-        bookId: "",
-        entries: [
-          { label: "Tier 0", value: "Mortal/Human/Animals/Items" },
-          { label: "Tier 1", value: "Awakener/Knight and Mage Apprentice/Beast/Items" },
-          { label: "Tier 2", value: "Knight/Mage/Beast" },
-          { label: "Tier 3", value: "GrandKnight/GrandMage/Magic Beast" },
-          { label: "Tier 4", value: "Supreme Mage/Knight" },
-          { label: "Tier 5", value: "Saint Domain" },
-          { label: "Tier 6", value: "Demigod" },
-          { label: "Tier 7", value: "Godhood" },
-        ],
-      },
-    ];
-
-    const [worldbuildingSections, setWorldbuildingSections] = useState<WorldbuildingSection[]>(sampleWorldWiki);
+    const [worldbuildingSections, setWorldbuildingSections] = useState<WorldbuildingSection[]>([]);
     const [showWorldbuildingModal, setShowWorldbuildingModal] = useState(false);
     const [worldSectionTitle, setWorldSectionTitle] = useState("");
     const [worldDraftEntries, setWorldDraftEntries] = useState<WorldbuildingEntry[]>([{ label: "", value: "" }]);
 
-    const [openWorldSections, setOpenWorldSections] = useState<Record<string, boolean>>(() => {
+    const [openWorldSections, setOpenWorldSections] = useState<Record<string, boolean>>({});
+
+    useEffect(() => {
       const initial: Record<string, boolean> = {};
-      sampleWorldWiki.forEach(s => initial[s.id] = true);
-      return initial;
-    });
+      worldbuildingSections.forEach(s => initial[s.id] = true);
+      setOpenWorldSections(initial);
+    }, [worldbuildingSections]);
 
     const openWorldbuildingModal = () => {
       setWorldSectionTitle("");
@@ -1040,7 +951,7 @@ export default function ExperimentPage() {
         }))
         .filter(entry => entry.label && entry.value);
 
-      if (!normalizedTitle || cleanEntries.length === 0) {
+      if (!normalizedTitle) {
         return;
       }
 
@@ -1523,8 +1434,8 @@ export default function ExperimentPage() {
                             </div>
 
                             <textarea
-                                rows={12}
-                                className={`${showBookContent ? "hidden" : ""} font-serif text-sm leading-6 w-full px-1 py-1 focus:outline-none text-sm placeholder-gray-400 dark:placeholder-gray-600 text-area-scroll transition-all duration-300 resize-none`}
+                                rows={bookSummary ? 12 : 1}
+                                className={`${showBookContent ? "hidden" : ""} font-serif text-sm leading-6 w-full px-1 py-1 focus:outline-none text-sm placeholder-gray-400 dark:placeholder-gray-600 text-area-scroll transition-all duration-300 resize-none placeholder:text-center placeholder:text-lg`}
                                 placeholder="Update book summary"
                                 value={bookSummary}
                                 onFocus={(e) => autoResize(e)}
@@ -1836,6 +1747,12 @@ export default function ExperimentPage() {
                   )}
                 </div>
               ))}
+
+              {worldbuildingSections.length < 1 && (
+                <div className="py-8 text-center border-2 border-dashed border-gray-100 dark:border-gray-800 rounded-xl">
+                  <p className="text-xs text-gray-400 italic">No world settings yet</p>
+                </div>
+              )}
             </div>
           </div>
 
@@ -1870,7 +1787,7 @@ export default function ExperimentPage() {
 
         {/* CHANGES SAVED POPUP */}
         {showStatePopup && (
-        <div className="fixed top-14 z-30 left-1/2 bg-gray-300 py-1 px-5 transform -translate-x-1/2 rounded shadow-lg flex justify-center space-x-4 animate-fadeDown">
+        <div className="fixed top-14 z-50 left-1/2 bg-gray-300 py-1 px-5 transform -translate-x-1/2 rounded shadow-lg flex justify-center space-x-4 animate-fadeDown">
             <span>
             {alertMessage}
             <FontAwesomeIcon className="text-green-500" size="lg" icon={faCheck}/>
@@ -1891,12 +1808,12 @@ export default function ExperimentPage() {
                 border border-blue-600 hover:border-blue-400
                 text-white rounded-full
                 px-4 py-3.5 shadow-xl
-                transition-transform duration-300 
-                ${isNotesDrawerClosing ? "rotate-[1200deg] transition-all duration-700 ease-in scale-115 bg-gray-900 hover:bg-gray-900 border-gray-800 hover:border-gray-800 shadow-4xl" : "scale-100"}
+                transition-transform duration-600 
+                ${notesShowState ? "hidden" : "none"}
               `}
               title={notesShowState ? "Close notes" : "Open notes"}
             >
-              <FontAwesomeIcon icon={notesShowState ? faMinus : faPlus} className={`${isNotesDrawerClosing ? "scale-400 text-gray-700" : "scale-100"}`}/>
+              <FontAwesomeIcon icon={notesShowState ? faMinus : faPlus}/>
             </button>
 
             {/* Collapsible notes drawer*/}
@@ -1916,24 +1833,13 @@ export default function ExperimentPage() {
                 <div
                   ref={notesDrawerPanelRef}
                   className={`
-                    absolute bottom-0 xxs:bottom-15 xxs:right-15
+                    absolute bottom-0 xxs:right-15
                     bg-gray-100 dark:bg-gray-800
                     shadow-2xl p-3
-                    w-full max-w-[60vh] max-h-[80vh]
-                    transition-all duration-800
-                    ease-[cubic-bezier(0.22,1,0.36,1)]
-                    origin-center
-                    will-change-transform
-                    ${isNotesDrawerVisible ? "opacity-100 rounded-xl scale-100" : ""}
-                    ${isNotesDrawerClosing ? "opacity-0 rounded-full" : ""}
+                    w-full max-w-[60vh] max-h-[90vh]
+                    transition-all duration-500
+                    ${isNotesDrawerVisible ? "translate-y-0" : "translate-y-full"}
                   `}
-                  style={{
-                    transform: isNotesDrawerVisible
-                      ? "translate3d(0,0,0) scale(1)"
-                      : isNotesDrawerClosing
-                      ? notesDrawerCloseTransform
-                      : "translate3d(0,120%,0) scale(0.9)"
-                  }}
                 >
                   <div className="flex items-center justify-between mb-2">
                     <h2 className="text-sm font-semibold">Notes</h2>
@@ -1953,7 +1859,7 @@ export default function ExperimentPage() {
                     </div>
                   </div>
 
-                  <div className="h-[calc(75vh-3.5rem)] overflow-y-auto overflow-x-hidden notes-scroll overflow-contain mt-2">
+                  <div className="h-[calc(75vh-3.5rem)] xxs:h-[calc(85vh-3.5rem)] overflow-y-auto overflow-x-hidden notes-scroll overflow-contain mt-2">
                     {bookNotes.length < 1 && !draftNote && (
                       <div className="py-8 text-center border-2 border-dashed border-gray-100 dark:border-gray-500 rounded-xl">
                         <p className="text-xs text-gray-300 italic">Add notes, references, future scenarios, book plans, etc...</p>
@@ -2149,7 +2055,7 @@ export default function ExperimentPage() {
                 </button>
               </div>
 
-              <div className="mt-4 space-y-3">
+              <form onSubmit={saveWorldbuildingSection} className="mt-4 space-y-3">
                 <div>
                   <label className="text-sm font-medium">Section Title</label>
                   <input
@@ -2158,6 +2064,7 @@ export default function ExperimentPage() {
                     placeholder="ex: Economy, Politics, Religion..."
                     value={worldSectionTitle}
                     onChange={(e) => setWorldSectionTitle(e.target.value)}
+                    required
                   />
                 </div>
 
@@ -2214,14 +2121,13 @@ export default function ExperimentPage() {
                     Cancel
                   </button>
                   <button
-                    type="button"
+                    type="submit"
                     className="px-3 py-1 rounded bg-blue-600 text-white hover:bg-blue-700"
-                    onClick={saveWorldbuildingSection}
                   >
                     Save Section
                   </button>
                 </div>
-              </div>
+              </form>
             </div>
           </div>
         )}
