@@ -6,7 +6,7 @@ import Navbar, { type NavbarAction } from "../components/Navbar";
 import { db, type Book, type Character, type EditableCharacter, type Notes, type CharacterDescription, type CharImage, type WorldbuildingSection, type WorldbuildingEntry } from "../db";
 
 import { FontAwesomeIcon} from "@fortawesome/react-fontawesome";
-import { faCheck, faPlus, faMinus, faEllipsis, faUserPlus, faNoteSticky, faTableColumns, faWandMagicSparkles, faProjectDiagram, faGlobe, faPenToSquare, faFileLines, faHouse, faStar, faPen } from "@fortawesome/free-solid-svg-icons";
+import { faCheck, faPlus, faMinus, faEllipsis, faUserPlus, faNoteSticky, faTableColumns, faWandMagicSparkles, faProjectDiagram, faGlobe, faPenToSquare, faFileLines, faHouse, faStar, faPen, faArrowLeft } from "@fortawesome/free-solid-svg-icons";
 import { createPortal } from "react-dom";
 
 export default function ExperimentPage() {
@@ -341,6 +341,7 @@ export default function ExperimentPage() {
     async function addCharacter(event: any) {
       if (!name || currentBookId === undefined) return;
       event.preventDefault();
+      goToTop();
   
       const newCharacter: Character = {
         id: Date.now(),
@@ -441,9 +442,10 @@ export default function ExperimentPage() {
     }, [currentBook]);
 
     // SAVE EDIT BOOK DETAILS
-    async function saveBookDetails(event: FormEvent<HTMLFormElement>) {
+    async function saveBookDetails(event: React.SubmitEvent<HTMLFormElement>) {
       event.preventDefault();
       if (!currentBookId) return;
+      goToTop();
 
       const updatedBook = {
         title: normalizeWhitespace(titleDraft),
@@ -917,6 +919,11 @@ export default function ExperimentPage() {
     const [worldSectionTitle, setWorldSectionTitle] = useState("");
     const [worldDraftEntries, setWorldDraftEntries] = useState<WorldbuildingEntry[]>([{ label: "", value: "" }]);
 
+    const [showEditWorldbuildingModal, setShowEditWorldbuildingModal] = useState(false);
+    const [selectedWorldSectionId, setSelectedWorldSectionId] = useState<string | null>(null);
+    const [editWorldSectionTitle, setEditWorldSectionTitle] = useState("");
+    const [editWorldDraftEntries, setEditWorldDraftEntries] = useState<WorldbuildingEntry[]>([{ label: "", value: "" }]);
+
     const [openWorldSections, setOpenWorldSections] = useState<Record<string, boolean>>({});
 
     useEffect(() => {
@@ -928,6 +935,8 @@ export default function ExperimentPage() {
     const openWorldbuildingModal = () => {
       setWorldSectionTitle("");
       setShowWorldbuildingModal(true);
+      document.body.classList.toggle('overflow-hidden', true);
+      setWorldDraftEntries([{ label: "", value: "" }]);
       setShowSettingsMenu(false);
     };
 
@@ -948,7 +957,51 @@ export default function ExperimentPage() {
       });
     };
 
-    const saveWorldbuildingSection = async () => {
+    const closeEditWorldbuildingModal = () => {
+      setShowEditWorldbuildingModal(false);
+      setSelectedWorldSectionId(null);
+      setEditWorldSectionTitle("");
+      setEditWorldDraftEntries([{ label: "", value: "" }]);
+      document.body.classList.toggle('overflow-hidden', false);
+    };
+
+    const openEditWorldbuildingModal = () => {
+      if (worldbuildingSections.length < 1) return;
+
+      setShowEditWorldbuildingModal(true);
+      document.body.classList.toggle('overflow-hidden', true);
+      setShowSettingsMenu(false);
+    };
+
+    const addEditWorldDraftEntry = () => {
+      setEditWorldDraftEntries(prev => [...prev, { label: "", value: "" }]);
+    };
+
+    const updateEditWorldDraftEntry = (index: number, key: "label" | "value", newValue: string) => {
+      setEditWorldDraftEntries(prev => prev.map((entry, i) => (
+        i === index ? { ...entry, [key]: newValue } : entry
+      )));
+    };
+
+    const removeEditWorldDraftEntry = (index: number) => {
+      setEditWorldDraftEntries(prev => {
+        if (prev.length === 1) return prev;
+        return prev.filter((_, i) => i !== index);
+      });
+    };
+
+    const selectWorldSectionForEdit = (sectionId: string) => {
+      const section = worldbuildingSections.find(item => item.id === sectionId);
+      if (!section) return;
+
+      setSelectedWorldSectionId(section.id);
+      setEditWorldSectionTitle(section.title);
+      setEditWorldDraftEntries(section.entries.length ? section.entries.map(entry => ({ ...entry })) : [{ label: "", value: "" }]);
+    };
+
+    const saveWorldbuildingSection = async (event: React.SubmitEvent<HTMLFormElement>) => {
+      event.preventDefault();
+
       const normalizedTitle = normalizeWhitespace(worldSectionTitle);
       const cleanEntries = worldDraftEntries
         .map(entry => ({
@@ -977,8 +1030,65 @@ export default function ExperimentPage() {
       await db.worldSetting.add(newSettings);
       setOpenWorldSections(prev => ({ ...prev, [sectionId]: true }));
       setShowWorldbuildingModal(false);
+      document.body.classList.toggle('overflow-hidden', false);
 
       setWorldDraftEntries([{ label: "", value: "" }]);
+    };
+
+    const saveEditedWorldbuildingSection = async (event: React.SubmitEvent<HTMLFormElement>) => {
+      event.preventDefault();
+
+      if (!selectedWorldSectionId) {
+        return;
+      }
+
+      const normalizedTitle = normalizeWhitespace(editWorldSectionTitle);
+      const cleanEntries = editWorldDraftEntries
+        .map(entry => ({
+          label: normalizeWhitespace(entry.label),
+          value: entry.value.trim().replace(/\s+/g, " "),
+        }))
+        .filter(entry => entry.label && entry.value);
+
+      if (!normalizedTitle) {
+        return;
+      }
+
+      const updatedSection = worldbuildingSections.find(section => section.id === selectedWorldSectionId);
+      if (!updatedSection) {
+        return;
+      }
+
+      const nextSection = {
+        ...updatedSection,
+        title: normalizedTitle,
+        entries: cleanEntries,
+      };
+
+      await db.worldSetting.put(nextSection);
+      setWorldbuildingSections(prev => prev.map(section => section.id === selectedWorldSectionId ? nextSection : section));
+      closeEditWorldbuildingModal();
+    };
+
+    const deleteWorldbuildingSection = async (sectionId: string) => {
+      const isConfirmed = window.confirm("Delete this worldbuilding section?");
+      if (!isConfirmed) return;
+
+      const remainingSections = worldbuildingSections.filter(section => section.id !== sectionId);
+
+      await db.worldSetting.delete(sectionId);
+      setWorldbuildingSections(remainingSections);
+      setOpenWorldSections(prev => {
+        const next = { ...prev };
+        delete next[sectionId];
+        return next;
+      });
+
+      if (remainingSections.length > 0) {
+        setSelectedWorldSectionId(null);
+      } else {
+        closeEditWorldbuildingModal();
+      }
     };
 
     const toggleWorldSection = (sectionId: string) => {
@@ -1739,7 +1849,8 @@ export default function ExperimentPage() {
                 <button
                   type="button"
                   className="px-2 py-1 text-xs rounded border border-gray-400 hover:bg-gray-200 dark:hover:bg-gray-700"
-                  onClick={() => alert("edit")}
+                  onClick={openEditWorldbuildingModal}
+                  disabled={worldbuildingSections.length < 1}
                 >
                   <FontAwesomeIcon icon={faPen} /> Edit
                 </button>
@@ -2068,6 +2179,7 @@ export default function ExperimentPage() {
             onMouseDown={(e) => {
               if (e.target === e.currentTarget) {
                 setShowWorldbuildingModal(false);
+                document.body.classList.toggle('overflow-hidden', false);
               }
             }}
           >
@@ -2080,7 +2192,7 @@ export default function ExperimentPage() {
                 <button
                   type="button"
                   className="px-2 py-1 rounded border border-gray-400 hover:bg-gray-200 dark:hover:bg-gray-700"
-                  onClick={() => setShowWorldbuildingModal(false)}
+                  onClick={() => {setShowWorldbuildingModal(false); document.body.classList.toggle('overflow-hidden', false);}}
                 >
                   Close
                 </button>
@@ -2147,7 +2259,7 @@ export default function ExperimentPage() {
                   <button
                     type="button"
                     className="px-3 py-1 rounded bg-gray-500 text-white hover:bg-gray-600"
-                    onClick={() => setShowWorldbuildingModal(false)}
+                    onClick={() => {setShowWorldbuildingModal(false); document.body.classList.toggle('overflow-hidden', false);}}
                   >
                     Cancel
                   </button>
@@ -2159,6 +2271,158 @@ export default function ExperimentPage() {
                   </button>
                 </div>
               </form>
+            </div>
+          </div>
+        )}
+
+        {/* WORLD BUILDING EDIT MODAL */}
+        {showEditWorldbuildingModal && (
+          <div
+            className="fixed inset-0 z-50 bg-black/50 flex items-center justify-center p-3"
+            onMouseDown={(e) => {
+              if (e.target === e.currentTarget) {
+                closeEditWorldbuildingModal();
+              }
+            }}
+          >
+            <div className="w-full max-w-2xl max-h-[90vh] overflow-y-auto rounded-md bg-white dark:bg-gray-900 p-4 shadow-2xl notes-scroll" onMouseDown={(e) => e.stopPropagation()}>
+              {/* title */}
+              <div className="flex items-start justify-between gap-3">
+
+                  {selectedWorldSectionId ?
+                    (<button 
+                      className={`text-gray-500 dark:text-gray-400 hover:text-gray-300`}
+                      onClick={() => setSelectedWorldSectionId(null)}
+                    > <FontAwesomeIcon icon={faArrowLeft} size="lg"/>
+                    </button>
+                    )
+                    :
+                    (
+                    <div>
+                      <h2 className="text-lg font-semibold">Edit World Setting Section</h2>
+                      <p className="text-xs text-gray-500 dark:text-gray-400">Choose one section, then update its title and entries.</p>
+                    </div>
+                    )
+                  }
+
+                <button
+                  type="button"
+                  className="px-2 py-1 rounded border border-gray-400 hover:bg-gray-200 dark:hover:bg-gray-700"
+                  onClick={closeEditWorldbuildingModal}
+                >
+                  Close
+                </button>
+              </div>
+
+              {/* world sections list */}
+              <div className="mt-2 space-y-3">
+                {/* list */}
+                {!selectedWorldSectionId && (
+                  <div>
+                    <label className="text-sm font-medium">Choose Section</label>
+                    <div className="grid gap-2 sm:grid-cols-3">
+                      {worldbuildingSections.map((section) => (
+                        <button
+                          key={`edit-selector-${section.id}`}
+                          type="button"
+                          className={`text-left px-2 py-1 border border-gray-600/50 group`}
+                          onClick={() => selectWorldSectionForEdit(section.id)}
+                        >
+                          <span className="text-sm font-medium text-blue-700 dark:text-blue-300 group-hover:text-blue-500 line-clamp-1">{section.title}</span>
+                          <span className="block text-xs text-gray-500 dark:text-gray-400">{section.entries.length} entr{section.entries.length === 1 ? "y" : "ies"}</span>
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                {/* chosen section edit */}
+                {selectedWorldSectionId && (
+                  <form onSubmit={saveEditedWorldbuildingSection} className="space-y-3">
+                    <div>
+                      <label className="text-sm font-medium">Section Title</label>
+                      <input
+                        type="text"
+                        className="mt-1 w-full rounded border border-gray-300 dark:border-gray-700 px-3 py-2 bg-transparent"
+                        placeholder="ex: Economy, Politics, Religion..."
+                        value={editWorldSectionTitle}
+                        onChange={(e) => setEditWorldSectionTitle(e.target.value)}
+                        required
+                      />
+                    </div>
+
+                    <div className="space-y-2">
+                      <div className="flex items-center justify-between">
+                        <label className="text-sm font-medium">Entries (Label + Value)</label>
+                        <button
+                          type="button"
+                          className="text-xs px-2 py-1 rounded border border-gray-400 hover:bg-gray-200 dark:hover:bg-gray-700"
+                          onClick={addEditWorldDraftEntry}
+                        >
+                          <FontAwesomeIcon icon={faPlus} /> Add entry
+                        </button>
+                      </div>
+
+                      {editWorldDraftEntries.map((entry, index) => (
+                        <div key={`edit-draft-entry-${index}`} className="rounded border border-gray-300 dark:border-gray-700 p-2 space-y-2">
+                          <div className="flex items-center justify-between">
+                            <span className="text-xs text-gray-500">Entry #{index + 1}</span>
+                            <button
+                              type="button"
+                              className="text-xs text-red-500 disabled:opacity-40"
+                              onClick={() => removeEditWorldDraftEntry(index)}
+                              disabled={editWorldDraftEntries.length === 1}
+                            >
+                              Remove
+                            </button>
+                          </div>
+
+                          <input
+                            type="text"
+                            className="w-full rounded border border-gray-300 dark:border-gray-700 px-2 py-1 bg-transparent"
+                            placeholder="Label (ex: Cost, Rule, Limitation)"
+                            value={entry.label}
+                            onChange={(e) => updateEditWorldDraftEntry(index, "label", e.target.value)}
+                          />
+                          <textarea
+                            rows={2}
+                            className="w-full rounded border border-gray-300 dark:border-gray-700 px-2 py-1 bg-transparent"
+                            placeholder="Value / detail"
+                            value={entry.value}
+                            onChange={(e) => updateEditWorldDraftEntry(index, "value", e.target.value)}
+                          />
+                        </div>
+                      ))}
+                    </div>
+
+                    <div className="flex items-center justify-between gap-2 pt-1">
+                      <button
+                        type="button"
+                        className="px-3 py-1 rounded bg-red-600 text-white hover:bg-red-700"
+                        onClick={() => deleteWorldbuildingSection(selectedWorldSectionId)}
+                      >
+                        Delete Section
+                      </button>
+
+                      <div className="flex gap-2">
+                        <button
+                          type="button"
+                          className="px-3 py-1 rounded bg-gray-500 text-white hover:bg-gray-600"
+                          onClick={() => setSelectedWorldSectionId(null)}
+                        >
+                          Cancel
+                        </button>
+                        <button
+                          type="submit"
+                          className="px-3 py-1 rounded bg-blue-600 text-white hover:bg-blue-700"
+                        >
+                          Save Changes
+                        </button>
+                      </div>
+                    </div>
+                  </form>
+                )}
+              </div>
             </div>
           </div>
         )}
