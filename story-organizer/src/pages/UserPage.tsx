@@ -552,7 +552,7 @@ export default function UserPage() {
                             {/* Stats Row */}
                             <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
                                 <div className="rounded-md border border-gray-200 dark:border-gray-700 p-3">
-                                    <p className="text-xs text-gray-500">Books</p>
+                                    <p className="text-xs text-gray-500">Projects</p>
                                     <p className="text-xl font-bold">{books.length}</p>
                                 </div>
                                 <div className="rounded-md border border-gray-200 dark:border-gray-700 p-3">
@@ -602,7 +602,7 @@ export default function UserPage() {
 
                             {/* Rotating Tip Card */}
                             <div className="rounded-md border border-emerald-300 dark:border-emerald-700 bg-emerald-50/80 dark:bg-emerald-900/20 p-3">
-                                <p className="text-xs font-semibold text-emerald-700 dark:text-emerald-300 mb-1">Tips from StoryDreamer.</p>
+                                <p className="text-xs font-semibold text-emerald-700 dark:text-emerald-300 mb-1">Creative Prompts.</p>
                                 <p className="text-sm min-h-6 transition-all duration-300">{dashboardTips[tipIndex]}</p>
                             </div>
                         </>
@@ -932,6 +932,11 @@ export default function UserPage() {
                             </div>
                             
                             <textarea
+                            onInput={(e: React.FormEvent<HTMLTextAreaElement>) => {
+                                const target = e.currentTarget;
+                                target.style.height = '';
+                                target.style.height = target.scrollHeight + 'px';
+                            }}
                             className="
                             w-full text-sm
                             rounded-md 
@@ -991,14 +996,14 @@ export default function UserPage() {
 
                                 <button 
                                 className="flex px-4 py-1 bg-neutral-500 rounded-xl hover:bg-neutral-600"
-                                onClick={() => {setHideSave(false); setDraftNote(null);}}
+                                onMouseDown={() => {setHideSave(false); setDraftNote(null);}}
                                 >
                                 Cancel
                                 </button>
 
                                 <button 
                                 className="flex px-4 py-1 bg-blue-700 rounded-xl hover:bg-blue-800"
-                                onClick={() => {saveNote(notes);}}
+                                onMouseDown={() => {saveNote(notes);}}
                                 >
                                 Save 
                                 </button>

@@ -1,4 +1,4 @@
-import { Routes, Route } from "react-router-dom";
+import { Routes, Route, useLocation } from "react-router-dom";
 import Layout from "./components/Layout";
 
 import UserPage from "./pages/UserPage";
@@ -8,8 +8,8 @@ import CharacterPage from "./pages/CharacterPage";
 import { useEffect } from "react";
 
 import { useGoogleAuth} from "./context/GoogleAuthContext";
-import { findBackupFile } from "./services/driveService";
 import CharEditPage from "./pages/CharEditPage";
+import CharacterPageCopy from "./pages/CharacterPageCopy";
 
 export default function StoryOrganizer() {
 
@@ -25,26 +25,13 @@ export default function StoryOrganizer() {
     }
 
     initialize(clientId);
-  }, []);
+  }, [initialize]);
 
-  // THIS IS FOR SETTING FILE NAME OF SAVED JSON FROM GOOGLE DRIVE
-  useEffect(() => {
-  const checkBackup = async () => {
-    const token = localStorage.getItem("googleAccessToken");
-    if (!token) return;
+const { pathname } = useLocation();
 
-    try {
-      const file = await findBackupFile(token);
-      if (file) {
-        localStorage.setItem("googleFileID", file.id);
-      }
-    } catch (err) {
-      console.error("Drive check failed");
-    }
-  };
-
-  checkBackup();
-}, []);
+useEffect(() => {
+  window.scrollTo(0, 0);
+}, [pathname]);
 
   // ROUTING CODE
   return (
@@ -61,7 +48,7 @@ export default function StoryOrganizer() {
         />
         <Route
           path="book/:currentBookId/:characterSlug"
-          element={<CharacterPage />}
+          element={<CharacterPageCopy />}
         />
         <Route
           path="book/:currentBookId/:characterSlug/edit"

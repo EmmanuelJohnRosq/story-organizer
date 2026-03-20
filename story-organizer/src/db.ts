@@ -37,6 +37,7 @@ export type Character = {
     type: string; // family, friend, bestfriend, mentor, archnemesis, rival, love interest, lover, wife, husband, etc...
   }[];
 
+  priority: number;
   description: CharacterDescription;
 
   createdAt: number;
@@ -89,6 +90,18 @@ export type Book = {
   status: string; // completed | ongoing | hiatus | dropped
 };
 
+export type WorldbuildingEntry = {
+  label: string;
+  value: string;
+};
+
+export type WorldbuildingSection = {
+  id: string;
+  bookId: string;
+  title: string;
+  entries: WorldbuildingEntry[];
+};
+
 export type Images = {
   imageId: string; // created string crypto.UUID
   charId: number; // character ids for matching characters
@@ -118,6 +131,7 @@ export type Notes = {
   color: string;
   bookId: string;
   charId: number | null;
+  pinned?: boolean;
 }
 
 class StoryDB extends Dexie {
@@ -125,34 +139,38 @@ class StoryDB extends Dexie {
   images!: Table<Images>;
   notes!: Table<Notes>;
   characters!: Table<Character>;
+  worldSetting!: Table<WorldbuildingSection>;
 
   constructor() {
     super("StoryDB");
 
-    this.version(20).stores({
+    this.version(22).stores({
       books: "id, title", 
       images: "imageId, charId, bookId",
-      notes: "++id, bookId, charId",
-      characters: "id, bookId, name, *chapterAppearances, status, *setRace",
+      notes: "++id, bookId, charId, pinned",
+      characters: "id, bookId, name, priority,*chapterAppearances, status, *setRace",
+      worldSetting: "id, bookId, title",
       // ++id = auto increment
       // title = indexed (useful later for search)
     })
-    
-    .upgrade(async (tx) => {
-      const images = await tx.table("images").toArray();
-      const activeByChar = new Map<number, string>();
-
-      for (const image of images) {
-        const current = activeByChar.get(image.charId);
-        if (!current || image.createdAt > (images.find((item) => item.imageId === current)?.createdAt ?? 0)) {
-          activeByChar.set(image.charId, image.imageId);
-        }
-      }
-
-      await tx.table("images").toCollection().modify((image: Images) => {
-        image.isDisplayed = activeByChar.get(image.charId) === image.imageId;
+      .upgrade(async (tx) => {
+          await tx.table("characters").toCollection().modify(character => {
+          if (typeof character.priority !== "number" || Number.isNaN(character.priority)) {
+            character.priority = 0;
+          }
+        });
       });
-    });
+
+    // .upgrade(async (tx) => {
+    //   // 1. Get the notes table as a collection
+    //   // 2. Use .modify() with a callback to update each record
+    //   return tx.table("notes").toCollection().modify(note => {
+    //     // Set default value only if it doesn't already exist
+    //     if (note.pinned === undefined) {
+    //       note.pinned = false;
+    //     }
+    //   });
+    // });
 
   }
 }
