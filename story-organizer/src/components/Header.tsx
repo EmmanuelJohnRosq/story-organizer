@@ -1,13 +1,13 @@
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
-import { faFileImport, faCircleUser, faUpload, faSpinner, faDownload, faArrowLeft, faUser, faHouse, faAngleRight } from "@fortawesome/free-solid-svg-icons";
-import { useCallback, useEffect, useState } from "react";
+import { faFileImport, faCircleUser, faUpload, faSpinner, faDownload, faArrowLeft, faUser, faAngleRight } from "@fortawesome/free-solid-svg-icons";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { db } from "../db";
 import { useNavigate, useParams, useLocation } from "react-router-dom";
 import { useDropzone } from "react-dropzone";
 
 import { useGoogleAuth, type GoogleUser } from "../context/GoogleAuthContext";
 import { signOut } from "../services/googleAuth";
-import { downloadDriveFile, findBackupFile, uploadJsonToDrive } from "../services/driveService";
+import { downloadDriveFile, listManualBackupFiles, type DriveBackupFile, uploadManualBackup, upsertAutoBackup } from "../services/driveService";
 
 export default function Header() {
     const navigate = useNavigate();
@@ -96,6 +96,8 @@ export default function Header() {
     const [errorGoogle, setErrorGoogle] = useState<string | null>(null);
 
     const [backupFileId, setBackupFileId] = useState<string | null>(null);
+    const [manualBackups, setManualBackups] = useState<DriveBackupFile[]>([]);
+    const [selectedBackupId, setSelectedBackupId] = useState<string>("");
 
 
     const toggleTheme = () => {
@@ -125,13 +127,11 @@ export default function Header() {
         if (!token) return;
     
         try {
-          const file = await findBackupFile(token);
-          if (file) {
-            setBackupFileId(file.id);
-            localStorage.setItem("googleFileID", file.id);
-            setDisplayExpiringAuth(false);
-          }
-        } catch (err) {
+          const files = await listManualBackupFiles(token);
+          setManualBackups(files.slice(0, 3));
+          setSelectedBackupId((current) => current || files[0]?.id || "");
+          setDisplayExpiringAuth(false);
+        } catch {
           console.error("Drive check failed");
           setDisplayExpiringAuth(true);
           setTimeout(() => {setDisplayExpiringAuth(false)}, 20000);
@@ -282,7 +282,7 @@ export default function Header() {
 
             // Restore images (if they exist)
             if (parsed.images && parsed.images.length > 0) {
-            const restoredImages = parsed.images.map((img: any) => ({
+            const restoredImages = parsed.images.map((img: { imageId: number; charId: number; bookId?: string; createdAt: string; base64: string; isDisplayed?: boolean }) => ({
                 imageId: img.imageId,
                 charId: img.charId,
                 bookId: img.bookId,
@@ -314,12 +314,23 @@ export default function Header() {
         multiple: false,
     });
 
-    const name = "Story-Organizer-BackUp-Data"
+    const manualBackupCountLabel = useMemo(() => `${manualBackups.length}/3 manual backups available`, [manualBackups.length]);
+
+    const formatBackupDate = (value?: string) => {
+        if (!value) return "Unknown date";
+        return new Date(value).toLocaleString();
+    };
+
+    async function refreshManualBackups(token: string) {
+        const files = await listManualBackupFiles(token);
+        const latestFiles = files.slice(0, 3);
+        setManualBackups(latestFiles);
+        setSelectedBackupId(latestFiles[0]?.id ?? "");
+    }
 
     // BACK UP ALL OF THE DATABASE TO GOOGLE DRIVE
     async function backupData() {
         const token = localStorage.getItem("googleAccessToken");
-        const existingFile = localStorage.getItem("googleFileID");
 
         if(!token) {
             alert("Connect to Google first.");
@@ -327,12 +338,12 @@ export default function Header() {
             return;
         }
         const data = await getAllDB();
-        
 
         try {
             setErrorGoogle(null);
             setIsGoogleSaving(true);
-            await uploadJsonToDrive(name, data, token, existingFile ?? undefined);
+            await uploadManualBackup(data, token);
+            await refreshManualBackups(token);
             setSuccessGoogle(true);
 
             setTimeout(() => {
@@ -354,12 +365,13 @@ export default function Header() {
     // IMPORT DATA FROM GOOGLE DRIVE TO LOCAL DB
     const handleRestoreFromDrive = async () => {
         const token = localStorage.getItem("googleAccessToken");
-        if (!token || !backupFileId) return;
+        if (!token || !selectedBackupId) return;
 
-        const isConfirmed = window.confirm("Download the saved file, it will overwrite the existing data if there are any.");
+        const selectedBackup = manualBackups.find((backup) => backup.id === selectedBackupId);
+        const isConfirmed = window.confirm(`Restore ${selectedBackup?.name ?? "the selected backup"}? This will overwrite the existing local data.`);
         if (isConfirmed) {
             try {
-                const file = await downloadDriveFile(backupFileId, token);
+                const file = await downloadDriveFile(selectedBackupId, token);
                 await importData(file);
                 setShowAccountSettings(false);
             } catch (err) {
@@ -378,8 +390,6 @@ export default function Header() {
         }
     }
 
-    const [displayExpiringAuth, setDisplayExpiringAuth] = useState(false);
-
     async function logIn() {
         try {
             signIn(); 
@@ -388,6 +398,40 @@ export default function Header() {
             console.error("Login failed or was cancelled:", error);
         }
     }
+
+    const [displayExpiringAuth, setDisplayExpiringAuth] = useState(false);
+
+    useEffect(() => {
+        if (!googleUser) return;
+
+        const token = localStorage.getItem("googleAccessToken");
+        if (!token) return;
+
+        let cancelled = false;
+
+        const runAutoBackup = async () => {
+            try {
+                const data = await getAllDB();
+                await upsertAutoBackup(data, token);
+                if (!cancelled) {
+                    setDisplayExpiringAuth(false);
+                }
+            } catch (error) {
+                console.error("Automatic Google Drive backup failed", error);
+                if (!cancelled) {
+                    setDisplayExpiringAuth(true);
+                }
+            }
+        };
+
+        runAutoBackup();
+        const intervalId = window.setInterval(runAutoBackup, 55 * 60 * 1000);
+
+        return () => {
+            cancelled = true;
+            window.clearInterval(intervalId);
+        };
+    }, [googleUser]);
 
     // BACKING PATH LOCATION PAGES
     const location = useLocation();
@@ -665,14 +709,28 @@ export default function Header() {
                             </button>
 
                             {/* DOWNLOAD THE BACKUP FILE FOR DATA UPDATES */}
-                            {backupFileId && (
-                            <button
-                                onClick={() => handleRestoreFromDrive()}
-                                title="Restore backup data from google drive save"
-                                className="w-full text-left px-2 py-1 rounded hover:bg-blue-100 dark:hover:bg-blue-900/40"
-                            >
-                                <FontAwesomeIcon icon={faDownload} className="mr-2"/>Restore backup
-                            </button>
+                            {manualBackups.length > 0 && (
+                            <div className="space-y-2 px-2 py-2 rounded bg-blue-50 dark:bg-blue-950/40">
+                                <p className="text-xs text-blue-700 dark:text-blue-200">Restore one of your Google Drive backups.</p>
+                                <select
+                                    value={selectedBackupId}
+                                    onChange={(e) => setSelectedBackupId(e.target.value)}
+                                    className="w-full rounded border border-blue-200 bg-white px-2 py-1 text-sm dark:bg-gray-900 dark:text-white"
+                                >
+                                    {manualBackups.map((backup) => (
+                                        <option key={backup.id} value={backup.id}>
+                                            {`User-Backup • ${formatBackupDate(backup.createdTime ?? backup.modifiedTime)}`}
+                                        </option>
+                                    ))}
+                                </select>
+                                <button
+                                    onClick={() => handleRestoreFromDrive()}
+                                    title="Restore backup data from google drive save"
+                                    className="w-full text-left px-2 py-1 rounded hover:bg-blue-100 dark:hover:bg-blue-900/40"
+                                >
+                                    <FontAwesomeIcon icon={faDownload} className="mr-2"/>Restore backup
+                                </button>
+                            </div>
                             )}
 
                             {googleUser ? 
@@ -808,17 +866,18 @@ export default function Header() {
                         {googleUser.email} 
                     </p>
                     <p className="text-xl text-black text-center">
-                        {name}.json
+                        Manual backup slots in Google Drive
+                    </p>
+                    <p className="text-sm text-center text-gray-500 pt-1">
+                        {manualBackupCountLabel}
                     </p>
 
-                    {!successGoogle && !isGoogleSaving && (
+                    {!successGoogle && !isGoogleSaving && manualBackups.length >= 3 && (
                     <>
                         <p className="text-lg text-gray-600 px-5 pt-3">
-                            A file with this name already exists on the server. Saving will permanently overwrite the current version. This action is irreversible and previous data cannot be recovered.
-                        </p>
-
-                        <p className="text-lg text-gray-600 text-center px-5">
-                            Are you sure you want to proceed?
+                            It is detected that you have 3 manual backups saved.
+                            <br/>
+                            When you upload next time, the oldest manual backup is deleted automatically.
                         </p>
                     </>
                     )}

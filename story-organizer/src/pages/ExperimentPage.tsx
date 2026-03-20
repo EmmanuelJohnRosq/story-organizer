@@ -267,7 +267,11 @@ export default function ExperimentPage() {
         .equals(bookId)
         .toArray();
   
-      characters.sort((a, b) => a.id - b.id);
+      characters.sort((a, b) => {
+        const priorityDiff = (b.priority ?? 0) - (a.priority ?? 0);
+        if (priorityDiff !== 0) return priorityDiff;
+        return a.id - b.id;
+      });
       setCharacters(characters);
       loadImages(characters);
     };
@@ -364,6 +368,7 @@ export default function ExperimentPage() {
         setRace: [race],
         chapterAppearances: charChapterAppearances,
         relationships: charRelationships,
+        priority: 0,
         description: charDescription,
         createdAt: Date.now(),
         updatedAt: Date.now(),
@@ -819,6 +824,33 @@ export default function ExperimentPage() {
       indexOfFirstChar,
       indexOfLastChar
     );
+
+    const updateCharacterPriority = async (charId: number, currentPriority: number) => {
+      const promptValue = window.prompt("Set a priority number for this character. Higher numbers appear first in the grid.", String(currentPriority ?? 0));
+
+      if (promptValue === null) return;
+
+      const parsedPriority = Number(promptValue.trim());
+      if (!Number.isFinite(parsedPriority) || parsedPriority < 0) {
+        window.alert("Please enter a valid priority number (0 or higher).");
+        return;
+      }
+
+      const nextPriority = Math.floor(parsedPriority);
+
+      await db.characters.update(charId, { priority: nextPriority });
+      setCharacters(prev => {
+        const updated = prev.map(char => (
+          char.id === charId ? { ...char, priority: nextPriority } : char
+        ));
+
+        return updated.sort((a, b) => {
+          const priorityDiff = (b.priority ?? 0) - (a.priority ?? 0);
+          if (priorityDiff !== 0) return priorityDiff;
+          return a.id - b.id;
+        });
+      });
+    };
   
     const totalPages = Math.ceil(character.length / charactersPerPage);
   
@@ -1731,14 +1763,27 @@ export default function ExperimentPage() {
                     key={char.id} 
                     title="Open character sheet."
                     className="
-                      flex flex-col items-center justify-center p-2
+                      relative flex flex-col items-center justify-center p-2
                       cursor-pointer bg-white dark:bg-gray-950 shadow-md rounded-2xl
                       transition-all duration-300
-                      hover:bg-gray-50 dark:hover:bg-gray-900 hover:shadow-xl hover:-translate-y-1
+                      hover:bg-gray-50 dark:hover:bg-gray-900 hover:shadow-xl
                       group animate-fadeDown border border-gray-100 dark:border-gray-800
                     "
                     onClick={() => openEditCharacter(char)}
                   >
+                    <button
+                      type="button"
+                      title="Set character priority"
+                      className={`absolute right-2 top-2 z-10 inline-flex items-center gap-1 rounded-full border px-2 py-1 text-[10px] font-semibold shadow-sm transition hover:border-amber-500 ${char.priority > 0 ? "border-amber-300 bg-amber-100 text-amber-700 dark:border-amber-500/60 dark:bg-amber-500/10 dark:text-amber-200" : "border-gray-200 bg-white/90 text-gray-500 dark:border-gray-700 dark:bg-gray-900/90 dark:text-gray-300"}`}
+                      onClick={(event) => {
+                        event.stopPropagation();
+                        updateCharacterPriority(char.id, char.priority ?? 0);
+                      }}
+                    >
+                      <FontAwesomeIcon icon={faStar} className={char.priority > 0 ? "text-amber-400" : "text-gray-400"} />
+                      P{char.priority ?? 0}
+                    </button>
+
                     {/* IMAGE: Responsive size (smaller on mobile, bigger on tablet+) */}
                     <div className="relative h-20 w-20 sm:h-24 sm:w-24 shrink-0 overflow-hidden rounded-full border-2 border-white dark:border-gray-800 shadow-sm ring-2 ring-gray-100 dark:ring-gray-900">
                       <img 
