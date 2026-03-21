@@ -2,6 +2,9 @@ let tokenClient: any = null;
 let accessToken: string | null = null;
 let userProfile: any = null;
 
+const GOOGLE_ACCESS_TOKEN_KEY = "googleAccessToken";
+const GOOGLE_TOKEN_EXPIRES_AT_KEY = "googleAccessTokenExpiresAt";
+
 export function initGoogleAuth(
   clientId: string,
   onUserLoaded: (profile: any) => void
@@ -11,9 +14,14 @@ export function initGoogleAuth(
     tokenClient = window.google.accounts.oauth2.initTokenClient({
         client_id: clientId,
         scope: "https://www.googleapis.com/auth/drive.file openid email profile",
-        callback: async (tokenResponse: { access_token: any; access_type: any; }) => {
+        callback: async (tokenResponse: { access_token: string; expires_in?: number; access_type: any; }) => {
             accessToken = tokenResponse.access_token;
-            localStorage.setItem("googleAccessToken", tokenResponse.access_token);
+            localStorage.setItem(GOOGLE_ACCESS_TOKEN_KEY, tokenResponse.access_token);
+
+            if (typeof tokenResponse.expires_in === "number") {
+                const expiresAt = Date.now() + tokenResponse.expires_in * 1000;
+                localStorage.setItem(GOOGLE_TOKEN_EXPIRES_AT_KEY, expiresAt.toString());
+            }
             
             const res = await fetch(
                 "https://www.googleapis.com/oauth2/v3/userinfo",    
@@ -49,6 +57,6 @@ export function getUserProfile() {
 export function signOut() {
   accessToken = null;
   userProfile = null;
-  localStorage.removeItem("googleConnected");
-  localStorage.removeItem("googleAccessToken");
+  localStorage.removeItem(GOOGLE_ACCESS_TOKEN_KEY);
+  localStorage.removeItem(GOOGLE_TOKEN_EXPIRES_AT_KEY);
 }

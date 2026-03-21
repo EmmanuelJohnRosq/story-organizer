@@ -415,10 +415,14 @@ export default function Header() {
         if (!googleUser) return;
 
         const token = localStorage.getItem("googleAccessToken");
-        if (!token) return;
+        const expiresAtRaw = localStorage.getItem("googleAccessTokenExpiresAt");
+        const expiresAt = expiresAtRaw ? Number(expiresAtRaw) : NaN;
+
+        if (!token || Number.isNaN(expiresAt)) return;
 
         let cancelled = false;
-
+        let timeoutId: number | null = null;
+        
         const runAutoBackup = async () => {
             try {
                 const data = await getAllDB();
@@ -435,12 +439,28 @@ export default function Header() {
             }
         };
 
-        runAutoBackup();
-        const intervalId = window.setInterval(runAutoBackup, 55 * 60 * 1000);
+        const scheduleAutoBackup = () => {
+            const backupLeadTime = 5 * 60 * 1000;
+            const delay = expiresAt - Date.now() - backupLeadTime;
+
+            if (delay <= 0) {
+                setDisplayExpiringAuth(true);
+                return;
+            }
+
+            timeoutId = window.setTimeout(() => {
+                void runAutoBackup();
+            }, delay);
+            setDisplayExpiringAuth(false);
+        };
+
+        scheduleAutoBackup();
 
         return () => {
             cancelled = true;
-            window.clearInterval(intervalId);
+            if (timeoutId !== null) {
+                window.clearTimeout(timeoutId);
+            }
         };
     }, [googleUser]);
 
@@ -669,93 +689,103 @@ export default function Header() {
 
                         {/* THIS IS THE DROPDOWN WHEN CLICKING SYSTEM FUNCTIONS */}
                         {showAccountSettings && (
-                        <div 
-                            className="absolute right-5 top-12 z-20 w-63 rounded-md border border-gray-200 bg-white shadow-lg dark:text-white dark:bg-gray-900 dark:border-gray-700 p-2 space-y-2"
-                        >
-                            {googleUser && (
-                                <div className="flex flex-col gap-1 p-1">
-                                    <p className="text-xs font-semibold uppercase tracking-wider text-gray-400">
-                                        Account
-                                    </p> 
-                                    
-                                    <div className="flex items-center gap-3">
-                                        {/* Avatar with improved border and hover effect */}
-                                        <div className="group relative w-9 h-9 rounded-full overflow-hidden shadow-md border-2 border-slate-700 transition-all hover:border-blue-500 cursor-pointer">
-                                            <img
-                                                src={googleUser.picture}
-                                                alt={googleUser.name}
-                                                className="w-full h-full object-cover"
-                                                title={`Account: ${googleUser.name}\n(${googleUser.email})`}
-                                            />
-                                        </div>
+                        <>
+                            <div  
+                                className="fixed inset-0 z-30 cursor-default h-screen" 
+                                onClick={(e) => {
+                                    e.stopPropagation(); // Prevents clicking the backdrop from triggering the Card
+                                    setShowAccountSettings(false);
+                            }}
+                            />
 
-                                        {/* Text stack for better hierarchy */}
-                                        <div className="flex flex-col">
-                                            <p className="text-sm font-medium text-slate-100 leading-none">
-                                                {googleUser.name}
-                                            </p>
-                                            <p className="text-xs text-gray-500 mt-1">
-                                                {googleUser.email}
-                                            </p>
+                            <div 
+                                className="absolute right-5 top-12 z-40 w-63 rounded-md border border-gray-200 bg-white shadow-lg dark:text-white dark:bg-gray-900 dark:border-gray-700 p-2 space-y-2"
+                            >
+                                {googleUser && (
+                                    <div className="flex flex-col gap-1 p-1">
+                                        <p className="text-xs font-semibold uppercase tracking-wider text-gray-400">
+                                            Account
+                                        </p> 
+                                        
+                                        <div className="flex items-center gap-3">
+                                            {/* Avatar with improved border and hover effect */}
+                                            <div className="group relative w-9 h-9 rounded-full overflow-hidden shadow-md border-2 border-slate-700 transition-all hover:border-blue-500 cursor-pointer">
+                                                <img
+                                                    src={googleUser.picture}
+                                                    alt={googleUser.name}
+                                                    className="w-full h-full object-cover"
+                                                    title={`Account: ${googleUser.name}\n(${googleUser.email})`}
+                                                />
+                                            </div>
+
+                                            {/* Text stack for better hierarchy */}
+                                            <div className="flex flex-col">
+                                                <p className="text-sm font-medium text-slate-100 leading-none">
+                                                    {googleUser.name}
+                                                </p>
+                                                <p className="text-xs text-gray-500 mt-1">
+                                                    {googleUser.email}
+                                                </p>
+                                            </div>
                                         </div>
                                     </div>
-                                </div>
-                            )}
-                            
-                            {/* EXPORT/IMPORT BUTTON */}
-                            <button
-                                title="IMPORT/EXPORT FILE"
-                                onClick={() => showModalFile(true)}
-                                className="w-full text-left px-2 py-1 rounded hover:bg-gray-100 dark:hover:bg-gray-700"
-                            >
-                                <FontAwesomeIcon icon={faFileImport} className="mr-2"/>Download Data
-                            </button>
-
-                            {/* THIS IS FOR SAVING TO GOOGLE DRIVE */}
-                            <button
-                                title="Create/Save a backup data to Gdrive"
-                                onClick={() => showSaveGoogleModal(true)}
-                                className="w-full text-left px-2 py-1 rounded hover:bg-green-100 dark:hover:bg-gray-700"
-                            >
-                                <FontAwesomeIcon icon={faUpload} className="mr-2"/>Backup Data
-                            </button>
-
-                            {/* DOWNLOAD THE BACKUP FILE FOR DATA UPDATES */}
-                            {manualBackups.length > 0 && (
-                            <div className="space-y-2 rounded">
+                                )}
+                                
+                                {/* EXPORT/IMPORT BUTTON */}
                                 <button
-                                    onClick={() => setshowRestoreBackupModal(true)}
-                                    title="Restore backup data from google drive save"
-                                    className="w-full text-left px-2 py-1 rounded hover:bg-blue-100 dark:hover:bg-blue-900/40"
+                                    title="IMPORT/EXPORT FILE"
+                                    onClick={() => showModalFile(true)}
+                                    className="w-full text-left px-2 py-1 rounded hover:bg-gray-100 dark:hover:bg-gray-700"
                                 >
-                                    <FontAwesomeIcon icon={faDownload} className="mr-2"/>Restore backup
+                                    <FontAwesomeIcon icon={faFileImport} className="mr-2"/>Download Data
                                 </button>
-                            </div>
-                            )}
 
-                            {googleUser ? 
-                                (
-                                <>
+                                {/* THIS IS FOR SAVING TO GOOGLE DRIVE */}
                                 <button
-                                    onClick={() => {googleLogout();}}
-                                    className="w-full text-left px-2 py-1 rounded text-red-500 hover:bg-red-100 dark:hover:bg-red-900/40"
-                                >   <FontAwesomeIcon icon={faUser} className="mr-2"/>Sign Out
+                                    title="Create/Save a backup data to Gdrive"
+                                    onClick={() => showSaveGoogleModal(true)}
+                                    className="w-full text-left px-2 py-1 rounded hover:bg-green-100 dark:hover:bg-gray-700"
+                                >
+                                    <FontAwesomeIcon icon={faUpload} className="mr-2"/>Backup Data
                                 </button>
-                                </>
-                                )
-                                :
-                                (
-                                <>
-                                <button
-                                    onClick={() => logIn()} 
-                                    title="Sign in to your Google Account"
-                                    className="w-full text-left px-2 py-1 rounded hover:bg-emerald-100 dark:hover:bg-emerald-900/40"
-                                >   <FontAwesomeIcon icon={faUser} className="mr-2"/>Sign In
-                                </button>
-                                </>
-                                )
-                            }       
-                        </div>
+
+                                {/* DOWNLOAD THE BACKUP FILE FOR DATA UPDATES */}
+                                {manualBackups.length > 0 && (
+                                <div className="space-y-2 rounded">
+                                    <button
+                                        onClick={() => setshowRestoreBackupModal(true)}
+                                        title="Restore backup data from google drive save"
+                                        className="w-full text-left px-2 py-1 rounded hover:bg-blue-100 dark:hover:bg-blue-900/40"
+                                    >
+                                        <FontAwesomeIcon icon={faDownload} className="mr-2"/>Restore backup
+                                    </button>
+                                </div>
+                                )}
+
+                                {googleUser ? 
+                                    (
+                                    <>
+                                    <button
+                                        onClick={() => {googleLogout();}}
+                                        className="w-full text-left px-2 py-1 rounded text-red-500 hover:bg-red-100 dark:hover:bg-red-900/40"
+                                    >   <FontAwesomeIcon icon={faUser} className="mr-2"/>Sign Out
+                                    </button>
+                                    </>
+                                    )
+                                    :
+                                    (
+                                    <>
+                                    <button
+                                        onClick={() => logIn()} 
+                                        title="Sign in to your Google Account"
+                                        className="w-full text-left px-2 py-1 rounded hover:bg-emerald-100 dark:hover:bg-emerald-900/40"
+                                    >   <FontAwesomeIcon icon={faUser} className="mr-2"/>Sign In
+                                    </button>
+                                    </>
+                                    )
+                                }       
+                            </div>
+                        </>
                         )}
 
                     </div>

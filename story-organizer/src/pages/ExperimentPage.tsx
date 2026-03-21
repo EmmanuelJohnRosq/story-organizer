@@ -958,12 +958,16 @@ export default function ExperimentPage() {
     const [worldbuildingSections, setWorldbuildingSections] = useState<WorldbuildingSection[]>([]);
     const [showWorldbuildingModal, setShowWorldbuildingModal] = useState(false);
     const [worldSectionTitle, setWorldSectionTitle] = useState("");
+    const [showWorldAtlas, setShowWorldAtlas] = useState(false);
+    const [isWorldAtlasMounted, setIsWorldAtlasMounted] = useState(false);
+    const [isWorldAtlasVisible, setIsWorldAtlasVisible] = useState(false);
     const [worldDraftEntries, setWorldDraftEntries] = useState<WorldbuildingEntry[]>([{ label: "", value: "" }]);
 
     const [showEditWorldbuildingModal, setShowEditWorldbuildingModal] = useState(false);
     const [selectedWorldSectionId, setSelectedWorldSectionId] = useState<string | null>(null);
     const [editWorldSectionTitle, setEditWorldSectionTitle] = useState("");
     const [editWorldDraftEntries, setEditWorldDraftEntries] = useState<WorldbuildingEntry[]>([{ label: "", value: "" }]);
+    const [activeWorldSectionId, setActiveWorldSectionId] = useState<string | null>(null);
 
     const [openWorldSections, setOpenWorldSections] = useState<Record<string, boolean>>({});
     const [priority ,setPriority] = useState<number | null>(null);
@@ -974,10 +978,75 @@ export default function ExperimentPage() {
       setOpenWorldSections(initial);
     }, [worldbuildingSections]);
 
+    useEffect(() => {
+      if (!worldbuildingSections.length) {
+        setActiveWorldSectionId(null);
+        return;
+      }
+
+      setActiveWorldSectionId(prev =>
+        prev && worldbuildingSections.some(section => section.id === prev)
+          ? prev
+          : worldbuildingSections[0].id
+      );
+    }, [worldbuildingSections]);
+
+    useEffect(() => {
+      const shouldLockBody = showWorldbuildingModal || showEditWorldbuildingModal || showWorldAtlas;
+      document.body.classList.toggle('overflow-hidden', shouldLockBody);
+
+      return () => {
+        document.body.classList.toggle('overflow-hidden', false);
+      };
+    }, [showWorldbuildingModal, showEditWorldbuildingModal, showWorldAtlas]);
+
+    useEffect(() => {
+      let closeTimeoutId: number | undefined;
+
+      if (showWorldAtlas) {
+        setIsWorldAtlasMounted(true);
+      } else if (isWorldAtlasMounted) {
+        setIsWorldAtlasVisible(false);
+        closeTimeoutId = window.setTimeout(() => {
+          setIsWorldAtlasMounted(false);
+        }, 320);
+      }
+
+      return () => {
+        if (closeTimeoutId) {
+          window.clearTimeout(closeTimeoutId);
+        }
+      };
+    }, [showWorldAtlas, isWorldAtlasMounted]);
+
+    useEffect(() => {
+      if (!isWorldAtlasMounted || !showWorldAtlas) {
+        return;
+      }
+
+      const openTimeoutId = window.setTimeout(() => {
+        setIsWorldAtlasVisible(true);
+      }, 20);
+
+      return () => {
+        window.clearTimeout(openTimeoutId);
+      };
+    }, [isWorldAtlasMounted, showWorldAtlas]);
+
+    const activeWorldSection = worldbuildingSections.find(section => section.id === activeWorldSectionId) ?? null;
+
+    const openWorldAtlas = () => {
+      setShowWorldAtlas(true);
+      setShowSettingsMenu(false);
+    };
+
+    const closeWorldAtlas = () => {
+      setShowWorldAtlas(false);
+    };
+
     const openWorldbuildingModal = () => {
       setWorldSectionTitle("");
       setShowWorldbuildingModal(true);
-      document.body.classList.toggle('overflow-hidden', true);
       setWorldDraftEntries([{ label: "", value: "" }]);
       setShowSettingsMenu(false);
     };
@@ -1004,14 +1073,12 @@ export default function ExperimentPage() {
       setSelectedWorldSectionId(null);
       setEditWorldSectionTitle("");
       setEditWorldDraftEntries([{ label: "", value: "" }]);
-      document.body.classList.toggle('overflow-hidden', false);
     };
 
     const openEditWorldbuildingModal = () => {
       if (worldbuildingSections.length < 1) return;
 
       setShowEditWorldbuildingModal(true);
-      document.body.classList.toggle('overflow-hidden', true);
       setShowSettingsMenu(false);
     };
 
@@ -1071,8 +1138,8 @@ export default function ExperimentPage() {
 
       await db.worldSetting.add(newSettings);
       setOpenWorldSections(prev => ({ ...prev, [sectionId]: true }));
+      setActiveWorldSectionId(sectionId);
       setShowWorldbuildingModal(false);
-      document.body.classList.toggle('overflow-hidden', false);
 
       setWorldDraftEntries([{ label: "", value: "" }]);
     };
@@ -1109,6 +1176,7 @@ export default function ExperimentPage() {
 
       await db.worldSetting.put(nextSection);
       setWorldbuildingSections(prev => prev.map(section => section.id === selectedWorldSectionId ? nextSection : section));
+      setActiveWorldSectionId(nextSection.id);
       closeEditWorldbuildingModal();
     };
 
@@ -1166,9 +1234,9 @@ export default function ExperimentPage() {
         id: "world-building",
         label: "World",
         icon: faGlobe,
-        onClick: openWorldbuildingModal,
-        isActive: showWorldbuildingModal,
-        title: "Set book facts",
+        onClick: () => showWorldAtlas ? closeWorldAtlas() : openWorldAtlas(),
+        isActive: showWorldAtlas,
+        title: "Open world atlas",
       },
       {
         id: "dashboard",
@@ -2287,7 +2355,7 @@ export default function ExperimentPage() {
         {/* WORLD BUILDING INPUT MODAL */}
         {showWorldbuildingModal && (
           <div
-            className="fixed inset-0 z-50 bg-black/50 flex items-center justify-center p-3"
+            className="fixed inset-0 z-70 bg-black/50 flex items-center justify-center p-3"
             onMouseDown={(e) => {
               if (e.target === e.currentTarget) {
                 setShowWorldbuildingModal(false);
@@ -2390,7 +2458,7 @@ export default function ExperimentPage() {
         {/* WORLD BUILDING EDIT MODAL */}
         {showEditWorldbuildingModal && (
           <div
-            className="fixed inset-0 z-50 bg-black/50 flex items-center justify-center p-3"
+            className="fixed inset-0 z-70 bg-black/50 flex items-center justify-center p-3"
             onMouseDown={(e) => {
               if (e.target === e.currentTarget) {
                 closeEditWorldbuildingModal();
@@ -2533,6 +2601,148 @@ export default function ExperimentPage() {
                       </div>
                     </div>
                   </form>
+                )}
+              </div>
+            </div>
+          </div>
+        )}
+
+        {isWorldAtlasMounted && (
+          <div
+            className={`fixed inset-0 z-50 backdrop-blur-[2px] transition-all duration-300 ease-out ${
+              isWorldAtlasVisible ? "bg-slate-950/55 opacity-100" : "bg-slate-950/0 opacity-0"
+            }`}
+            onMouseDown={(e) => {
+              if (e.target === e.currentTarget) {
+                closeWorldAtlas();
+              }
+            }}
+          >
+            <div
+              className={`h-full w-full max-w-[92vw] sm:max-w-[70vw] lg:max-w-[52vw] xl:max-w-[42vw] rounded-r-3xl border-r border-white/10 bg-gradient-to-b from-slate-950 via-slate-900 to-[#081224] text-white shadow-2xl transition-transform duration-600 ease-out will-change-transform ${
+                isWorldAtlasVisible ? "translate-x-0" : "-translate-x-full"
+              }`}
+              onMouseDown={(e) => e.stopPropagation()}
+            >
+              <div className="flex h-full flex-col overflow-hidden">
+                <div className="border-b border-white/10 px-5 py-4">
+                  <div className="flex items-start justify-between gap-3">
+                    <div>
+                      <p className="text-[11px] uppercase tracking-[0.35em] text-cyan-300/75">Archive of Worlds</p>
+                      <h2 className="mt-1 text-2xl font-semibold">The living codex of {currentBook?.title || "your story"}</h2>
+                      <p className="mt-2 max-w-2xl text-sm text-slate-300">
+                        Reveal your setting like a guided discovery: regions, rules, legends, factions, religions, magic systems, and hidden truths.
+                      </p>
+                    </div>
+
+                    <button
+                      type="button"
+                      className="rounded-full border border-white/15 px-3 py-1 text-sm text-slate-200 transition hover:bg-white/10"
+                      onClick={closeWorldAtlas}
+                    >
+                      Close
+                    </button>
+                  </div>
+
+                  <div className="mt-4 flex flex-wrap gap-2">
+                    <button
+                      type="button"
+                      className="rounded-full border border-cyan-400/30 bg-cyan-400/10 px-3 py-1 text-xs font-medium text-cyan-100 transition hover:bg-cyan-400/20"
+                      onClick={openWorldbuildingModal}
+                    >
+                      <FontAwesomeIcon icon={faPlus} /> Add lore section
+                    </button>
+                    <button
+                      type="button"
+                      className="rounded-full border border-white/15 px-3 py-1 text-xs font-medium text-slate-100 transition hover:bg-white/10 disabled:opacity-40"
+                      onClick={openEditWorldbuildingModal}
+                      disabled={worldbuildingSections.length < 1}
+                    >
+                      <FontAwesomeIcon icon={faPen} /> Edit sections
+                    </button>
+                  </div>
+                </div>
+
+                {worldbuildingSections.length > 0 ? (
+                  <div className="grid min-h-0 flex-1 lg:grid-cols-[0.9fr_1.4fr]">
+                    <div className="overflow-y-auto border-b border-white/10 p-4 lg:border-b-0 lg:border-r notes-scroll">
+                      <p className="mb-3 text-xs uppercase tracking-[0.3em] text-slate-400">Lore paths</p>
+                      <div className="space-y-3">
+                        {worldbuildingSections.map((section, index) => (
+                          <button
+                            key={`atlas-section-${section.id}`}
+                            type="button"
+                            onClick={() => setActiveWorldSectionId(section.id)}
+                            className={`w-full rounded-2xl border px-4 py-4 text-left transition ${
+                              activeWorldSectionId === section.id
+                                ? "border-cyan-300/70 bg-cyan-300/12 shadow-lg shadow-cyan-950/30"
+                                : "border-white/10 bg-white/5 hover:bg-white/10"
+                            }`}
+                          >
+                            <span className="text-[10px] uppercase tracking-[0.35em] text-slate-400">Fragment {String(index + 1).padStart(2, "0")}</span>
+                            <h3 className="mt-2 text-base font-semibold text-white">{section.title}</h3>
+                            <p className="mt-2 text-sm text-slate-300 line-clamp-3">
+                              {section.entries[0]?.value || "Add a first lore detail to begin this chapter of your world."}
+                            </p>
+                            <div className="mt-3 flex items-center justify-between text-xs text-slate-400">
+                              <span>{section.entries.length} lore note{section.entries.length === 1 ? "" : "s"}</span>
+                              <span>{activeWorldSectionId === section.id ? "Opened" : "Reveal"}</span>
+                            </div>
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+
+                    <div className="overflow-y-auto p-5 notes-scroll">
+                      {activeWorldSection && (
+                        <div className="space-y-5">
+                          <div className="rounded-3xl border border-cyan-300/15 bg-white/[0.03] p-5">
+                            <p className="text-[11px] uppercase tracking-[0.35em] text-cyan-300/70">Selected entry</p>
+                            <h3 className="mt-2 text-3xl font-semibold text-white">{activeWorldSection.title}</h3>
+                            <p className="mt-3 text-sm leading-6 text-slate-300">
+                              Think of this panel like a story guidebook page. Keep each label short, then make the value vivid: not just facts, but mood, danger, beauty, ritual, memory, and consequence.
+                            </p>
+                          </div>
+
+                          <div className="grid gap-3">
+                            {activeWorldSection.entries.map((entry, index) => (
+                              <article
+                                key={`atlas-entry-${activeWorldSection.id}-${entry.label}-${index}`}
+                                className="rounded-2xl border border-white/10 bg-gradient-to-br from-white/8 to-transparent p-4 shadow-lg shadow-slate-950/20"
+                              >
+                                <div className="flex items-start justify-between gap-3">
+                                  <div>
+                                    <p className="text-[11px] uppercase tracking-[0.28em] text-cyan-300/70">{entry.label}</p>
+                                    <p className="mt-2 text-sm leading-7 text-slate-100 whitespace-pre-wrap">{entry.value}</p>
+                                  </div>
+                                  <span className="rounded-full border border-white/10 px-2 py-1 text-[10px] uppercase tracking-[0.25em] text-slate-400">
+                                    {String(index + 1).padStart(2, "0")}
+                                  </span>
+                                </div>
+                              </article>
+                            ))}
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                ) : (
+                  <div className="flex flex-1 items-center justify-center p-6">
+                    <div className="max-w-md rounded-3xl border border-dashed border-cyan-300/25 bg-white/[0.03] p-8 text-center">
+                      <p className="text-[11px] uppercase tracking-[0.35em] text-cyan-300/70">Blank map</p>
+                      <h3 className="mt-3 text-2xl font-semibold">Your world has not been charted yet.</h3>
+                      <p className="mt-3 text-sm leading-6 text-slate-300">
+                        Start with broad categories like Kingdoms, Magic Rules, Religions, Timeline, Factions, or Landmarks. Then let each section unfold the book's world in layers.
+                      </p>
+                      <button
+                        type="button"
+                        className="mt-5 rounded-full border border-cyan-400/30 bg-cyan-400/10 px-4 py-2 text-sm font-medium text-cyan-100 transition hover:bg-cyan-400/20"
+                        onClick={openWorldbuildingModal}
+                      >
+                        <FontAwesomeIcon icon={faPlus} /> Create first lore section
+                      </button>
+                    </div>
+                  </div>
                 )}
               </div>
             </div>
