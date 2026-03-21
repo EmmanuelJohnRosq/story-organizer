@@ -1,7 +1,7 @@
 type BackupPayload = Record<string, unknown>;
 
 const MANUAL_BACKUP_FILE_NAME = "Story-Organizer-BackUp-Data";
-const AUTO_BACKUP_FILE_NAME = "Auto-Backup";
+const AUTO_BACKUP_FILE_NAME = "Story-Organizer-Auto-Backup";
 
 export interface DriveBackupFile {
   id: string;
@@ -96,6 +96,23 @@ export async function listManualBackupFiles(accessToken: string) {
   return listDriveFiles(buildPrefixDriveQuery(MANUAL_BACKUP_FILE_NAME), accessToken);
 }
 
+export async function getAutoBackupFile(accessToken: string) {
+  const files = await listDriveFiles(buildExactDriveQuery(AUTO_BACKUP_FILE_NAME), accessToken);
+  return files[0] ?? null;
+}
+
+export async function listRestoreBackupFiles(accessToken: string) {
+  const [autoBackup, manualBackups] = await Promise.all([
+    getAutoBackupFile(accessToken),
+    listManualBackupFiles(accessToken),
+  ]);
+
+  return [
+    ...(autoBackup ? [{ ...autoBackup, name: `${autoBackup.name} (Automatic)` }] : []),
+    ...manualBackups.slice(0, 3),
+  ];
+}
+
 export async function uploadManualBackup(data: BackupPayload, accessToken: string) {
     const timestamp = new Date().toISOString().replace(/[:.]/g, "-");
     const uploadedFile = await uploadJsonToDrive(`${MANUAL_BACKUP_FILE_NAME}-${timestamp}`, data, accessToken);
@@ -116,7 +133,8 @@ export async function uploadManualBackup(data: BackupPayload, accessToken: strin
 }
 
 export async function upsertAutoBackup(data: BackupPayload, accessToken: string) {
-  const existingFile = (await listDriveFiles(buildExactDriveQuery(AUTO_BACKUP_FILE_NAME), accessToken))[0];
+  const existingFile = await getAutoBackupFile(accessToken);
+  alert("fires auto upload backup");
   return uploadJsonToDrive(AUTO_BACKUP_FILE_NAME, data, accessToken, existingFile?.id);
 }
 

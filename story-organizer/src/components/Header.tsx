@@ -7,7 +7,7 @@ import { useDropzone } from "react-dropzone";
 
 import { useGoogleAuth, type GoogleUser } from "../context/GoogleAuthContext";
 import { signOut } from "../services/googleAuth";
-import { downloadDriveFile, listManualBackupFiles, type DriveBackupFile, uploadManualBackup, upsertAutoBackup } from "../services/driveService";
+import { downloadDriveFile, listManualBackupFiles, listRestoreBackupFiles, type DriveBackupFile, uploadManualBackup, upsertAutoBackup } from "../services/driveService";
 
 export default function Header() {
     const navigate = useNavigate();
@@ -95,9 +95,10 @@ export default function Header() {
     const [successGoogle, setSuccessGoogle] = useState(false);
     const [errorGoogle, setErrorGoogle] = useState<string | null>(null);
 
-    const [backupFileId, setBackupFileId] = useState<string | null>(null);
     const [manualBackups, setManualBackups] = useState<DriveBackupFile[]>([]);
+    const [restoreBackups, setRestoreBackups] = useState<DriveBackupFile[]>([]);
     const [selectedBackupId, setSelectedBackupId] = useState<string>("");
+     const [displayExpiringAuth, setDisplayExpiringAuth] = useState(false);
 
     // MODALS
     const [showRestoreBackupModal, setshowRestoreBackupModal] = useState(false);
@@ -130,9 +131,13 @@ export default function Header() {
         if (!token) return;
     
         try {
-          const files = await listManualBackupFiles(token);
-          setManualBackups(files.slice(0, 3));
-          setSelectedBackupId((current) => current || files[0]?.id || "");
+          const [manualFiles, restoreFiles] = await Promise.all([
+            listManualBackupFiles(token),
+            listRestoreBackupFiles(token),
+          ]);
+          setManualBackups(manualFiles.slice(0, 3));
+          setRestoreBackups(restoreFiles);
+          setSelectedBackupId((current) => current || restoreFiles[0]?.id || "");
           setDisplayExpiringAuth(false);
         } catch {
           console.error("Drive check failed");
@@ -323,11 +328,16 @@ export default function Header() {
         return new Date(value).toLocaleString();
     };
 
+    // BACK UP ALL OF THE DATABASE TO GOOGLE DRIVE
     async function refreshManualBackups(token: string) {
-        const files = await listManualBackupFiles(token);
-        const latestFiles = files.slice(0, 3);
+        const [manualFiles, restoreFiles] = await Promise.all([
+            listManualBackupFiles(token),
+            listRestoreBackupFiles(token),
+        ]);
+        const latestFiles = manualFiles.slice(0, 3);
         setManualBackups(latestFiles);
-        setSelectedBackupId(latestFiles[0]?.id ?? "");
+        setRestoreBackups(restoreFiles);
+        setSelectedBackupId(restoreFiles[0]?.id ?? "");
     }
 
     // BACK UP ALL OF THE DATABASE TO GOOGLE DRIVE
@@ -369,7 +379,7 @@ export default function Header() {
         const token = localStorage.getItem("googleAccessToken");
         if (!token || !selectedBackupId) return;
 
-        const selectedBackup = manualBackups.find((backup) => backup.id === selectedBackupId);
+        const selectedBackup = restoreBackups.find((backup) => backup.id === selectedBackupId);
         const isConfirmed = window.confirm(`Restore ${selectedBackup?.name ?? "the selected backup"}? This will overwrite the existing local data.`);
         if (isConfirmed) {
             try {
@@ -401,8 +411,6 @@ export default function Header() {
         }
     }
 
-    const [displayExpiringAuth, setDisplayExpiringAuth] = useState(false);
-
     useEffect(() => {
         if (!googleUser) return;
 
@@ -415,6 +423,7 @@ export default function Header() {
             try {
                 const data = await getAllDB();
                 await upsertAutoBackup(data, token);
+                console.log("upload backup automatically");
                 if (!cancelled) {
                     setDisplayExpiringAuth(false);
                 }
@@ -952,7 +961,7 @@ export default function Header() {
 
             {showRestoreBackupModal && (
             <div
-                className="fixed inset-0 z-50 bg-black/50 flex items-center justify-center p-3"
+                className="fixed inset-0 z-60 bg-black/50 flex items-center justify-center p-3"
                 onMouseDown={(e) => {
                 if (e.target === e.currentTarget) {
                     setshowRestoreBackupModal(false);
@@ -968,9 +977,13 @@ export default function Header() {
                             onChange={(e) => setSelectedBackupId(e.target.value)}
                             className="w-full rounded border border-blue-200 bg-white px-2 py-1 text-sm dark:bg-gray-900 dark:text-white"
                         >
-                            {manualBackups.map((backup) => (
+                            {restoreBackups.map((backup) => (
                                 <option key={backup.id} value={backup.id}>
-                                    {`User-Backup • ${formatBackupDate(backup.createdTime ?? backup.modifiedTime)}`}
+                                    {backup.name === "Story-Organizer-Auto-Backup.json (Automatic)" ?
+                                        ( `System Automatic-Backup • ${formatBackupDate(backup.modifiedTime ?? backup.createdTime)}` )
+                                        :
+                                        ( `User-Backup • ${formatBackupDate(backup.createdTime ?? backup.modifiedTime)}` )
+                                    }   
                                 </option>
                             ))}
                         </select>
@@ -978,7 +991,7 @@ export default function Header() {
                             <button
                                 onClick={() => handleRestoreFromDrive()}
                                 title="Restore backup data from google drive save"
-                                className="items-end px-2 py-1 rounded hover:bg-blue-600 bg-blue-500 dark:bg-blue-400"
+                                className="items-end px-2 py-1 rounded hover:bg-blue-300 bg-blue-500 dark:bg-blue-400"
                             >
                                 <FontAwesomeIcon icon={faDownload} className="mr-2"/>Restore backup
                             </button>

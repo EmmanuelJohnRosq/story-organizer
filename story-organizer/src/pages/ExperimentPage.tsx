@@ -1828,6 +1828,7 @@ export default function ExperimentPage() {
                                 <button
                                   key={value}
                                   type="button"
+                                  title={"Priority value: "+ value}
                                   className={`flex items-center justify-between rounded px-3 py-1.5 text-left text-[11px] transition-colors hover:bg-white/10 ${
                                     isSelected ? "text-amber-400 font-bold bg-white/5" : "text-gray-300"
                                   }`}
