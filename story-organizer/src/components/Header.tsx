@@ -99,6 +99,9 @@ export default function Header() {
     const [manualBackups, setManualBackups] = useState<DriveBackupFile[]>([]);
     const [selectedBackupId, setSelectedBackupId] = useState<string>("");
 
+    // MODALS
+    const [showRestoreBackupModal, setshowRestoreBackupModal] = useState(false);
+
 
     const toggleTheme = () => {
         setDarkTheme(prev => (prev === "dark" ? "light" : "dark"));
@@ -134,7 +137,6 @@ export default function Header() {
         } catch {
           console.error("Drive check failed");
           setDisplayExpiringAuth(true);
-          setTimeout(() => {setDisplayExpiringAuth(false)}, 20000);
         }
       };
 
@@ -433,7 +435,7 @@ export default function Header() {
         };
     }, [googleUser]);
 
-    // BACKING PATH LOCATION PAGES
+    // BACKING PATH LOCATION PAGES+
     const location = useLocation();
     const isEditPage = location.pathname.endsWith("/edit");
 
@@ -619,6 +621,7 @@ export default function Header() {
                         </div>
                         )}
 
+                        {/* dark mode switch */}
                         <div onClick={toggleTheme} className="h-9 border border-white text-gray-200 rounded-md hover:bg-gray-300 hover:text-gray-950 transition">
                             <button className="hidden dark:block">
                                 <span className="group inline-flex shrink-0 justify-center items-center size-8 stroke-2">
@@ -710,21 +713,9 @@ export default function Header() {
 
                             {/* DOWNLOAD THE BACKUP FILE FOR DATA UPDATES */}
                             {manualBackups.length > 0 && (
-                            <div className="space-y-2 px-2 py-2 rounded bg-blue-50 dark:bg-blue-950/40">
-                                <p className="text-xs text-blue-700 dark:text-blue-200">Restore one of your Google Drive backups.</p>
-                                <select
-                                    value={selectedBackupId}
-                                    onChange={(e) => setSelectedBackupId(e.target.value)}
-                                    className="w-full rounded border border-blue-200 bg-white px-2 py-1 text-sm dark:bg-gray-900 dark:text-white"
-                                >
-                                    {manualBackups.map((backup) => (
-                                        <option key={backup.id} value={backup.id}>
-                                            {`User-Backup • ${formatBackupDate(backup.createdTime ?? backup.modifiedTime)}`}
-                                        </option>
-                                    ))}
-                                </select>
+                            <div className="space-y-2 rounded">
                                 <button
-                                    onClick={() => handleRestoreFromDrive()}
+                                    onClick={() => setshowRestoreBackupModal(true)}
                                     title="Restore backup data from google drive save"
                                     className="w-full text-left px-2 py-1 rounded hover:bg-blue-100 dark:hover:bg-blue-900/40"
                                 >
@@ -958,6 +949,45 @@ export default function Header() {
                 </button>
             </div>
             )} */}
+
+            {showRestoreBackupModal && (
+            <div
+                className="fixed inset-0 z-50 bg-black/50 flex items-center justify-center p-3"
+                onMouseDown={(e) => {
+                if (e.target === e.currentTarget) {
+                    setshowRestoreBackupModal(false);
+                }
+                }}
+            >
+                <div className="w-full max-w-xl max-h-[90vh] overflow-y-auto rounded-md bg-white dark:bg-gray-900 p-4 shadow-2xl notes-scroll" onMouseDown={(e) => e.stopPropagation()}>
+
+                    <div className="space-y-2 px-2 py-2 rounded">
+                        <p className="text-xs text-blue-700 dark:text-blue-200">Restore one of your Google Drive backups.</p>
+                        <select
+                            value={selectedBackupId}
+                            onChange={(e) => setSelectedBackupId(e.target.value)}
+                            className="w-full rounded border border-blue-200 bg-white px-2 py-1 text-sm dark:bg-gray-900 dark:text-white"
+                        >
+                            {manualBackups.map((backup) => (
+                                <option key={backup.id} value={backup.id}>
+                                    {`User-Backup • ${formatBackupDate(backup.createdTime ?? backup.modifiedTime)}`}
+                                </option>
+                            ))}
+                        </select>
+                        <div className="flex justify-end">
+                            <button
+                                onClick={() => handleRestoreFromDrive()}
+                                title="Restore backup data from google drive save"
+                                className="items-end px-2 py-1 rounded hover:bg-blue-600 bg-blue-500 dark:bg-blue-400"
+                            >
+                                <FontAwesomeIcon icon={faDownload} className="mr-2"/>Restore backup
+                            </button>
+                        </div>
+                    </div>
+                
+                </div>
+            </div>
+            )}
 
         </>
     );
