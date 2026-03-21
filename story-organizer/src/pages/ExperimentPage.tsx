@@ -259,6 +259,15 @@ export default function ExperimentPage() {
       body: { bodyType: "", height: "", skinTone: "" },
       extras: { distinguishingFeatures: "", accessories: "", clothingStyle: "" },
     };
+
+    const characterPriority = {
+      0: "None",
+      1: "Low",
+      2: "Occasional",
+      3: "Regular",
+      4: "Frequent",
+      5: "Current"
+    };
   
     // FUNCTION ON START - CONNETION TO DB
     const loadChars = async (bookId : string) => {
@@ -267,7 +276,11 @@ export default function ExperimentPage() {
         .equals(bookId)
         .toArray();
   
-      characters.sort((a, b) => a.id - b.id);
+      characters.sort((a, b) => {
+        const priorityDiff = (b.priority ?? 0) - (a.priority ?? 0);
+        if (priorityDiff !== 0) return priorityDiff;
+        return a.id - b.id;
+      });
       setCharacters(characters);
       loadImages(characters);
     };
@@ -364,6 +377,7 @@ export default function ExperimentPage() {
         setRace: [race],
         chapterAppearances: charChapterAppearances,
         relationships: charRelationships,
+        priority: 0,
         description: charDescription,
         createdAt: Date.now(),
         updatedAt: Date.now(),
@@ -819,6 +833,33 @@ export default function ExperimentPage() {
       indexOfFirstChar,
       indexOfLastChar
     );
+
+    const updateCharacterPriority = async (charId: number, currentPriority: number) => {
+      const promptValue = String(currentPriority ?? 0);
+
+      if (promptValue === null) return;
+
+      const parsedPriority = Number(promptValue.trim());
+      if (!Number.isFinite(parsedPriority) || parsedPriority < 0) {
+        window.alert("Please enter a valid priority number (0 or higher).");
+        return;
+      }
+
+      const nextPriority = Math.floor(parsedPriority);
+
+      await db.characters.update(charId, { priority: nextPriority });
+      setCharacters(prev => {
+        const updated = prev.map(char => (
+          char.id === charId ? { ...char, priority: nextPriority } : char
+        ));
+
+        return updated.sort((a, b) => {
+          const priorityDiff = (b.priority ?? 0) - (a.priority ?? 0);
+          if (priorityDiff !== 0) return priorityDiff;
+          return a.id - b.id;
+        });
+      });
+    };
   
     const totalPages = Math.ceil(character.length / charactersPerPage);
   
@@ -925,6 +966,7 @@ export default function ExperimentPage() {
     const [editWorldDraftEntries, setEditWorldDraftEntries] = useState<WorldbuildingEntry[]>([{ label: "", value: "" }]);
 
     const [openWorldSections, setOpenWorldSections] = useState<Record<string, boolean>>({});
+    const [priority ,setPriority] = useState<number | null>(null);
 
     useEffect(() => {
       const initial: Record<string, boolean> = {};
@@ -1491,7 +1533,7 @@ export default function ExperimentPage() {
 
                               <div className="relative inline-block"> 
                                 <button
-                                  className="border-gray-500 text-black rounded-xl px-1 dark:text-gray-500 hover:text-white"
+                                  className="border-gray-500 text-black rounded-xl dark:text-gray-500 hover:text-white"
                                   onClick={() => setShowSettingsMenu(prev => !prev)}
                                   title="Book settings"
                                 >
@@ -1499,6 +1541,15 @@ export default function ExperimentPage() {
                                 </button>
 
                                 {showSettingsMenu && (
+                                <>
+                                  <div 
+                                    className="fixed inset-0 z-20 cursor-default" 
+                                    onClick={(e) => {
+                                      e.stopPropagation(); // Prevents clicking the backdrop from triggering the Card
+                                      setShowSettingsMenu(false);
+                                    }}
+                                  />
+                                
                                   <div className="absolute top-9 right-1 z-30 w-56 rounded-md border bg-white dark:bg-gray-800 dark:border-gray-600 shadow-xl p-2 space-y-1">
                                     
                                     {/* minimize book details */}
@@ -1543,6 +1594,7 @@ export default function ExperimentPage() {
                                       Delete book
                                     </button>
                                   </div>
+                                </>
                                 )}
                               </div>
                             </div>
@@ -1609,17 +1661,17 @@ export default function ExperimentPage() {
             </div>
 
             {/* display pinned notes */}
-            <div className="hidden xxs:flex flex-col xxs:sticky xxs:top-13 h-fit w-full rounded-xl shadow-sm border border-gray-200 dark:border-gray-800 p-2 xxs:mb-4 bg-white dark:bg-gray-900 transition-all duration-300">
+            <div className="hidden xxs:flex flex-col xxs:sticky xxs:top-13 h-fit w-full rounded-md shadow-sm border border-gray-200 dark:border-gray-800 p-2 xxs:mb-4 bg-white dark:bg-gray-900 transition-all duration-300">
               
-              <div className="flex items-center justify-between gap-1 mb-2 border-b border-gray-100 dark:border-gray-800">
+              <div className="flex items-center justify-between px-2 gap-1 mb-2 border-b border-gray-100 dark:border-gray-800">
                 
                 <label className="text-sm font-semibold">
-                  <span className="text-yellow-600 text-lg px-1">★
+                  <span className="text-yellow-600 text-lg">★
                   </span>
                   Pinned Notes
                 </label>
 
-                <button onClick={() => setShowPinnedNotes(prev => !prev)}> <FontAwesomeIcon icon={showPinnedNotes ? faMinus : faPlus}/> </button>
+                <button onClick={() => setShowPinnedNotes(prev => !prev)} className="text-gray-500 hover:text-white"> <FontAwesomeIcon icon={showPinnedNotes ? faMinus : faPlus}/> </button>
               </div>
 
               {showPinnedNotes && (
@@ -1731,14 +1783,73 @@ export default function ExperimentPage() {
                     key={char.id} 
                     title="Open character sheet."
                     className="
-                      flex flex-col items-center justify-center p-2
+                      relative flex flex-col items-center justify-center p-2
                       cursor-pointer bg-white dark:bg-gray-950 shadow-md rounded-2xl
                       transition-all duration-300
-                      hover:bg-gray-50 dark:hover:bg-gray-900 hover:shadow-xl hover:-translate-y-1
+                      hover:bg-gray-50 dark:hover:bg-gray-900 hover:shadow-xl
                       group animate-fadeDown border border-gray-100 dark:border-gray-800
                     "
                     onClick={() => openEditCharacter(char)}
                   >
+                    <button
+                      type="button"
+                      title="Set character priority"
+                      className={`absolute right-2 top-2 z-10 inline-flex items-center gap-1 rounded-full border px-2 py-1 text-[10px] font-semibold shadow-sm transition hover:border-amber-500 ${char.priority > 0 ? "border-amber-300 bg-amber-100 text-amber-700 dark:border-amber-500/60 dark:bg-amber-500/10 dark:text-amber-200" : "border-gray-200 bg-white/90 text-gray-500 dark:border-gray-700 dark:bg-gray-900/90 dark:text-gray-300"}`}
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        setPriority(priority === char.id ? null : char.id);
+                      }}
+                    >
+                      <FontAwesomeIcon icon={faStar} className={char.priority > 0 ? "text-amber-400" : "text-gray-400"} />
+                      P{char.priority ?? 0}
+                    </button>
+
+                    {/* priority tool tip */}
+                    {priority === char.id && (
+                      <>
+                        {/* Backdrop: stopPropagation prevents the Card click from firing */}
+                        <div 
+                          className="fixed inset-0 z-10" 
+                          onClick={(e) => {
+                            e.stopPropagation(); 
+                            setPriority(null);
+                          }}
+                        />
+                        
+                        <div 
+                          className="absolute left-12 top-10 z-20 mb-2 w-35 rounded-lg bg-gray-900 p-1 shadow-xl ring-1 ring-white/10 dark:bg-slate-800 animate-in fade-in zoom-in duration-200 origin-bottom"
+                          onClick={(e) => e.stopPropagation()} // Prevents clicking the menu from opening the card
+                        >
+                          <label className="text-xs text-gray-400 p-1">Select priority value:</label>
+                          <div className="flex flex-col gap-0.5">
+                            {Object.entries(characterPriority).map(([value, label]) => {  
+                              const isSelected = char.priority === Number(value);
+                              return (
+                                <button
+                                  key={value}
+                                  type="button"
+                                  className={`flex items-center justify-between rounded px-3 py-1.5 text-left text-[11px] transition-colors hover:bg-white/10 ${
+                                    isSelected ? "text-amber-400 font-bold bg-white/5" : "text-gray-300"
+                                  }`}
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    updateCharacterPriority(char.id, Number(value));
+                                    setPriority(null); // Close after selection
+                                  }}
+                                >
+                                  <span>{label}</span>
+                                  <span className="opacity-50">P{value}</span>
+                                </button>
+                              );
+                            })}
+                          </div>
+
+                          {/* Small arrow/tail */}
+                          <div className="absolute -top-1 left-1/2 h-2 w-2 -translate-x-1/2 rotate-45 bg-gray-900 dark:bg-slate-800" />
+                        </div>
+                      </>
+                    )}
+
                     {/* IMAGE: Responsive size (smaller on mobile, bigger on tablet+) */}
                     <div className="relative h-20 w-20 sm:h-24 sm:w-24 shrink-0 overflow-hidden rounded-full border-2 border-white dark:border-gray-800 shadow-sm ring-2 ring-gray-100 dark:ring-gray-900">
                       <img 
@@ -2426,7 +2537,6 @@ export default function ExperimentPage() {
             </div>
           </div>
         )}
-          
 
     {/* MAIN PARENT CONTAINER DIV CLOSER */}
     </div>

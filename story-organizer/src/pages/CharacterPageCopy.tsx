@@ -229,6 +229,7 @@ const [charDescription, setCharDescription] = useState<CharacterDescription>({
       setRace: charSetRaces.split(",").map(a => normalizeWhitespace(a)),
       chapterAppearances: charChapterAppearances.split(",").map(a => normalizeWhitespace(a)),
       relationships: charRelationships,
+      priority: 0,
       description: charDescription,
       createdAt: Date.now(),
       updatedAt: Date.now(),

@@ -37,6 +37,7 @@ export type Character = {
     type: string; // family, friend, bestfriend, mentor, archnemesis, rival, love interest, lover, wife, husband, etc...
   }[];
 
+  priority: number;
   description: CharacterDescription;
 
   createdAt: number;
@@ -143,26 +144,33 @@ class StoryDB extends Dexie {
   constructor() {
     super("StoryDB");
 
-    this.version(21).stores({
+    this.version(22).stores({
       books: "id, title", 
       images: "imageId, charId, bookId",
       notes: "++id, bookId, charId, pinned",
-      characters: "id, bookId, name, *chapterAppearances, status, *setRace",
+      characters: "id, bookId, name, priority,*chapterAppearances, status, *setRace",
       worldSetting: "id, bookId, title",
       // ++id = auto increment
       // title = indexed (useful later for search)
     })
-    
-    .upgrade(async (tx) => {
-      // 1. Get the notes table as a collection
-      // 2. Use .modify() with a callback to update each record
-      return tx.table("notes").toCollection().modify(note => {
-        // Set default value only if it doesn't already exist
-        if (note.pinned === undefined) {
-          note.pinned = false;
-        }
+      .upgrade(async (tx) => {
+          await tx.table("characters").toCollection().modify(character => {
+          if (typeof character.priority !== "number" || Number.isNaN(character.priority)) {
+            character.priority = 0;
+          }
+        });
       });
-    });
+
+    // .upgrade(async (tx) => {
+    //   // 1. Get the notes table as a collection
+    //   // 2. Use .modify() with a callback to update each record
+    //   return tx.table("notes").toCollection().modify(note => {
+    //     // Set default value only if it doesn't already exist
+    //     if (note.pinned === undefined) {
+    //       note.pinned = false;
+    //     }
+    //   });
+    // });
 
   }
 }
