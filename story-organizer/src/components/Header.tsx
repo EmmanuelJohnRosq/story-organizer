@@ -499,7 +499,7 @@ export default function Header() {
                 <div className="flex justify-between place-items-center py-1 px-1 md:px-5 w-full sm:w-full mx-auto">
                 
                     {isBookContext ? (
-                        <div className="flex items-center text-white min-w-0">
+                        <div className="flex items-center text-white min-w-0 pt-1">
                             <button
                                 type="button"
                                 onClick={() => navigate(backPath)}

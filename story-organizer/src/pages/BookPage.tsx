@@ -1,93 +1,237 @@
 import { useNavigate, useParams } from "react-router-dom";
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, type Dispatch, type SetStateAction, type FormEvent } from "react";
 
-import { db, type Book, type Character, type EditableCharacter, type Notes, type CharacterDescription } from "../db";
+import Navbar, { type NavbarAction } from "../components/Navbar";
+
+import { db, type Book, type Character, type EditableCharacter, type Notes, type CharacterDescription, type CharImage, type WorldbuildingSection, type WorldbuildingEntry } from "../db";
 
 import { FontAwesomeIcon} from "@fortawesome/react-fontawesome";
-import { faCheck, faPlus, faMinus } from "@fortawesome/free-solid-svg-icons";
+import { faCheck, faPlus, faMinus, faEllipsis, faUserPlus, faNoteSticky, faTableColumns, faWandMagicSparkles, faProjectDiagram, faGlobe, faPenToSquare, faFileLines, faHouse, faStar, faPen, faArrowLeft } from "@fortawesome/free-solid-svg-icons";
+import { createPortal } from "react-dom";
 
-export default function BookPage() {
+export default function ExperimentPage() {
   const { currentBookId } = useParams();
   const navigate = useNavigate();
 
-  // DO THIS IN PAGE START
-  useEffect(() => { 
-    const loadBook = async () => {
-      if (!currentBookId) {
-      navigate("/", { replace: true });
-      return;
-      }
+    // DO THIS IN PAGE START
+    useEffect(() => { 
+      const loadBook = async () => {
+        if (!currentBookId) {
+        navigate("/", { replace: true });
+        return;
+        }
 
-      const book = await db.books.get(currentBookId);
+        const book = await db.books.get(currentBookId);
 
-      if (!book) {
-      // Invalid ID → redirect
-      navigate("/", { replace: true });
-      return;
-      }
+        if (!book) {
+        // Invalid ID → redirect
+        navigate("/", { replace: true });
+        return;
+        }
 
-      setCurrentBook(book);
-      loadBookNotes(currentBookId); 
-      loadChars(currentBookId);
+        setCurrentBook(book);
+        loadBookNotes(currentBookId); 
+        loadChars(currentBookId);
+        loadBookWorldSettings(currentBookId);
+      };
+
+      loadBook();
+      setCharDescription({ ...defaultcharDescription });
+      setCurrentPage(1);
+    }, [currentBookId]);
+
+    const [character, setCharacters] = useState<Character[]>([]);
+    const [bookNotes, setBookNotes] = useState<Notes[]>([]);
+
+    const [currentBook, setCurrentBook] = useState<Book | null>(null);
+  
+    // Constant Variable
+    const [showAddCharacter, setShowAddCharacter] = useState(true);
+  
+    // CHARACTER DATA
+    const [selectedCharacter, setSelectedCharacter] = useState<number | null>(null);
+    const [editingCharacter, setEditingCharacter] = useState<EditableCharacter | null>(null);
+    const [originalCharacter, setOriginalCharacter] = useState<Character | null>(null);
+  
+    // CHARACTER IMAGE GENERATION w/ PUTER.js
+    const [imageMap, setImageMap] = useState<Record<string, CharImage[]>>({});
+  
+    // EDITING OF BOOK TITLE
+    const [titleDraft, setTitleDraft] = useState("");
+    const [savedTitle, setSavedTitle] = useState(false);
+    const [titleEditing, settitleEditing] = useState(false);
+  
+    // BOOK DETAILS
+    const [bookSummary, setBookSummary] = useState("");
+    const [bookVolume, setBookVolume] = useState<string>("0");
+    const [bookVolName, setbookVolName] = useState("");
+    const [bookChapterCount, setBookChapterCount] = useState(0);
+    const [bookStatus, setBookStatus] = useState("ongoing"); // default
+    const [bookTags, setBookTags] = useState<string[]>([]);
+    const [bookGenre, setBookGenre] = useState<string[]>([]);
+
+    const genreOptions = [
+      "Action", "Adventure", "Drama", "Erciyuan", "Fantasy", "Gender-Bender", "Historical", 
+      "Josei", "Mature", "Military", "Psychological", "School-Life", "Seinen", "Shoujo-Ai", 
+      "Shounen-Ai", "Smut", "Supernatural", "Urban-Life", "Xianxia", "Yaoi", "Adult", "Comedy", 
+      "Ecchi", "Fan-Fiction", "Game", "Harem", "Horror", "Martial-Arts", "Mecha", "Mystery", 
+      "Romance", "Sci-Fi", "Shoujo", "Shounen", "Slice-Of-Life", "Sports", "Tragedy", "Wuxia", "Xuanhuan", "Yuri",
+    ];
+
+    const tagOptions = {
+      Story_Tropes: [
+      "Reincarnation", 
+      "System", 
+      "Overpowered MC", 
+      "Villain MC",
+      "Slow Burn", 
+      "Dark Fantasy", 
+      "Kingdom Building", 
+      "Academy", 
+      "Cultivation", 
+      "Time Travel", 
+      "Isekai", 
+      "Game Elements",
+      "Villainess", 
+      "Enemies to Lovers", 
+      "Found Family", 
+      "Political Intrigue", 
+      "Dungeon", 
+      "Survival", 
+      "Mystery Arc", 
+      "Revenge", 
+      "Magic", 
+      "Sword & Sorcery",
+      ],
+
+      // Fantasy & Power Systems
+      Fantasy: [
+      "Elemental Magic",
+      "Necromancy",
+      "Summoning",
+      "Artifact Hunting",
+      "Ancient Relics",
+      "Divine Powers",
+      "Forbidden Magic",
+      "Bloodline Powers",
+      "Legendary Weapons",
+      "Spirit Contracts",
+      ],
+
+      // Character Progression
+      Progression: [
+      "Character Growth",
+      "Training Arc",
+      "Weak to Strong",
+      "Hidden Power",
+      "Secret Identity",
+      "Chosen One",
+      "Redemption Arc",
+      "Fallen Hero",
+      "Reluctant Hero",
+      "Evil Mc",
+      ],
+
+      // Story Tone / Theme
+      Theme: [
+      "Tragedy",
+      "Comedy",
+      "Dark Themes",
+      "Wholesome",
+      "Psychological",
+      "Philosophical",
+      "Moral Dilemma",
+      "Hopeful",
+      "Bittersweet",
+      "Epic Journey",
+      ],
+
+      // Romance Tropes
+      Romance_Tropes: [
+      "Slow Romance",
+      "Love Triangle",
+      "Forbidden Love",
+      "Childhood Friends",
+      "Fake Relationship",
+      "Opposites Attract",
+      "Second Chance Romance",
+      "Tragic Romance",
+      ],
+
+      // Worldbuilding
+      Worldbuidling: [
+      "Empire Politics",
+      "Guild System",
+      "Adventurers",
+      "Noble Society",
+      "Royal Court",
+      "Rebellion",
+      "War",
+      "Empire Building",
+      "Exploration",
+      "Lost Civilization",
+      ],
+
+      // Adventure & Conflict
+      Adventure: [
+      "Treasure Hunt",
+      "Monster Hunting",
+      "War Strategy",
+      "Assassination",
+      "Espionage",
+      "Bounty Hunters",
+      "Mercenaries",
+      "Battle Tournament",
+      "Questing",
+      ],
+
+      // Mystery & Thriller
+      Mystery: [
+      "Investigation",
+      "Secret Conspiracy",
+      "Hidden Truth",
+      "Plot Twists",
+      "Mind Games",
+      "Unreliable Narrator",
+      ],
+
+      // Emotional Themes
+      Emotional: [
+      "Betrayal",
+      "Friendship",
+      "Sacrifice",
+      "Identity Crisis",
+      "Self Discovery",
+      "Family Drama",
+      "Loss",
+      "Loneliness",
+      ],
     };
-
-    loadBook();
-    setCharDescription({ ...defaultcharDescription });
-    setCurrentPage(1);
-  }, [currentBookId]);
-
-  const [character, setCharacters] = useState<Character[]>([]);
-  const [bookNotes, setBookNotes] = useState<Notes[]>([]);
-
-  const [currentBook, setCurrentBook] = useState<Book | null>(null);
-
-  // Constant Variable
-  const [showAddCharacter, setShowAddCharacter] = useState(false);
-
-  // CHARACTER DATA
-  const [selectedCharacter, setSelectedCharacter] = useState<number | null>(null);
-  const [editingCharacter, setEditingCharacter] = useState<EditableCharacter | null>(null);
-  const [originalCharacter, setOriginalCharacter] = useState<Character | null>(null);
-
-  // CHARACTER IMAGE GENERATION w/ PUTER.js
-  const [imageMap, setImageMap] = useState<Record<string, string>>({});
-
-  // EDITING OF BOOK TITLE
-  const [titleDraft, setTitleDraft] = useState("");
-  const [savedTitle, setSavedTitle] = useState(false);
-  const [titleEditing, settitleEditing] = useState(false);
-
-  // BOOK DETAILS
-  const [bookTitle, setBookTitle] = useState("");
-  const [bookSummary, setBookSummary] = useState("");
-  const [bookVolume, setBookVolume] = useState<string>("0");
-  const [bookTags, setBookTags] = useState("");
-  const [bookGenre, setBookGenre] = useState("");
-  const [bookChapterCount, setBookChapterCount] = useState(0);
-  const [bookStatus, setBookStatus] = useState("ongoing"); // default
-
-  // CHARACTER DETAILS INITIALIZE
-  const [name, setName] = useState("");
-  const [role, setRole] = useState("");
-  const [notes, setNotes] = useState("");
-  const [abilities, setAbilities] = useState("");
-  const [chapterAppearance, setChapterAppearance] = useState("");
-
-  //NEW CHARACTER SCHEMA INITIALIZE
-  const [charStatus, setCharStatus] = useState("unknown");
-  const [charImportance, setCharImportance] = useState("unknown");
-  const [charOccupation, setCharOccupation] = useState("");
-  const [charFutureNotes, setCharFutureNotes] = useState("");
-  const [charNetWorth, setCharNetWorth] = useState("");
-  const [charPowerLevel, setCharPowerLevel] = useState("");
-  const [charCharacterArc, setcharCharacterArc] = useState("");
-
-  // Arrays (comma-separated input)
-  const [charTitles, setCharTitles] = useState<string[]>([]);
-  const [charPersonalityTraits, setCharPersonalityTraits] = useState<string[]>([]);
-  const [charTags, setCharTags] = useState<string[]>([]);
-  const [charSetRace, setCharSetRace] = useState<string[]>([]);
-  const [charChapterAppearances, setCharChapterAppearances] = useState<string[]>([]);
+  
+    // CHARACTER DETAILS INITIALIZE
+    const [name, setName] = useState("");
+    const [role, setRole] = useState("");
+    const [notes, setNotes] = useState("");
+    const [abilities, setAbilities] = useState("");
+    const [race, setRace] = useState("");
+    const [status, setStatus] = useState("");
+    const [chapterAppearance, setChapterAppearance] = useState("");
+  
+    //NEW CHARACTER SCHEMA INITIALIZE
+    const [charStatus, setCharStatus] = useState("unknown");
+    const [charImportance, setCharImportance] = useState("unknown");
+    const [charOccupation, setCharOccupation] = useState("");
+    const [charFutureNotes, setCharFutureNotes] = useState("");
+    const [charNetWorth, setCharNetWorth] = useState("");
+    const [charPowerLevel, setCharPowerLevel] = useState("");
+    const [charCharacterArc, setcharCharacterArc] = useState("");
+  
+    // Arrays (comma-separated input)
+    const [charTitles, setCharTitles] = useState<string[]>([]); // input as string -> array on save
+    const [charPersonalityTraits, setCharPersonalityTraits] = useState<string[]>([]);
+    const [charTags, setCharTags] = useState<string[]>([]);
+    const [charSetRace, setCharSetRace] = useState<string[]>([]);
+    const [charChapterAppearances, setCharChapterAppearances] = useState<string[]>([]);
 
   const [charAbilities, setCharAbilities] = useState<
     { ability: string; description: string }[]
@@ -115,6 +259,15 @@ export default function BookPage() {
       body: { bodyType: "", height: "", skinTone: "" },
       extras: { distinguishingFeatures: "", accessories: "", clothingStyle: "" },
     };
+
+    const characterPriority = {
+      0: "None",
+      1: "Low",
+      2: "Occasional",
+      3: "Regular",
+      4: "Frequent",
+      5: "Current"
+    };
   
     // FUNCTION ON START - CONNETION TO DB
     const loadChars = async (bookId : string) => {
@@ -123,7 +276,11 @@ export default function BookPage() {
         .equals(bookId)
         .toArray();
   
-      characters.sort((a, b) => a.id - b.id);
+      characters.sort((a, b) => {
+        const priorityDiff = (b.priority ?? 0) - (a.priority ?? 0);
+        if (priorityDiff !== 0) return priorityDiff;
+        return a.id - b.id;
+      });
       setCharacters(characters);
       loadImages(characters);
     };
@@ -139,6 +296,19 @@ export default function BookPage() {
       notes.sort((a, b) => b.createdAt - a.createdAt);
       setBookNotes(notes);
     };
+
+    const loadBookWorldSettings = async (bookId: string) => {
+      const setting = await db.worldSetting
+        .where("bookId")
+        .equals(bookId)
+        .toArray();
+
+      setting.sort((a, b) => {
+        const getTimestamp = (id: string) => parseInt(id.split('-').pop() || '0');
+        return getTimestamp(a.id) - getTimestamp(b.id);
+      });
+      setWorldbuildingSections(setting);
+    };
   
     function normalizeWhitespace(text: string) {
       return text
@@ -146,23 +316,17 @@ export default function BookPage() {
         .replace(/\s+/g, " "); // collapse multiple spaces into one
     }
   
-    function sanitizeCharacter(char: EditableCharacter): Character {
-      return {
-        ...char,
-        name: normalizeWhitespace(char.name),
-        role: normalizeWhitespace(char.role),
-        notes: char.notes.replace(/[^\S\r\n]+/g, " "),
-        chapters: normalizeWhitespace(char.chapters),
-      };
-    }
-  
     // DELETE BOOK
     async function deleteBook(id: string) {
       if(!id) return;
-      
-      await db.books.delete(id);
 
+      const isConfirmed = window.confirm("Deleting book for real?");
+
+      if(!isConfirmed) return;
+
+      await db.books.delete(id);
       navigate("/");
+
     }
   
     // The main function that accepts a string and returns a processed array
@@ -172,40 +336,25 @@ export default function BookPage() {
       }
       return inputString.split(",").map(a => normalizeWhitespace(a));
     };
-  
-    // UPDATE BOOK DETAILS / MAKE a button for saving book details...
-    async function updateBookDetails( bookId: string, updatedSummary: string, updatedVolume: number, updatedGenre: string) {
-      // if (updatedSummary.trim() === currentBook?.summary && updatedVolume === currentBook?.volume) return;
-      try {
-        await db.books.update(bookId, {
-          summary: updatedSummary,
-          volume: updatedVolume,
-          genre: stringToArray(updatedGenre),
-        });
-  
-        // Update React state immediately (no reload needed)
-        setCurrentBook(prev => prev ? 
-            {
-                ...prev,
-                summary: updatedSummary,
-                volume: updatedVolume,
-                genre: stringToArray(updatedGenre),
-            }
-            : null
-        );
-  
-        setAlert("Changes Saved")
-        setStatePopup(true);
-        setTimeout(() => {setStatePopup(false); setAlert("");}, 2000);
-  
-      } catch (error) {
-        console.error("Failed to update book:", error);
+
+    const toggleBookArrayValue = (
+      value: string,
+      values: string[],
+      setter: Dispatch<SetStateAction<string[]>>,
+    ) => {
+      if (values.includes(value)) {
+        setter(values.filter(item => item !== value));
+        return;
       }
-    }
+
+      setter([...values, value]);
+    };
   
     // create new character to save to db
-    async function addCharacter() {
+    async function addCharacter(event: any) {
       if (!name || currentBookId === undefined) return;
+      event.preventDefault();
+      goToTop();
   
       const newCharacter: Character = {
         id: Date.now(),
@@ -225,9 +374,10 @@ export default function BookPage() {
         titles: charTitles,
         personalityTraits: charPersonalityTraits,
         tags: charTags,
-        setRace: charSetRace,
+        setRace: [race],
         chapterAppearances: charChapterAppearances,
         relationships: charRelationships,
+        priority: 0,
         description: charDescription,
         createdAt: Date.now(),
         updatedAt: Date.now(),
@@ -236,6 +386,7 @@ export default function BookPage() {
       await db.characters.add(newCharacter);
   
       setCharacters(prev => [...prev, newCharacter]);
+      setCurrentPage(totalPages);
   
       setAlert("Character Successfully Created");
       setStatePopup(true);
@@ -295,32 +446,67 @@ export default function BookPage() {
       if (currentBook) {
         setTitleDraft(currentBook.title);
         setBookSummary(currentBook.summary);
-        setBookGenre((currentBook.genre ?? []).join(", "));
+        setBookGenre(currentBook.genre ?? []);
         setBookVolume(String(currentBook.volume));
+        setbookVolName(currentBook.volumeName);
+        setBookTags(currentBook.tags ?? []);
+        setBookChapterCount(currentBook.chapterCount ?? 0);
+        setBookStatus(currentBook.status ?? "ongoing");
       }
     }, [currentBook]);
-  
-    // SAVE BOOK TITLE on DB when called
-    async function saveBookTitle() {
-      if (!titleDraft.trim() || titleDraft.trim() === currentBook?.title) {
-        setTitleDraft(currentBook!.title); //Revert to previous title
-        setSavedTitle(false);
-        settitleEditing(false);
-        return;
-      }
-  
-      const titleUpdate = { title: normalizeWhitespace(titleDraft)};
-  
-      await db.books.update(currentBookId, titleUpdate);
-  
-    //   setBooks(prev => prev.map(book => book.id === currentBookId ? {...book, title: titleDraft.trim().replace(/\s+/g, " ")} : book));
-    //   CHANGE THIS TO ONLY UPDATE THE CURRENT BOOK IN THE VARIABLE SET STATE
-  
-      setSavedTitle(true);
+
+    // SAVE EDIT BOOK DETAILS
+    async function saveBookDetails(event: React.SubmitEvent<HTMLFormElement>) {
+      event.preventDefault();
+      if (!currentBookId) return;
+      goToTop();
+
+      const updatedBook = {
+        title: normalizeWhitespace(titleDraft),
+        summary: bookSummary.trim(),
+        volume: Number(bookVolume) || 0,
+        volumeName: normalizeWhitespace(bookVolName),
+        status: bookStatus,
+        chapterCount: Number(bookChapterCount) || 0,
+        tags: bookTags,
+        genre: bookGenre,
+      };
+
+      await db.books.update(currentBookId, updatedBook);
+      setCurrentBook(prev => (prev ? { ...prev, ...updatedBook } : prev));
+
       setAlert("Changes Saved");
       setStatePopup(true);
-      settitleEditing(true);
-      setTimeout(() => {setSavedTitle(false), settitleEditing(false), setStatePopup(false), setAlert("");}, 2000);
+      setTimeout(() => { setStatePopup(false); setAlert(""); }, 2000);
+      setEditBookContent(false);
+    }
+
+    function cancelBookDetailsEdit() {
+      if (currentBook) {
+        setTitleDraft(currentBook.title);
+        setBookSummary(currentBook.summary);
+        setBookVolume(String(currentBook.volume));
+        setbookVolName(currentBook.volumeName);
+        setBookStatus(currentBook.status ?? "ongoing");
+        setBookChapterCount(currentBook.chapterCount ?? 0);
+        setBookGenre([...(currentBook.genre ?? [])]);
+        setBookTags([...(currentBook.tags ?? [])]);
+      }
+
+      setEditBookContent(false);
+    }
+
+    function cancelCharacterAdd() {
+      if (currentBook) {
+        setName("");
+        setRole("");     
+        setCharStatus("unknown");
+        setCharImportance("unknown");
+        setChapterAppearance("");
+        setRace("");
+      }
+
+      setAddCharState(false);
     }
   
     // DEFAULT CHAR IMAGE FORMAT
@@ -337,13 +523,27 @@ export default function BookPage() {
         .where("charId")
         .anyOf(charIds)
         .toArray();
-  
-      const newMap: Record<string, string> = {};
-  
-      images.forEach(img => {
-        newMap[img.charId] = URL.createObjectURL(img.imageBlob);
+      
+      images.sort((a, b) => b.createdAt - a.createdAt);
+
+      const newMap: Record<string, CharImage[]> = {};
+
+      images.forEach((img) => {
+        const url = URL.createObjectURL(img.imageBlob);
+        const id = img.charId.toString(); // Convert to string for the key
+
+        if (!newMap[id]) {
+          newMap[id] = [];
+        }
+
+        newMap[id].push({
+          url: url,
+          imageId: img.imageId,
+          isDisplayed: img.isDisplayed,
+          createdAt: img.createdAt,
+        });
       });
-  
+
       setImageMap(newMap);
     };
   
@@ -364,7 +564,7 @@ export default function BookPage() {
       green: "bg-green-200 dark:bg-green-800",
       sky: "bg-sky-200 dark:bg-sky-800",
       purple: "bg-purple-200 dark:bg-purple-800",
-      gray: "bg-gray-200 dark:bg-gray-900"
+      gray: "bg-gray-200 dark:bg-gray-950"
     };
       
     const notesSubject = "";
@@ -389,6 +589,7 @@ export default function BookPage() {
           isDraft: true,
           bookId: currentBookId ? currentBookId : "",
           charId: selectedCharacter ? selectedCharacter : null,
+          pinned: false,
         };
   
       // Update React state
@@ -429,27 +630,102 @@ export default function BookPage() {
         }, 2000);
       }
     }
-  
-    const [Addnewbooks, setAddnewBooks] = useState(false);
-    const [notesShowState, setNotesShowState] = useState(true);
-    const [addCharacterState, setAddCharState] = useState(true);
 
-    // SHOW/HIDE CREATE NEW BOOK FORM
-    const addBooksState = () => {
-        setAddnewBooks(!Addnewbooks);
-        setAddCharState(true);
+    const togglePin = async (note: any) => {
+      const newPinnedStatus = !note.pinned;
+
+      // 1. Update UI State immediately (Optimistic UI)
+      setBookNotes(prev => 
+        prev.map(n => n.id === note.id ? { ...n, pinned: newPinnedStatus } : n)
+      );
+
+      // 2. Update Database
+      try {
+        await db.notes.update(note.id, { pinned: newPinnedStatus });
+      } catch (error) {
+        console.error("Failed to update pin status:", error);
+        // Optional: Revert state if DB update fails
+      }
     };
+  
+    const [notesShowState, setNotesShowState] = useState(false);
+    const [addCharacterState, setAddCharState] = useState(false);
+    const [showSettingsMenu, setShowSettingsMenu] = useState(false);
+    const [editBookContent, setEditBookContent] = useState(false);
+
+    const [showPinnedNotes, setShowPinnedNotes] = useState(true);
+ 
+    const [isNotesDrawerMounted, setIsNotesDrawerMounted] = useState(false);
+    const [isNotesDrawerVisible, setIsNotesDrawerVisible] = useState(false);
+
+    const [showBookContent, setShowBookContent] = useState(false);
+
+    const notesFabRef = useRef<HTMLButtonElement | null>(null);
+    const notesDrawerPanelRef = useRef<HTMLDivElement | null>(null);
   
     // SHOW/HIDE ADD CHARACTER FORM
     const addNewcharacter = () => {
-        setAddCharState(!addCharacterState);
-        setAddnewBooks(true);
+      if (addCharacterState === false) {
+        goToTop();
+      };
+      setAddCharState(!addCharacterState);
+      setEditBookContent(false);
+    };
+
+    // SHOW/HIDE EDIT CONTENT FORM
+    const editBook = () => {
+      if (editBookContent === false) {
+        goToTop();
+      };
+      setEditBookContent(!editBookContent);
+      setAddCharState(false);
+    };
+
+    const notesDrawerTimeoutRef = useRef<number | null>(null);
+
+    const openNotesDrawer = () => {
+      if (notesDrawerTimeoutRef.current) {
+        clearTimeout(notesDrawerTimeoutRef.current);
+        notesDrawerTimeoutRef.current = null;
+      }
+
+      setIsNotesDrawerMounted(true);
+      setNotesShowState(true);
+      addDraftNotes();
+
+      requestAnimationFrame(() => {
+        setIsNotesDrawerVisible(true);
+      });
+    };
+
+    const closeNotesDrawer = () => {
+      setIsNotesDrawerVisible(false);
+      setNotesShowState(false);
+      setDraftNote(null)
+
+      notesDrawerTimeoutRef.current = window.setTimeout(() => {
+        setIsNotesDrawerMounted(false);
+        notesDrawerTimeoutRef.current = null;
+      }, 300);
     };
   
     // SHOW/HIDE NOTES DISPLAY
     const displayNotes = () => {
-      setNotesShowState(!notesShowState);
+       if (notesShowState) {
+        closeNotesDrawer();
+        return;
+      }
+
+      openNotesDrawer();
     };
+
+    useEffect(() => {
+      return () => {
+        if (notesDrawerTimeoutRef.current) {
+          clearTimeout(notesDrawerTimeoutRef.current);
+        }
+      };
+    }, []);
   
     const [hideSave, setHideSave] = useState(false);
     // const [notSaved, setNotSaved] = useState(false);
@@ -557,10 +833,37 @@ export default function BookPage() {
       indexOfFirstChar,
       indexOfLastChar
     );
+
+    const updateCharacterPriority = async (charId: number, currentPriority: number) => {
+      const promptValue = String(currentPriority ?? 0);
+
+      if (promptValue === null) return;
+
+      const parsedPriority = Number(promptValue.trim());
+      if (!Number.isFinite(parsedPriority) || parsedPriority < 0) {
+        window.alert("Please enter a valid priority number (0 or higher).");
+        return;
+      }
+
+      const nextPriority = Math.floor(parsedPriority);
+
+      await db.characters.update(charId, { priority: nextPriority });
+      setCharacters(prev => {
+        const updated = prev.map(char => (
+          char.id === charId ? { ...char, priority: nextPriority } : char
+        ));
+
+        return updated.sort((a, b) => {
+          const priorityDiff = (b.priority ?? 0) - (a.priority ?? 0);
+          if (priorityDiff !== 0) return priorityDiff;
+          return a.id - b.id;
+        });
+      });
+    };
   
     const totalPages = Math.ceil(character.length / charactersPerPage);
   
-    const pageWindow = 3; // how many page numbers to show
+    const pageWindow = 2; // how many page numbers to show
   
     const getPageNumbers = () => {
       const pages = [];
@@ -589,350 +892,878 @@ export default function BookPage() {
       return word.charAt(0).toUpperCase() + word.slice(1);
     }
 
+    const filled = (value: unknown) => {
+      if (Array.isArray(value)) return value.length > 0;
+      if (typeof value === "string") return value.trim().length > 0;
+      return Boolean(value);
+    }
+
+    const getCharacterCompletion = (char: Character) => {
+      const descriptionFields = [
+        char.description.basic.age,
+        char.description.basic.race,
+        char.description.basic.gender,
+        char.description.face.faceShape,
+        char.description.face.eyeColor,
+        char.description.face.eyeShape,
+        char.description.face.noseShape,
+        char.description.face.mouthSize,
+        char.description.hair.hairColor,
+        char.description.hair.hairStyle,
+        char.description.body.bodyType,
+        char.description.body.height,
+        char.description.body.skinTone,
+        char.description.extras.distinguishingFeatures,
+        char.description.extras.accessories,
+        char.description.extras.clothingStyle,
+      ];
+
+      const requiredFields = [
+        char.name,
+        char.role,
+        char.status,
+        char.importance,
+        char.occupation,
+        char.notes,
+        char.futureNotes,
+        char.characterArc,
+        char.netWorth,
+        char.powerLevel,
+        char.chapters,
+        char.chapterAppearances,
+        char.setRace,
+        char.tags,
+        char.titles,
+        char.personalityTraits,
+        char.abilities,
+        char.relationships,
+        ...descriptionFields,
+      ];
+
+      const completeCount = requiredFields.filter(filled).length;
+      return Math.round((completeCount / requiredFields.length) * 100);
+    };
+
+    const averageCompletion = character.length
+      ? Math.round(character.reduce((acc, char) => acc + getCharacterCompletion(char), 0) / character.length)
+      : 0;
+
+    const incompleteCharacters = character.filter(char => getCharacterCompletion(char) < 100).length;
+
+    const bookChips = [
+      ...(currentBook?.genre ?? []).map(text => ({ text, type: 'genre' })),
+      ...(currentBook?.tags ?? []).map(text => ({ text, type: 'tag' }))
+    ];
+
+    const [worldbuildingSections, setWorldbuildingSections] = useState<WorldbuildingSection[]>([]);
+    const [showWorldbuildingModal, setShowWorldbuildingModal] = useState(false);
+    const [worldSectionTitle, setWorldSectionTitle] = useState("");
+    const [showWorldAtlas, setShowWorldAtlas] = useState(false);
+    const [isWorldAtlasMounted, setIsWorldAtlasMounted] = useState(false);
+    const [isWorldAtlasVisible, setIsWorldAtlasVisible] = useState(false);
+    const [worldDraftEntries, setWorldDraftEntries] = useState<WorldbuildingEntry[]>([{ label: "", value: "" }]);
+
+    const [showEditWorldbuildingModal, setShowEditWorldbuildingModal] = useState(false);
+    const [selectedWorldSectionId, setSelectedWorldSectionId] = useState<string | null>(null);
+    const [editWorldSectionTitle, setEditWorldSectionTitle] = useState("");
+    const [editWorldDraftEntries, setEditWorldDraftEntries] = useState<WorldbuildingEntry[]>([{ label: "", value: "" }]);
+    const [activeWorldSectionId, setActiveWorldSectionId] = useState<string | null>(null);
+
+    const [openWorldSections, setOpenWorldSections] = useState<Record<string, boolean>>({});
+    const [priority ,setPriority] = useState<number | null>(null);
+
+    useEffect(() => {
+      const initial: Record<string, boolean> = {};
+      worldbuildingSections.forEach(s => initial[s.id] = true);
+      setOpenWorldSections(initial);
+    }, [worldbuildingSections]);
+
+    useEffect(() => {
+      if (!worldbuildingSections.length) {
+        setActiveWorldSectionId(null);
+        return;
+      }
+
+      setActiveWorldSectionId(prev =>
+        prev && worldbuildingSections.some(section => section.id === prev)
+          ? prev
+          : worldbuildingSections[0].id
+      );
+    }, [worldbuildingSections]);
+
+    useEffect(() => {
+      const shouldLockBody = showWorldbuildingModal || showEditWorldbuildingModal || showWorldAtlas;
+      document.body.classList.toggle('overflow-hidden', shouldLockBody);
+
+      return () => {
+        document.body.classList.toggle('overflow-hidden', false);
+      };
+    }, [showWorldbuildingModal, showEditWorldbuildingModal, showWorldAtlas]);
+
+    useEffect(() => {
+      let closeTimeoutId: number | undefined;
+
+      if (showWorldAtlas) {
+        setIsWorldAtlasMounted(true);
+      } else if (isWorldAtlasMounted) {
+        setIsWorldAtlasVisible(false);
+        closeTimeoutId = window.setTimeout(() => {
+          setIsWorldAtlasMounted(false);
+        }, 320);
+      }
+
+      return () => {
+        if (closeTimeoutId) {
+          window.clearTimeout(closeTimeoutId);
+        }
+      };
+    }, [showWorldAtlas, isWorldAtlasMounted]);
+
+    useEffect(() => {
+      if (!isWorldAtlasMounted || !showWorldAtlas) {
+        return;
+      }
+
+      const openTimeoutId = window.setTimeout(() => {
+        setIsWorldAtlasVisible(true);
+      }, 20);
+
+      return () => {
+        window.clearTimeout(openTimeoutId);
+      };
+    }, [isWorldAtlasMounted, showWorldAtlas]);
+
+    const activeWorldSection = worldbuildingSections.find(section => section.id === activeWorldSectionId) ?? null;
+
+    const openWorldAtlas = () => {
+      setShowWorldAtlas(true);
+      setShowSettingsMenu(false);
+    };
+
+    const closeWorldAtlas = () => {
+      setShowWorldAtlas(false);
+    };
+
+    const openWorldbuildingModal = () => {
+      setWorldSectionTitle("");
+      setShowWorldbuildingModal(true);
+      setWorldDraftEntries([{ label: "", value: "" }]);
+      setShowSettingsMenu(false);
+    };
+
+    const addWorldDraftEntry = () => {
+      setWorldDraftEntries(prev => [...prev, { label: "", value: "" }]);
+    };
+
+    const updateWorldDraftEntry = (index: number, key: "label" | "value", newValue: string) => {
+      setWorldDraftEntries(prev => prev.map((entry, i) => (
+        i === index ? { ...entry, [key]: newValue } : entry
+      )));
+    };
+
+    const removeWorldDraftEntry = (index: number) => {
+      setWorldDraftEntries(prev => {
+        if (prev.length === 1) return prev;
+        return prev.filter((_, i) => i !== index);
+      });
+    };
+
+    const closeEditWorldbuildingModal = () => {
+      setShowEditWorldbuildingModal(false);
+      setSelectedWorldSectionId(null);
+      setEditWorldSectionTitle("");
+      setEditWorldDraftEntries([{ label: "", value: "" }]);
+    };
+
+    const openEditWorldbuildingModal = () => {
+      if (worldbuildingSections.length < 1) return;
+
+      setShowEditWorldbuildingModal(true);
+      setShowSettingsMenu(false);
+    };
+
+    const addEditWorldDraftEntry = () => {
+      setEditWorldDraftEntries(prev => [...prev, { label: "", value: "" }]);
+    };
+
+    const updateEditWorldDraftEntry = (index: number, key: "label" | "value", newValue: string) => {
+      setEditWorldDraftEntries(prev => prev.map((entry, i) => (
+        i === index ? { ...entry, [key]: newValue } : entry
+      )));
+    };
+
+    const removeEditWorldDraftEntry = (index: number) => {
+      setEditWorldDraftEntries(prev => {
+        if (prev.length === 1) return prev;
+        return prev.filter((_, i) => i !== index);
+      });
+    };
+
+    const selectWorldSectionForEdit = (sectionId: string) => {
+      const section = worldbuildingSections.find(item => item.id === sectionId);
+      if (!section) return;
+
+      setSelectedWorldSectionId(section.id);
+      setEditWorldSectionTitle(section.title);
+      setEditWorldDraftEntries(section.entries.length ? section.entries.map(entry => ({ ...entry })) : [{ label: "", value: "" }]);
+    };
+
+    const saveWorldbuildingSection = async (event: React.SubmitEvent<HTMLFormElement>) => {
+      event.preventDefault();
+
+      const normalizedTitle = normalizeWhitespace(worldSectionTitle);
+      const cleanEntries = worldDraftEntries
+        .map(entry => ({
+          label: normalizeWhitespace(entry.label),
+          value: entry.value.trim().replace(/\s+/g, " "),
+        }))
+        .filter(entry => entry.label && entry.value);
+
+      if (!normalizedTitle) {
+        return;
+      }
+
+      const sectionId = `${normalizedTitle.toLowerCase().replace(/[^a-z0-9]+/g, "-")}-${Date.now()}`;
+
+      const newSettings = {
+        id: sectionId,
+        title: normalizedTitle,
+        bookId: String(currentBookId),
+        entries: cleanEntries,
+      }
+
+      setWorldbuildingSections(prev => [
+        ...prev, newSettings
+      ]);
+
+      await db.worldSetting.add(newSettings);
+      setOpenWorldSections(prev => ({ ...prev, [sectionId]: true }));
+      setActiveWorldSectionId(sectionId);
+      setShowWorldbuildingModal(false);
+
+      setWorldDraftEntries([{ label: "", value: "" }]);
+    };
+
+    const saveEditedWorldbuildingSection = async (event: React.SubmitEvent<HTMLFormElement>) => {
+      event.preventDefault();
+
+      if (!selectedWorldSectionId) {
+        return;
+      }
+
+      const normalizedTitle = normalizeWhitespace(editWorldSectionTitle);
+      const cleanEntries = editWorldDraftEntries
+        .map(entry => ({
+          label: normalizeWhitespace(entry.label),
+          value: entry.value.trim().replace(/\s+/g, " "),
+        }))
+        .filter(entry => entry.label && entry.value);
+
+      if (!normalizedTitle) {
+        return;
+      }
+
+      const updatedSection = worldbuildingSections.find(section => section.id === selectedWorldSectionId);
+      if (!updatedSection) {
+        return;
+      }
+
+      const nextSection = {
+        ...updatedSection,
+        title: normalizedTitle,
+        entries: cleanEntries,
+      };
+
+      await db.worldSetting.put(nextSection);
+      setWorldbuildingSections(prev => prev.map(section => section.id === selectedWorldSectionId ? nextSection : section));
+      setActiveWorldSectionId(nextSection.id);
+      closeEditWorldbuildingModal();
+    };
+
+    const deleteWorldbuildingSection = async (sectionId: string) => {
+      const isConfirmed = window.confirm("Delete this worldbuilding section?");
+      if (!isConfirmed) return;
+
+      const remainingSections = worldbuildingSections.filter(section => section.id !== sectionId);
+
+      await db.worldSetting.delete(sectionId);
+      setWorldbuildingSections(remainingSections);
+      setOpenWorldSections(prev => {
+        const next = { ...prev };
+        delete next[sectionId];
+        return next;
+      });
+
+      if (remainingSections.length > 0) {
+        setSelectedWorldSectionId(null);
+      } else {
+        closeEditWorldbuildingModal();
+      }
+    };
+
+    const toggleWorldSection = (sectionId: string) => {
+      setOpenWorldSections(prev => ({ ...prev, [sectionId]: !prev[sectionId] }));
+    };
+
+    // navbar pass actions and logic
+    const navbarActions: NavbarAction[] = [
+      {
+        id: "home",
+        label: "Home",
+        icon: faHouse,
+        onClick: () => navigate("/"),
+        title: "Back to library",
+      },
+      {
+        id: "create-character",
+        label: !addCharacterState ? "Create" : "Close Form",
+        icon: faUserPlus,
+        onClick: addNewcharacter,
+        isActive: addCharacterState,
+        title: "Add character",
+      },
+      {
+        id: "edit-book",
+        label: !editBookContent ? "Book" : "Close Book",
+        icon: faPenToSquare,
+        onClick: editBook,
+        isActive: editBookContent,
+        title: "Edit book content",
+      },
+      {
+        id: "world-building",
+        label: "World",
+        icon: faGlobe,
+        onClick: () => showWorldAtlas ? closeWorldAtlas() : openWorldAtlas(),
+        isActive: showWorldAtlas,
+        title: "Open world atlas",
+      },
+      {
+        id: "dashboard",
+        label: "Dashboard",
+        icon: faTableColumns,
+        onClick: () => alert("Currently, in development..."),
+        badge: "Soon",
+        title: "Dashboard",
+      },
+      {
+        id: "ai-assist",
+        label: "AI",
+        icon: faWandMagicSparkles,
+        onClick: () => alert("Currently, in development..."),
+        badge: "Soon",
+        title: "AI-assist",
+      },
+      {
+        id: "character-graph",
+        label: "Graph",
+        icon: faProjectDiagram,
+        onClick: () => alert("Currently, in development..."),
+        badge: "Soon",
+        title: "Characters map graph",
+      },
+      {
+        id: "chapter-prep",
+        label: "Prepare",
+        icon: faFileLines,
+        onClick: () => alert("Currently, in development..."),
+        badge: "Soon",
+        title: "Chapter Preparation workspace",
+      },
+    ];
+
+    const goToTop = () => {
+      window.scrollTo({
+        top: 0,
+        behavior: 'smooth', // 'smooth' for animation, 'auto' for instant jump
+      });
+    };
+
   return (
     // MAIN PARENT CONTAINER DIV CLOSER
-    <div className="w-full mx-auto flex justify-center gap-2 pt-15">
-    
+    <div className="pt-15 xxs:pt-0 w-full mx-auto px-2">
+      <Navbar actions={navbarActions} />
+
+      {/* CONTENT CONTAINER */}
+      <div className="grid grid-col-2 xxs:grid-cols-17 xl:grid-cols-9 gap-2 justify-center xxs:pt-14">
+
         {/* LEFT SIDE CONTAINER */}
-        <div className="hidden xs:block flex-1 relative">
+        <div className="col-span-1 xxs:col-start-2 xxs:col-span-7 xl:col-start-2 xl:col-span-3 flex-1">
 
             {/* BOOK AND CHARACTER FORMS LEFT PANEL */}
-            <div className="sticky top-15 h-[calc(100vh-4rem)] overflow-y-auto overflow-x-hidden notes-scroll overflow-contain">
+            <div className="w-full">
+              <div className="">
+                {/* ADD CHARACTER FORM */}
+                {(addCharacterState &&
+                  <form
+                    className="flex-1 rounded-xl shadow-2xl p-6 mb-2 bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 transition-all duration-300 animate-fadeDown"
+                    onSubmit={addCharacter}
+                  >
+                    <div className="flex items-center justify-between mb-6">
+                      <h2 className="text-lg font-bold text-gray-800 dark:text-gray-100">Add New Character</h2>
+                      <span className="px-2 py-1 text-xs font-medium bg-blue-100 text-blue-600 rounded-full dark:bg-blue-900/30 dark:text-blue-400">
+                        Draft Mode
+                      </span>
+                    </div>
 
-                {/* BOOK SUMMARY TITLE */}
-                <div className="flex-1 rounded-md shadow-lg bg-gray-100 dark:bg-gray-900 mb-2 p-3 flex justify-between transition duration-300">
+                    <div className="space-y-5 my-2">
+                      {/* Name Input */}
+                      <div>
+                        <label className="block text-xs font-semibold uppercase tracking-wider text-gray-500 mb-1 ml-1">Full Name</label>
+                        <input 
+                          className="rounded-lg border border-gray-300 dark:border-gray-700 p-2.5 dark:bg-gray-800 w-full focus:ring-2 focus:ring-blue-500 outline-none transition" 
+                          placeholder="e.g. Artorius Pendragon" 
+                          value={name} 
+                          onChange={e => setName(e.target.value)}
+                          required 
+                        />
+                      </div>
 
-                <h3 className="text-2xl font-semibold" onClick={() => console.log(currentBookId,currentBook)}>Book Details</h3>
+                      {/* Row for Role & Race */}
+                      <div className="grid grid-cols-2 gap-4">
+                        <div>
+                          <label className="block text-xs font-semibold uppercase tracking-wider text-gray-500 mb-1 ml-1">Role</label>
+                          <select 
+                            className="rounded-lg border border-gray-300 dark:border-gray-700 p-2.5 dark:bg-gray-800 w-full focus:ring-2 focus:ring-blue-500 outline-none transition appearance-none cursor-pointer"
+                            value={role} 
+                            onChange={e => setRole(e.target.value)}
+                            required
+                          >
+                            <option value="">Select Role</option>
+                            <option value="protagonist">Protagonist</option>
+                            <option value="antagonist">Antagonist</option>
+                            <option value="supporting">Supporting character</option>
+                            <option value="confidant">Confidant</option>
+                            <option value="mentor">Mentor</option>
+                            <option value="love interest">Love interest</option>
+                            <option value="background">Background character</option>
+                            <option value="rival">Rival</option>
+                            <option value="side character">Side character</option>
+                            <option value="unknown">Unknown</option>
+                          </select>
+                        </div> 
 
-                <div className="flex justify-center">
-                    <button 
-                    value={bookTitle}
-                    className="border-gray-500 border-1 text-black rounded hover:bg-gray-300 hover:text-gray-950 px-2 dark:border-white dark:text-white"
-                    onClick={addBooksState}>
-                        {Addnewbooks ? <FontAwesomeIcon icon={faPlus} size="xs" className="transition duration-500"/> : <FontAwesomeIcon icon={faMinus} size="xs"/>}
+                        <div>
+                          <label className="block text-xs font-semibold uppercase tracking-wider text-gray-500 mb-1 ml-1">Race</label>
+                          <select 
+                            className="rounded-lg border border-gray-300 dark:border-gray-700 p-2.5 dark:bg-gray-800 w-full focus:ring-2 focus:ring-blue-500 outline-none transition appearance-none cursor-pointer"
+                            value={race} 
+                            onChange={e => setRace(e.target.value)}
+                            required
+                          >
+                            <option value="">Select Race</option>
+                            <option value="human">Human</option>
+                            <option value="elf">Elf</option>
+                            <option value="dwarf">Dwarf</option>
+                            <option value="orc">Orc</option>
+                            <option value="dragon">Dragon</option>
+                            <option value="other">Other</option>
+                          </select>
+                        </div>
+                      </div>
+
+                      {/* Row for Status & Appearance */}
+                      <div className="grid grid-cols-2 gap-4">
+                        <div>
+                          <label className="block text-xs font-semibold uppercase tracking-wider text-gray-500 mb-1 ml-1">Status</label>
+                          <select 
+                            className="rounded-lg border border-gray-300 dark:border-gray-700 p-2.5 dark:bg-gray-800 w-full focus:ring-2 focus:ring-blue-500 outline-none transition appearance-none cursor-pointer"
+                            value={status} 
+                            onChange={e => setStatus(e.target.value)}
+                            required
+                          >
+                            <option value="Alive">Alive</option>
+                            <option value="Deceased">Deceased</option>
+                            <option value="Deceased">Undead</option>
+                            <option value="Unknown">Unknown</option>
+                          </select>
+                        </div>
+
+                        <div>
+                          <label className="block text-xs font-semibold uppercase tracking-wider text-gray-500 mb-1 ml-1">First Chapter Appearance</label>
+                          <input 
+                            type="number" 
+                            className="rounded-lg border border-gray-300 dark:border-gray-700 p-2.5 dark:bg-gray-800 w-full focus:ring-2 focus:ring-blue-500 outline-none transition" 
+                            placeholder="Ch. #" 
+                            value={chapterAppearance} 
+                            onChange={e => setChapterAppearance(e.target.value)} 
+                            required
+                          />
+                        </div>
+                      </div>
+                    </div>
+
+                    <button
+                      type="submit"
+                      className="w-full mt-6 bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 rounded-lg shadow-lg hover:shadow-blue-500/30 transform hover:-translate-y-0.5 transition-all active:scale-95"
+                    >
+                      Create Character
                     </button>
-                </div>
 
-                </div>
+                    <button
+                      type="button"
+                      className="w-full my-3 bg-gray-600 hover:bg-gray-700 text-white font-bold py-3 rounded-lg shadow-lg hover:shadow-gray-700/30 transform transition-all5"
+                      onClick={cancelCharacterAdd}
+                    >
+                      Cancel
+                    </button>
+                  </form>
+                )}
+
+                {/* EDIT BOOK CONTENT FORM */}
+                {(editBookContent &&
+                  <form
+                    className="flex-1 rounded-xl shadow-2xl p-6 mb-2 bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 transition-all duration-300 animate-fadeDown"
+                    onSubmit={saveBookDetails}
+                  >
+                    <div className="flex items-center justify-between mb-6">
+                      <h2 className="text-lg font-bold text-gray-800 dark:text-gray-100">Edit Book Details</h2>
+                      <span className="px-2 py-1 text-xs font-medium bg-blue-100 text-blue-600 rounded-full dark:bg-blue-900/30 dark:text-blue-400">
+                        Draft Mode
+                      </span>
+                    </div>
+
+                    <div className="space-y-5 my-2">
+                      {/* Title Input */}
+                      <div>
+                        <label className="block text-xs font-semibold uppercase tracking-wider text-gray-500 mb-1 ml-1">Book Title</label>
+                        <input
+                          className="rounded-lg border border-gray-300 dark:border-gray-700 p-2.5 dark:bg-gray-800 w-full focus:ring-2 focus:ring-blue-500 outline-none transition"
+                          placeholder="Enter book title"
+                          value={titleDraft}
+                          onChange={e => setTitleDraft(e.target.value)}
+                          required
+                        />
+                      </div>
+
+                      {/* Book Volume */}
+                      <div className="grid grid-cols-2 gap-4">
+                        <div>
+                          <label className="block text-xs font-semibold uppercase tracking-wider text-gray-500 mb-1 ml-1">Book Volume</label>
+                          <input
+                            type="number"
+                            min={0}
+                            className="rounded-lg border border-gray-300 dark:border-gray-700 p-2.5 dark:bg-gray-800 w-full focus:ring-2 focus:ring-blue-500 outline-none transition"
+                            placeholder="e.g. 1"
+                            value={bookVolume}
+                            onChange={e => setBookVolume(e.target.value)}
+                            required
+                          />
+                        </div> 
+
+                        <div>
+                          <label className="block text-xs font-semibold uppercase tracking-wider text-gray-500 mb-1 ml-1">Volume Name</label>
+                          <input
+                            className="rounded-lg border border-gray-300 dark:border-gray-700 p-2.5 dark:bg-gray-800 w-full focus:ring-2 focus:ring-blue-500 outline-none transition"
+                            placeholder="e.g. Dawn of Ashes"
+                            value={bookVolName}
+                            onChange={e => setbookVolName(e.target.value)}
+                          />
+                        </div>
+                      </div>
+
+                      {/* Book status */}
+                      <div className="grid grid-cols-2 gap-4">
+                        <div>
+                          <label className="block text-xs font-semibold uppercase tracking-wider text-gray-500 mb-1 ml-1">Status</label>
+                          <select 
+                            className="rounded-lg border border-gray-300 dark:border-gray-700 p-2.5 dark:bg-gray-800 w-full focus:ring-2 focus:ring-blue-500 outline-none transition appearance-none cursor-pointer"
+                            value={bookStatus}
+                            onChange={e => setBookStatus(e.target.value)}
+                            required
+                          >
+                            <option value="ongoing">Ongoing</option>
+                            <option value="completed">Completed</option>
+                            <option value="hiatus">Hiatus</option>
+                            <option value="dropped">Dropped</option>
+                          </select>
+                        </div>
+
+                        {/* CHAPTER COUNT */}
+                        <div>
+                          <label className="block text-xs font-semibold uppercase tracking-wider text-gray-500 mb-1 ml-1">Chapter Count</label>
+                          <input
+                            type="number"
+                            min={0}
+                            className="rounded-lg border border-gray-300 dark:border-gray-700 p-2.5 dark:bg-gray-800 w-full focus:ring-2 focus:ring-blue-500 outline-none transition"
+                            placeholder="0"
+                            value={bookChapterCount}
+                            onChange={e => setBookChapterCount(Number(e.target.value))}
+                            required
+                          />
+                        </div>
+                      </div>
+
+                      {/* Summary */}
+                      <div>
+                        <label className="block text-xs font-semibold uppercase tracking-wider text-gray-500 mb-1 ml-1">Summary</label>
+                        <textarea
+                          rows={8}
+                          className="rounded-lg border border-gray-300 dark:border-gray-700 p-2.5 dark:bg-gray-800 w-full focus:ring-2 focus:ring-blue-500 outline-none transition resize-y notes-scroll"
+                          placeholder="Write book summary"
+                          value={bookSummary}
+                          onChange={e => setBookSummary(e.target.value)}
+                        />
+                      </div>
+
+                      {/* Genre check list */}
+                      <div>
+                        <label className="block text-xs font-semibold uppercase tracking-wider text-gray-500 mb-1 ml-1">Genre</label>
+                        <div className="grid grid-cols-2 gap-x-10 gap-y-1 overflow-y-auto rounded-lg border border-gray-200 dark:border-gray-700 p-3">
+                          {genreOptions.map(option => (
+                            <label key={option} className="flex items-center gap-2 text-sm text-gray-700 dark:text-gray-200">
+                              <input
+                                type="checkbox"
+                                className="h-4 w-4 rounded border-gray-400 dark:border-gray-600 dark:bg-gray-800"
+                                checked={bookGenre.includes(option)}
+                                onChange={() => toggleBookArrayValue(option, bookGenre, setBookGenre)}
+                              />
+                              {option}
+                            </label>
+                          ))}
+                        </div>
+                      </div>
+
+                      {/* Tags dropdown select */}
+                      <div>
+                        <label className="block text-xs font-semibold uppercase tracking-wider text-gray-500 mb-1 ml-1">Tags</label>
+                        <select
+                          className="rounded-lg border border-gray-300 dark:border-gray-700 p-2.5 dark:bg-gray-800 w-full focus:ring-2 focus:ring-blue-500 outline-none transition"
+                          value=""
+                          onChange={e => {
+                            if (!e.target.value) return;
+                            toggleBookArrayValue(e.target.value, bookTags, setBookTags);
+                          }}
+                        >
+                          <option value="">Select tags...</option>
+                          {Object.entries(tagOptions).map(([category, tags]) => (
+                            <optgroup className="text-sm text-gray-500 font-semibold" key={category} label={category.replace("_", " ")}>
+                              {tags.map((tag) => (
+                                <option className="text-black dark:text-white" key={tag} value={tag}>
+                                  {tag}
+                                </option>
+                              ))}
+                            </optgroup>
+                          ))}
+                        </select>
+
+                        <div className="flex flex-wrap gap-2 mt-3">
+                          {bookTags.length ? bookTags.map(tag => (
+                            <button
+                              key={tag}
+                              type="button"
+                              onClick={() => toggleBookArrayValue(tag, bookTags, setBookTags)}
+                              className="px-3 py-1 rounded-full text-sm bg-purple-200 text-purple-900 dark:bg-purple-900/40 dark:text-purple-200"
+                              title="Click to remove"
+                            >
+                              {tag}
+                            </button>
+                          )) : (
+                            <span className="text-sm text-gray-500 dark:text-gray-400">No tags selected.</span>
+                          )}
+                        </div>
+                      </div>
+
+                    </div>
+
+                    <button
+                      type="submit"
+                      className="w-full mt-6 bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 rounded-lg shadow-lg hover:shadow-blue-500/30 transform hover:-translate-y-0.5 transition-all active:scale-95"
+                    >
+                      Save book details
+                    </button>
+
+                    <button
+                      type="button"
+                      className="w-full my-3 bg-gray-600 hover:bg-gray-700 text-white font-bold py-3 rounded-lg shadow-lg hover:shadow-gray-700/30 transform transition-all5"
+                      onClick={cancelBookDetailsEdit}
+                    >
+                      Cancel
+                    </button>
+
+                  </form>
+                )}
 
                 {/* BOOK SUMMARY FORM */}
-                {!Addnewbooks && (
-                
-                // BOOK DETAILS
-                <div className="flex-1 rounded-md shadow-lg p-3 mb-2 bg-gray-100 dark:bg-gray-900 transition duration-300 animate-fadeDown">
-                <form className="space-y-2">
+                {!editBookContent && (
+                  <div className="flex flex-col">
+                    <div className="flex-1 rounded-md shadow-lg pt-4 px-4 pb-1 mb-1 bg-gray-100 dark:bg-gray-900 transition duration-300 animate-fadeDown ">
+                      <div className="space-y-2">
 
-                    {/* Summary */}
-                    <div>
-                    <label className="block text-xs mb-1">
-                        Summary / Synopsis
-                    </label>
-                    <textarea
-                        rows={8}
-                        className="w-full border rounded-md px-4 py-2 focus:outline-none focus:ring-2 focus:ring-blue-400 placeholder-gray-400 dark:placeholder-gray-600 text-area-scroll"
-                        placeholder="Update book summary"
-                        value={bookSummary}
-                        onFocus={(e) => autoResize(e)}
-                        onBlur={(e) => { e.currentTarget.style.height = "auto";}}
-                        onChange={e => setBookSummary(e.target.value)}
-                    />
+                          {/* Summary */}
+                          <div>
+
+                            {/* book title and settings dropdown */}
+                            <div className="flex justify-between">
+                              <label className="text-xl font-semibold truncate">
+                                {titleDraft || currentBook?.title || "Book Content"}
+                              </label>
+
+                              <div className="relative inline-block"> 
+                                <button
+                                  className="border-gray-500 text-black rounded-xl dark:text-gray-500 hover:text-white"
+                                  onClick={() => setShowSettingsMenu(prev => !prev)}
+                                  title="Book settings"
+                                >
+                                  <FontAwesomeIcon icon={faEllipsis} size="lg"/>
+                                </button>
+
+                                {showSettingsMenu && (
+                                <>
+                                  <div 
+                                    className="fixed inset-0 z-20 cursor-default" 
+                                    onClick={(e) => {
+                                      e.stopPropagation(); // Prevents clicking the backdrop from triggering the Card
+                                      setShowSettingsMenu(false);
+                                    }}
+                                  />
+                                
+                                  <div className="absolute top-9 right-1 z-30 w-56 rounded-md border bg-white dark:bg-gray-800 dark:border-gray-600 shadow-xl p-2 space-y-1">
+                                    
+                                    {/* minimize book details */}
+                                    <button
+                                      className="w-full text-left px-3 py-2 rounded hover:bg-gray-200 dark:hover:bg-gray-700"
+                                      onClick={() => {
+                                        setShowBookContent(prev => !prev);
+                                      }}
+                                    >
+                                      {showBookContent ? "Maximize" : "Minimize"}
+                                    </button>
+                                    
+                                    {/* open edit book details */}
+                                    <button
+                                      className="w-full text-left px-3 py-2 rounded hover:bg-gray-200 dark:hover:bg-gray-700"
+                                      onClick={() => {
+                                        editBook()
+                                        setShowSettingsMenu(false);
+                                      }}
+                                    >
+                                      Edit book details
+                                    </button>
+
+                                    {/* open add new character */}
+                                    <button
+                                      className="w-full text-left px-3 py-2 rounded hover:bg-gray-200 dark:hover:bg-gray-700"
+                                      onClick={() => {
+                                        addNewcharacter();
+                                        setShowSettingsMenu(false);
+                                      }}
+                                    >
+                                      Add character
+                                    </button>
+
+                                    {/* delete the current book */}
+                                    <button
+                                      className="w-full text-left px-3 py-2 rounded text-red-600 hover:bg-red-100 dark:hover:bg-red-900/30"
+                                      onClick={() => {
+                                        if (currentBook?.id) deleteBook(currentBook.id);
+                                      }}
+                                    >
+                                      Delete book
+                                    </button>
+                                  </div>
+                                </>
+                                )}
+                              </div>
+                            </div>
+                            
+                            {/* quick details */}
+                            <div className="flex justify-between mb-1">
+                              <label className="text-xs text-neutral-400">
+                                Volume {bookVolume || "0"} • {bookVolName || "Volume Name"} • {upcaseLetter(bookStatus) || "unknown"}
+                              </label>
+                              
+                              <label className="text-xs text-neutral-400">{"Chapter count: " + bookChapterCount || "add chapter count"}</label>
+                            </div>
+
+                            <textarea
+                                rows={bookSummary ? 12 : 1}
+                                className={`${showBookContent ? "hidden" : ""} font-serif text-sm leading-6 w-full px-1 py-1 focus:outline-none text-sm placeholder-gray-400 dark:placeholder-gray-600 text-area-scroll transition-all duration-300 resize-none placeholder:text-center placeholder:text-lg placeholder:`}
+                                placeholder="Update book summary"
+                                value={bookSummary}
+                                onFocus={(e) => autoResize(e)}
+                                onBlur={(e) => { e.currentTarget.style.height = "auto";}}
+                                readOnly
+                            />
+                          </div>
+                      </div>
                     </div>
 
-                    {/* SAMPLE GENRE */}
-                <div>
-                    <label className="block text-sm font-medium mb-1">
-                    Book Genre
-                    </label>
-                    <input
-                    className="w-full border rounded-md px-4 py-2 focus:outline-none focus:ring-2 focus:ring-blue-400 placeholder-gray-400 dark:placeholder-gray-600"
-                    placeholder="Enter genre separated by comma"
-                    value={bookGenre}
-                    onChange={e => setBookGenre(e.target.value)}
-                    />
-                </div>
+                    {/* CHARACTER GENRE AND TAGS */}
+                    {!showBookContent && (
+                      <div className="rounded-md shadow-lg p-4 mb-2 bg-gray-100 dark:bg-gray-900 transition duration-300">
+                        <label className="text-sm font-semibold">Book Classification</label>
 
-                    {/* Current Volume */}
-                    <div>
-                    <label className="block text-xs font-medium mb-1">
-                        Current Volume
-                    </label>
-                    <input
-                        type="number"
-                        className="w-full border rounded-md px-4 py-2 focus:outline-none focus:ring-2 focus:ring-blue-400 placeholder-gray-400 dark:placeholder-gray-600"
-                        value={bookVolume}
-                        placeholder="Update current book volume"
-                        onChange={e => setBookVolume(String (e.target.value))}
-                    />
-                    </div>
-
-                    <button
-                    type="button"
-                    className="w-full bg-blue-500 text-white py-2 rounded-md hover:bg-blue-600 transition"
-                    onClick={() => {updateBookDetails(currentBook!.id, bookSummary, Number(bookVolume), bookGenre)}}
-                    >
-                    SAVE
-                    </button>
-                </form>
-                </div>
-
-                )}
-
-
-                {/* ADD CHARACTER TITLE  */}
-                <div className="flex-1 rounded-md shadow-lg bg-gray-100 dark:bg-gray-900 mb-2 p-3 flex justify-between transition duration-300">
-
-                <h3 className="text-2xl font-semibold">Add Character</h3>
-
-                <div className="flex justify-center">
-                    <button 
-                    value={bookTitle}
-                    className="border-gray-500 border-1 text-black rounded hover:bg-gray-300 hover:text-gray-950 px-2 dark:border-white dark:text-white"
-                    onClick={addNewcharacter}>
-                        {addCharacterState ? <FontAwesomeIcon icon={faPlus} size="xs" className="transition duration-500"/> : <FontAwesomeIcon icon={faMinus} size="xs"/>}
-                    </button>
-                </div>
-
-                </div>
-
-                {/* ADD CHARACTER FORM */}
-                {(!addCharacterState &&
-                <div className="flex-1 rounded-md shadow-lg p-3 mb-2 bg-gray-100 dark:bg-gray-900 transition duration-300 animate-fadeDown"
-                    onKeyDown={(e) => {if (e.key === "Enter") addCharacter();}}>
-                    <input className="border p-2 w-full mb-2 rounded" placeholder="Name" value={name} onChange={e => setName(e.target.value)} />
-                    <input className="border p-2 w-full mb-2 rounded" placeholder="Role / Affiliation" value={role} onChange={e => setRole(e.target.value)} />
-                    <textarea className="border p-2 w-full mb-2 rounded" placeholder="Notes" rows={4} value={notes} onChange={e => setNotes(e.target.value)} />
-                    <input className="border p-2 w-full mb-2 rounded" placeholder="Abilities (comma separated)" value={abilities} onChange={e => setAbilities(e.target.value)} />
-                    <input type="number" className="border p-2 w-full mb-2 rounded" placeholder="First Chapter Appearance" value={chapterAppearance} onChange={e => setChapterAppearance(e.target.value)} />
-                    <button
-                    type="button"
-                    className="w-full bg-blue-500 text-white py-2 rounded-md hover:bg-blue-600 transition"
-                    onClick={addCharacter}
-                    >
-                    SAVE
-                    </button>
-                </div>
-                )}
-
-            </div>
-
-        </div>
-        
-        {/* CENTER CONTAINER */}
-        <div className="w-full max-w-3xl mx-auto">
-
-            {/* DETAILS / CHARACTERS Display */}
-            <div className="px-3 pt-3 mb-3 rounded-md shadow-lg bg-gray-100 dark:bg-gray-900">
-            
-            {/*CHANGEABLE CURRENT BOOK TITLE */}
-            <div className="flex items-center gap-3 mb-4">
-                <div className="flex-1">
-                <input 
-                    title="Edit book title..."
-                    className="text-2xl w-full text-center font-semibold border-b-1 border-gray-200 hover:border-gray-500 outline-none focus-ring-0 truncate" 
-                    value={titleDraft}
-                    onChange={(e) => setTitleDraft(e.target.value)}
-                    onBlur={saveBookTitle}
-                    onKeyDown={(e) => {
-                    if (e.key === "Enter") {
-                        e.preventDefault();
-                        (e.target as HTMLElement).blur();
-                    }
-                    }}
-                />
-                
-                </div>
-
-                {/* THIS IS THE HIDDEN ADD CHARACTER FORM FOR SMALLER DIMENSION */}
-                <button 
-                onClick={() => setShowAddCharacter(!showAddCharacter)} 
-                className="xs:hidden bg-black border border-black text-white text-xs md:text-base px-5 py-2 rounded-md hover:bg-gray-800 transition">
-                    {showAddCharacter ? 'Cancel' : 'Add Character'}
-                </button>
-            </div>
-
-            {/* Input Character Details */}
-            {showAddCharacter && (
-                <div className="bg-white/30 shadow rounded-md p-4 mb-6 flow-root">
-                    <input className="border p-2 w-full mb-2 rounded" placeholder="Name" value={name} onChange={e => setName(e.target.value)} />
-                    <input className="border p-2 w-full mb-2 rounded" placeholder="Role / Affiliation" value={role} onChange={e => setRole(e.target.value)} />
-                    <textarea className="border p-2 w-full mb-2 rounded" placeholder="Notes" value={notes} onChange={e => setNotes(e.target.value)} />
-                    <input className="border p-2 w-full mb-2 rounded" placeholder="Abilities (comma separated)" value={abilities} onChange={e => setAbilities(e.target.value)} />
-                    <input type="number" className="border p-2 w-full mb-2 rounded" placeholder="Volume" value={chapterAppearance} onChange={e => setChapterAppearance(e.target.value)} />
-                    <button onClick={addCharacter} className="float-right bg-black border border-black text-white px-4 py-2 rounded-md hover:bg-gray-800 transition">Confirm</button>
-                </div>
-            )}
-
-            {/* DISPLAY IF CHARACTERS ARE NONE */}
-            {character.length === 0 && (
-            <div className="w-full flex justify-center items-center py-20"> 
-                <h1 className="text-3xl font-bold text-gray-400 text-center"> 
-                PLEASE ADD SOME CHARACTERS. IT GETS LONELY SOMETIMES HERE... 
-                </h1> 
-            </div>
-            )}
-
-            {/* Display Character Card Block */}
-            <div className="grid gap-4 pb-4 grid-cols-2 sm:grid-cols-3 md:grid-cols-4 items-stretch place-items-center">
-                {currentCharacters.map(char => (
-
-                // CHARACTER CARDS w/ image... //
-                <div 
-                key={char.id} 
-                title="Open character sheet."
-                className="
-                h-[230px] w-full max-w-sm
-                cursor-pointer bg-white shadow-lg rounded-md
-                transition-all duration-300
-                hover:-translate-y-2 hover:shadow-2xl
-                group animate-fadeDown
-                flex flex-col
-                dark:bg-gray-950"
-                onClick={() => openEditCharacter(char)}
-                >
-
-                    {/* IMAGE */}
-                    <div className="h-100 w-full overflow-hidden rounded-t-xl">
-                    <a>
-                        <img 
-                        className="h-full w-full object-cover group-hover:scale-105 transition" 
-                        src={imageMap[char.id] || char_image}
-                        alt="Default Character Image" />
-                    </a>
-                    </div>
-
-                    <div className="flex-1 p-2 text-center">
-                        <a>
-                            <h3 className="text-xl font-semibold tracking-tight line-clamp-1">{char.name}</h3>
-                            <p className="text-sm text-gray-400 line-clamp-1">{char.role || "Character Role"}</p>
-                            <p className="text-xs text-gray-400 line-clamp-1">Status: {char.status}</p>
-                        </a>
-                    </div>
-                </div>
-                ))}
-            </div>
-
-            {/* // PAGINATION   */}
-            {character.length >= 13 && (
-                <div className="flex items-center justify-between pb-2 flex-wrap">
-
-                {/* Previous */}
-                <button
-                    onClick={() => setCurrentPage(prev => Math.max(prev - 1, 1))}
-                    disabled={currentPage === 1}
-                    className="px-3 py-1 bg-gray-300 dark:bg-gray-500 rounded disabled:opacity-50"
-                >
-                    Prev
-                </button>
-
-                <div className="flex items-center gap-2">
-                    {/* First page shortcut */}
-                    {currentPage > 3 && (
-                    <>
-                        <button
-                        onClick={() => setCurrentPage(1)}
-                        className="px-3 py-1 bg-gray-300 dark:bg-gray-500 rounded"
-                        >
-                        1
-                        </button>
-                        <span>...</span>
-                    </>
+                        <div className="block mb-1 -mt-1">
+                          <label className="text-xs text-blue-900 dark:text-blue-400">Genre</label>
+                          <label className="text-xs text-gray-300"> • </label>
+                          <label className="text-xs text-purple-900 dark:text-purple-400">Tags</label>
+                        </div>
+                        
+                        <div className="flex flex-wrap gap-2">
+                          {bookChips.length ? (
+                            bookChips.map((chip, index) => (
+                              <span 
+                                key={`${chip.type}-${chip.text}-${index}`} 
+                                className={`px-3 py-1 rounded-full text-sm ${
+                                  chip.type === 'genre' 
+                                    ? "bg-blue-200 text-blue-900 dark:bg-blue-900/40 dark:text-blue-200" // Genre Style
+                                    : "bg-purple-200 text-purple-900 dark:bg-purple-900/40 dark:text-purple-200" // Tag Style
+                                }`}
+                              >
+                                {upcaseLetter(chip.text)}
+                              </span>
+                            ))
+                          ) : (
+                            <span className="text-sm text-gray-500 dark:text-gray-400">No data yet.</span>
+                          )}
+                        </div>
+                      </div>
                     )}
 
-                    {/* Page Numbers */}
-                    {getPageNumbers().map(page => (
-                    <button
-                        key={page}
-                        onClick={() => setCurrentPage(page)}
-                        className={`px-3 py-1 rounded ${
-                        currentPage === page
-                            ? "bg-blue-500 text-white"
-                            : "bg-gray-300 dark:bg-gray-500"
-                        }`}
-                    >
-                        {page}
-                    </button>
-                    ))}
-
-                    {/* Last page shortcut */}
-                    {currentPage < totalPages - 2 && (
-                    <>
-                        <span>...</span>
-                        <button
-                        onClick={() => setCurrentPage(totalPages)}
-                        className="px-3 py-1 bg-gray-300 dark:bg-gray-500 rounded"
-                        >
-                        {totalPages}
-                        </button>
-                    </>
-                    )}
-                </div>
-
-                {/* Next */}
-                <button
-                    onClick={() =>
-                    setCurrentPage(prev => Math.min(prev + 1, totalPages))
-                    }
-                    disabled={currentPage === totalPages}
-                    className="px-3 py-1 bg-gray-300 dark:bg-gray-500 rounded disabled:opacity-50"
-                >
-                    Next
-                </button>
-
-                </div>
-            )}
-
-            </div>
-
-        </div>
-
-        <button 
-          onClick={displayNotes}
-          className="bg-blue-800 fixed top-14 right-0 p-2 b rounded-l-2xl hover:bg-blue-700 transition sticky">
-          <span className="[writing-mode:vertical-rl] [text-orientation:upright] text-bold">NOTES</span>
-        </button>
-
-        {notesShowState && (
-          // {/* RIGHT SIDE CONTAINER */}
-          <div className="hidden xs:block flex-1 flex flex-col relative transition animate-fadeRight">
-              
-              {/* NOTES CONTAINER */}
-              <div className="PARENT CONTAINER FOR THE NOTES PANEL sticky top-15">
-
-              {/* NOTES TITLE */}
-              <div className="flex-1 rounded-md shadow-lg p-3 bg-gray-100 dark:bg-gray-900 mb-2 flex justify-between">
-
-                  <h3 
-                  onClick={displayNotes}
-                  className="text-2xl font-semibold cursor-pointer hover:text-blue-400 select-none"
-                  title="Click to minimize notes"
-                  role="button"
-                  >Notes</h3>
-
-                  <div className="flex justify-center">
-                    <button 
-                        value={bookTitle}
-                        className="border-gray-500 border-1 text-black rounded hover:bg-gray-300 hover:text-gray-950 px-2 transition dark:border-white dark:text-white"
-                        onClick={addDraftNotes}>
-                        <FontAwesomeIcon icon={faPlus} size="xs"/>
-                    </button>
                   </div>
+                )}
 
               </div>
+            
+            </div>
 
-                  {/* NOTES CONTENTS */}
-                  <div className="h-[calc(100vh-8rem)] overflow-y-auto overflow-x-hidden notes-scroll overflow-contain">
+            {/* display pinned notes */}
+            <div className="hidden xxs:flex flex-col xxs:sticky xxs:top-13 h-fit w-full rounded-md shadow-sm border border-gray-200 dark:border-gray-800 p-2 xxs:mb-4 bg-white dark:bg-gray-900 transition-all duration-300">
+              
+              <div className="flex items-center justify-between px-2 gap-1 mb-2 border-b border-gray-100 dark:border-gray-800">
+                
+                <label className="text-sm font-semibold">
+                  <span className="text-yellow-600 text-lg">★
+                  </span>
+                  Pinned Notes
+                </label>
 
-                      {/* THIS IS THE BOOK NOTES */}
-                      <div className="">
-                          {[ ...(draftNote ? [draftNote] : []), ...bookNotes ].map(notes => (
-                          <div 
-                              className={`${colorMap[notes.color]} relative p-1 rounded-md shadow-md mb-2 bg-gray-100 dark:bg-gray-900 cursor-pointer animate-fadeDown`}
-                              key={notes.id ?? notes.notesId}
-                              data-id={notes.id}
-                          >
+                <button onClick={() => setShowPinnedNotes(prev => !prev)} className="text-gray-500 hover:text-white"> <FontAwesomeIcon icon={showPinnedNotes ? faMinus : faPlus}/> </button>
+              </div>
 
-                              <div className="flex justify-between pb-1"> 
-                              
+              {showPinnedNotes && (
+                <div className="space-y-1 overflow-y-auto max-h-[calc(100vh-7rem)] pr-1 notes-scroll">
+                  {bookNotes.filter(note => note.pinned).length > 0 ? (
+                    bookNotes
+                      .filter(note => note.pinned)
+                      .map(notes => (
+                        <div 
+                          className={`${colorMap[notes.color] || 'bg-gray-50 dark:bg-gray-800'} relative p-2 rounded-lg border border-transparent hover:border-yellow-400/50 shadow-sm transition-all animate-fadeDown`}
+                          key={notes.id ?? notes.notesId}
+                        >
+                          {/* Header: Star & Date */}
+                          <div className="flex items-center mb-1"> 
+                            <div className="flex items-center gap-1">
+                              <button 
+                                onMouseDown={() => {
+                                  togglePin(notes);
+                                }}
+                                className="transition-transform hover:scale-110"
+                              >
+                                <FontAwesomeIcon icon={faStar} className="text-yellow-400 text-sm" />
+                              </button>
+
                               <span className="text-xs text-gray-800 dark:text-gray-400">
                                   {new Date(notes.createdAt).toLocaleString("en-US", {
                                   month: "short",
@@ -942,32 +1773,486 @@ export default function BookPage() {
                                   minute: "2-digit",
                                   })}
                               </span>
+                            </div>
+                          </div>
+                          
+                          {/* Note Content */}
+                          <textarea
+                            value={notes.content}
+                            rows={3}
+                            readOnly // Pinned notes are often for reference; make editable on focus if needed
+                            onFocus={(e) => {
+                              autoResize(e); 
+                              setOnFocusId(String(notes.id!)); 
+                              setNoteContent(notes.content); 
+                              setHideSave(true);
+                            }}
+                            className="
+                              notes-scroll w-full text-sm bg-transparent border-none rounded-md
+                              focus:outline-none
+                              resize-none text-gray-800 dark:text-gray-200 placeholder-gray-400"
+                            placeholder="Note content..."
+                          />
+                        </div>
+                      ))
+                  ) : (
+                    <div className="py-8 text-center border-2 border-dashed border-gray-100 dark:border-gray-800 rounded-xl">
+                      <p className="text-xs text-gray-400 italic">No pinned notes yet</p>
+                    </div>
+                  )}
+                </div>
+              )}
+
+            </div>
+
+        </div>
+        
+        {/* CENTER CONTAINER */}
+        <div className="col-span-1 xxs:col-span-8 xl:col-span-4 w-full flex-1">
+
+          {/* character data and grid display */}
+          <div className="rounded-md shadow-lg p-4 mb-2 bg-gray-100 dark:bg-gray-900 transition duration-300">
+            {/* CHARACTER DATA COMPLETION PROGRESS BAR */}
+            <div className="mb-3">
+              <div className="flex items-center justify-between mb-2">
+                <label className="text-sm font-semibold">Character Profile Completion</label>
+                <span className="text-sm text-gray-500 dark:text-gray-400">{averageCompletion}%</span>
+              </div>
+
+              <div className="w-full h-3 bg-gray-300 dark:bg-gray-700 rounded-full overflow-hidden mb-2">
+                <div
+                  className="h-full bg-gradient-to-r from-cyan-500 to-blue-600"
+                  style={{ width: `${averageCompletion}%` }}
+                />
+              </div>
+
+              <p className="text-xs text-gray-600 dark:text-gray-400">{incompleteCharacters} {incompleteCharacters > 1 ? 'characters' : 'character'} still need schema updates.</p>
+            </div>
+
+            {/* CHARACTER GRID TITLE */}
+            <div>
+              <h3 className="font-semibold mb-1">Character Grid</h3>
+
+              {/* DISPLAY IF CHARACTERS ARE NONE */}
+              {character.length === 0 && (
+              <div className="w-full flex justify-center items-center py-20"> 
+                  <h1 className="text-3xl font-bold text-gray-400 text-center"> 
+                  PLEASE ADD SOME CHARACTERS. IT GETS LONELY SOMETIMES HERE... 
+                  </h1> 
+              </div>
+              )}
+              
+              {/* Display Character Card Block */}
+              <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-3 xl:grid-cols-4 gap-1 p-1">
+                  {currentCharacters.map(char => (
+
+                  // CHARACTER CARDS w/ image... //
+                  <div 
+                    key={char.id} 
+                    title="Open character sheet."
+                    className="
+                      relative flex flex-col items-center justify-center p-2
+                      cursor-pointer bg-white dark:bg-gray-950 shadow-md rounded-2xl
+                      transition-all duration-300
+                      hover:bg-gray-50 dark:hover:bg-gray-900 hover:shadow-xl
+                      group animate-fadeDown border border-gray-100 dark:border-gray-800
+                    "
+                    onClick={() => openEditCharacter(char)}
+                  >
+                    <button
+                      type="button"
+                      title="Set character priority"
+                      className={`absolute right-2 top-2 z-10 inline-flex items-center gap-1 rounded-full border px-2 py-1 text-[10px] font-semibold shadow-sm transition hover:border-amber-500 ${char.priority > 0 ? "border-amber-300 bg-amber-100 text-amber-700 dark:border-amber-500/60 dark:bg-amber-500/10 dark:text-amber-200" : "border-gray-200 bg-white/90 text-gray-500 dark:border-gray-700 dark:bg-gray-900/90 dark:text-gray-300"}`}
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        setPriority(priority === char.id ? null : char.id);
+                      }}
+                    >
+                      <FontAwesomeIcon icon={faStar} className={char.priority > 0 ? "text-amber-400" : "text-gray-400"} />
+                      P{char.priority ?? 0}
+                    </button>
+
+                    {/* priority tool tip */}
+                    {priority === char.id && (
+                      <>
+                        {/* Backdrop: stopPropagation prevents the Card click from firing */}
+                        <div 
+                          className="fixed inset-0 z-10" 
+                          onClick={(e) => {
+                            e.stopPropagation(); 
+                            setPriority(null);
+                          }}
+                        />
+                        
+                        <div 
+                          className="absolute left-12 top-10 z-20 mb-2 w-35 rounded-lg bg-gray-900 p-1 shadow-xl ring-1 ring-white/10 dark:bg-slate-800 animate-in fade-in zoom-in duration-200 origin-bottom"
+                          onClick={(e) => e.stopPropagation()} // Prevents clicking the menu from opening the card
+                        >
+                          <label className="text-xs text-gray-400 p-1">Select priority value:</label>
+                          <div className="flex flex-col gap-0.5">
+                            {Object.entries(characterPriority).map(([value, label]) => {  
+                              const isSelected = char.priority === Number(value);
+                              return (
+                                <button
+                                  key={value}
+                                  type="button"
+                                  title={"Priority value: "+ value}
+                                  className={`flex items-center justify-between rounded px-3 py-1.5 text-left text-[11px] transition-colors hover:bg-white/10 ${
+                                    isSelected ? "text-amber-400 font-bold bg-white/5" : "text-gray-300"
+                                  }`}
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    updateCharacterPriority(char.id, Number(value));
+                                    setPriority(null); // Close after selection
+                                  }}
+                                >
+                                  <span>{label}</span>
+                                  <span className="opacity-50">P{value}</span>
+                                </button>
+                              );
+                            })}
+                          </div>
+
+                          {/* Small arrow/tail */}
+                          <div className="absolute -top-1 left-1/2 h-2 w-2 -translate-x-1/2 rotate-45 bg-gray-900 dark:bg-slate-800" />
+                        </div>
+                      </>
+                    )}
+
+                    {/* IMAGE: Responsive size (smaller on mobile, bigger on tablet+) */}
+                    <div className="relative h-20 w-20 sm:h-24 sm:w-24 shrink-0 overflow-hidden rounded-full border-2 border-white dark:border-gray-800 shadow-sm ring-2 ring-gray-100 dark:ring-gray-900">
+                      <img 
+                        className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-105" 
+                        src={imageMap[char.id]?.find(img => img.isDisplayed)?.url || imageMap[char.id]?.[0]?.url || char_image}
+                        alt={char.name} 
+                      />
+                    </div>
+
+                    {/* TEXT CONTENT */}
+                    <div className="mt-3 flex flex-col items-center w-full text-center"> 
+                      <h3 className="text-xs sm:text-sm font-bold tracking-tight line-clamp-1 text-gray-900 dark:text-gray-100">
+                        {char.name}
+                      </h3>
+                      
+                      <div className="items-center justify-center gap-1 mt-1 text-[9px] sm:text-[10px] uppercase tracking-wider font-semibold text-gray-500">
+                        <span className="line-clamp-2">{char.role || "Unknown"}</span>
+                        <span className={char.status === 'alive' ? 'text-green-600' : 'text-red-700'}>
+                          {upcaseLetter(char.status)} 
+                        </span>
+                      </div>
+                    </div>
+                  </div>
+                  ))}
+              </div>
+
+              {/* // PAGINATION   */}
+              {character.length >= 15 && (
+                  <div className="flex items-center justify-between pb-2 flex-wrap">
+
+                  {/* Previous */}
+                  <button
+                      onClick={() => setCurrentPage(prev => Math.max(prev - 1, 1))}
+                      disabled={currentPage === 1}
+                      className="px-3 py-1 bg-gray-300 dark:bg-gray-500 rounded disabled:opacity-50"
+                  >
+                      Prev
+                  </button>
+
+                  <div className="flex items-center gap-2">
+                      {/* First page shortcut */}
+                      {currentPage > 3 && (
+                      <>
+                          <button
+                          onClick={() => setCurrentPage(1)}
+                          className="px-3 py-1 bg-gray-300 dark:bg-gray-500 rounded"
+                          >
+                          1
+                          </button>
+                          <span>-</span>
+                      </>
+                      )}
+
+                      {/* Page Numbers */}
+                      {getPageNumbers().map(page => (
+                      <button
+                          key={page}
+                          onClick={() => setCurrentPage(page)}
+                          className={`px-3 py-1 rounded ${
+                          currentPage === page
+                              ? "bg-blue-500 text-white"
+                              : "bg-gray-300 dark:bg-gray-500"
+                          }`}
+                      >
+                          {page}
+                      </button>
+                      ))}
+
+                      {/* Last page shortcut */}
+                      {currentPage < totalPages - 2 && (
+                      <>
+                          <span>-</span>
+                          <button
+                          onClick={() => setCurrentPage(totalPages)}
+                          className="px-3 py-1 bg-gray-300 dark:bg-gray-500 rounded"
+                          >
+                          {totalPages}
+                          </button>
+                      </>
+                      )}
+                  </div>
+
+                  {/* Next */}
+                  <button
+                      onClick={() =>
+                      setCurrentPage(prev => Math.min(prev + 1, totalPages))
+                      }
+                      disabled={currentPage === totalPages}
+                      className="px-3 py-1 bg-gray-300 dark:bg-gray-500 rounded disabled:opacity-50"
+                  >
+                      Next
+                  </button>
+
+                  </div>
+              )}
+            </div>
+          </div>
+
+          {/* WORLD BUILDING DETAILS */}
+          <div className="rounded-md shadow-lg p-4 mb-2 bg-gray-100 dark:bg-gray-900 transition duration-300">
+            <div className="flex items-center justify-between gap-2">
+              <div>
+                <label className="text-sm font-semibold">World Setting</label>
+                <p className="text-xs text-gray-500 dark:text-gray-400">Your story's facts and lore references</p>
+              </div>
+              
+              <div className="flex gap-2">
+                <button
+                  type="button"
+                  className="px-2 py-1 text-xs rounded border border-gray-400 hover:bg-gray-200 dark:hover:bg-gray-700"
+                  onClick={openEditWorldbuildingModal}
+                  disabled={worldbuildingSections.length < 1}
+                >
+                  <FontAwesomeIcon icon={faPen} /> Edit
+                </button>
+
+                <button
+                  type="button"
+                  className="px-2 py-1 text-xs rounded border border-gray-400 hover:bg-gray-200 dark:hover:bg-gray-700"
+                  onClick={openWorldbuildingModal}
+                >
+                  <FontAwesomeIcon icon={faPlus} /> Add
+                </button>
+              </div>
+            </div>
+
+            <div className="mt-3 space-y-2">
+              {worldbuildingSections.map(section => (
+                <div key={section.id} className="rounded border border-gray-300 dark:border-gray-700 bg-white/60 dark:bg-gray-800/60">
+                  <button
+                    type="button"
+                    className="w-full flex items-center justify-between px-3 py-2 text-left"
+                    onClick={() => toggleWorldSection(section.id)}
+                  >
+                    <span className="text-sm font-medium text-blue-700 dark:text-blue-300">{section.title}</span>
+                    <span className="text-sm font-bold">{openWorldSections[section.id] ? "−" : "+"}</span>
+                  </button>
+
+                  {openWorldSections[section.id] && (
+                    <dl className="px-3 pb-3 space-y-2">
+                      {section.entries.map((entry, index) => (
+                        <div key={`${section.id}-${entry.label}-${index}`}>
+                          <dt className="text-[11px] uppercase tracking-wide text-gray-500 dark:text-gray-400">{entry.label}</dt>
+                          <dd className="text-sm text-gray-700 dark:text-gray-200">{entry.value}</dd>
+                        </div>
+                      ))}
+                    </dl>
+                  )}
+                </div>
+              ))}
+
+              {worldbuildingSections.length < 1 && (
+                <div className="py-8 text-center border-2 border-dashed border-gray-100 dark:border-gray-800 rounded-xl">
+                  <p className="text-xs text-gray-400 italic">No world settings yet</p>
+                </div>
+              )}
+            </div>
+          </div>
+
+        </div>
+        
+      </div>
+    
+
+      {/* MODALS */}
+
+        {/* Undo Popup */}
+        {showUndoPopup && (
+            <div className="fixed top-14 left-1/2 bg-gray-300 py-4 px-8 transform -translate-x-1/2 rounded shadow-lg flex justify-center space-x-4 animate-fadeDown">
+            <span>Deleted</span>
+            <button 
+                className="bg-blue-500 hover:bg-blue-400 px-3 py-1 rounded text-sm font-semibold flex"
+                onClick={handleUndo}
+                >
+                <svg
+                xmlns="http://www.w3.org/2000/svg"
+                fill="none"
+                viewBox="0 0 24 24"
+                strokeWidth={2}
+                stroke="currentColor"
+                className="w-4 h-5"
+                >
+                <path d="M9 15L3 9m0 0l6-6M3 9h12a6 6 0 010 12h-3" />
+                </svg> Undo
+            </button>
+            </div>
+        )}
+
+        {/* CHANGES SAVED POPUP */}
+        {showStatePopup && (
+        <div className="fixed top-14 z-50 left-1/2 bg-gray-300 py-1 px-5 transform -translate-x-1/2 rounded shadow-lg flex justify-center space-x-4 animate-fadeDown">
+            <span>
+            {alertMessage}
+            <FontAwesomeIcon className="text-green-500" size="lg" icon={faCheck}/>
+            </span>
+        </div>
+        )}
+
+        {/* NOTES */}
+        {createPortal(
+          <>
+            {/* MOBILE NOTES TOGGLE */}
+            <button
+              ref={notesFabRef}
+              onClick={displayNotes}
+              className={`
+                fixed bottom-5 right-5 z-50
+                bg-blue-600 hover:bg-blue-700
+                border border-blue-600 hover:border-blue-400
+                text-white rounded-full
+                px-4 py-3.5 shadow-xl
+                transition-transform duration-600 
+                ${notesShowState ? "hidden" : "none"}
+              `}
+              title={notesShowState ? "Close notes" : "Open notes"}
+            >
+              <FontAwesomeIcon icon={notesShowState ? faMinus : faPlus}/>
+            </button>
+
+            {/* Collapsible notes drawer*/}
+            {isNotesDrawerMounted && (
+              <div
+                className={`text-black dark:text-white fixed inset-0 z-40 transition-opacity duration-300 justify-items-center ${isNotesDrawerVisible ? "opacity-100" : "opacity-0"}`}
+                role="dialog"
+                aria-modal="true"
+              >
+                <button
+                  className="absolute inset-0 bg-black/50"
+                  aria-label="Close notes drawer"
+                  onClick={closeNotesDrawer}
+                />
+
+                {/* notes content */}
+                <div
+                  ref={notesDrawerPanelRef}
+                  className={`
+                    absolute bottom-0 xxs:right-15
+                    bg-gray-100 dark:bg-gray-800
+                    shadow-2xl p-3
+                    w-full max-w-[60vh] max-h-[90vh]
+                    transition-all duration-500
+                    ${isNotesDrawerVisible ? "translate-y-0" : "translate-y-full"}
+                  `}
+                >
+                  <div className="flex items-center justify-between mb-2">
+                    <h2 className="text-sm font-semibold">Notes</h2>
+                    <div className="flex gap-2">
+                      <button
+                        onClick={addDraftNotes}
+                        className="text-xs bg-blue-600 hover:bg-blue-700 text-white px-3 py-1 rounded-md"
+                      >
+                        Add
+                      </button>
+                      <button
+                        onClick={closeNotesDrawer}
+                        className="text-xs bg-gray-400 hover:bg-gray-500 text-white px-3 py-1 rounded-md"
+                      >
+                        Close
+                      </button>
+                    </div>
+                  </div>
+
+                  <div className="h-[calc(75vh-3.5rem)] xxs:h-[calc(85vh-3.5rem)] overflow-y-auto overflow-x-hidden notes-scroll overflow-contain mt-2">
+                    {bookNotes.length < 1 && !draftNote && (
+                      <div className="py-8 text-center border-2 border-dashed border-gray-100 dark:border-gray-500 rounded-xl">
+                        <p className="text-xs text-gray-300 italic">Add notes, references, future scenarios, book plans, etc...</p>
+                      </div>
+                    )}
+
+                    {/* // THIS IS THE BOOK NOTES */}
+                    <div>
+                        {[ ...(draftNote ? [draftNote] : []), ...bookNotes ].map(notes => (
+                          <div 
+                              className={`${colorMap[notes.color]} relative p-1 rounded-md shadow-md mb-2 bg-gray-100 dark:bg-gray-900 cursor-pointer animate-fadeDown`}
+                              key={notes.id ?? notes.notesId}
+                              data-id={notes.id}
+                          >
+
+                              <div className="flex justify-between pb-1"> 
+                              
+                              <div className="flex items-center gap-1">
+                                {notes.id && (
+                                  <span> 
+                                    <FontAwesomeIcon icon={faStar} 
+                                      className={`${notes.pinned ? "text-yellow-400" : "text-gray-500"} hover:text-yellow-500 transition-transform hover:scale-110`}
+                                      onMouseDown={() => {
+                                        togglePin(notes);
+                                      }}
+                                    /> 
+                                  </span>
+                                )}
+
+                                <span className="text-xs text-gray-800 dark:text-gray-400">
+                                    {new Date(notes.createdAt).toLocaleString("en-US", {
+                                    month: "short",
+                                    day: "numeric",
+                                    year: "numeric",
+                                    hour: "2-digit",
+                                    minute: "2-digit",
+                                    })}
+                                </span>
+                              </div>
 
                               <button 
-                                  className="hover:bg-neutral-300/50 rounded-2xl group"
-                                  onClick={() => setNoteToDelete(notes)}>
-                                  <svg
+                                className="rounded-full items-center px-0.5 group"
+                                onMouseDown={() => setNoteToDelete(notes)}
+                                disabled={!notes.id || notes.pinned === true}
+                              >
+                                <svg
                                   xmlns="http://www.w3.org/2000/svg"
                                   className="h-5 w-5 text-gray-700 dark:text-gray-400 group-hover:text-red-500"
                                   fill="none"
                                   viewBox="0 0 24 24"
                                   stroke="currentColor"
                                   strokeWidth={2}
-                                  >
-                                  <path strokeLinecap="round" strokeLinejoin="round" d="M6 6l12 12M6 18L18 6" />
-                                  </svg>
+                                >
+                                <path strokeLinecap="round" strokeLinejoin="round" d="M6 6l12 12M6 18L18 6" />
+                                </svg>
                               </button>
 
                               </div>
                               
                               <textarea
+                              onInput={(e: React.FormEvent<HTMLTextAreaElement>) => {
+                                const target = e.currentTarget;
+                                target.style.height = '';
+                                target.style.height = target.scrollHeight + 'px';
+                              }}
                               className="
                               w-full text-sm
                               rounded-md 
                               px-1
-                              focus:outline-none focus:ring-2 focus:ring-blue-400 
-                              hover:ring-blue-400 hover:ring-2
-                              placeholder-gray-400 dark:placeholder-gray-400 
+                              focus:outline-none focus:ring-1 focus:ring-gray-400 
+                              hover:ring-gray-400 hover:ring-1
                               resize-none
                               overflow-hidden
                               transition-all duration-200
@@ -1013,20 +2298,17 @@ export default function BookPage() {
 
                               {(hideSave && (notes.id ? Number(onFocusId) === notes.id : draftNoteState) &&
                               <div className="flex justify-end gap-1">
-                                  {/* {(notSaved &&
-                                  <span>Not saved</span>
-                                  )} */}
 
                                   <button 
                                   className="flex px-4 py-1 bg-neutral-500 rounded-xl hover:bg-neutral-600"
-                                  onClick={() => {setHideSave(false); setDraftNote(null);}}
+                                  onMouseDown={() => {setHideSave(false); setDraftNote(null);}}
                                   >
                                   Cancel
                                   </button>
 
                                   <button 
                                   className="flex px-4 py-1 bg-blue-700 rounded-xl"
-                                  onClick={() => {saveNote(notes);}}
+                                  onMouseDown={() => {saveNote(notes);}}
                                   disabled={noteContent === notes.content}
                                   >
                                   Save 
@@ -1056,49 +2338,417 @@ export default function BookPage() {
                               </div>
                               )}
                           </div>
-                          ))}
-                      </div>
-
+                        ))}
+                    </div>
                   </div>
 
+                {/* notes content closer   */}
+                </div>
+
+              {/* notes closer */}
+              </div>
+            )}
+          </>,
+          document.body
+        )}
+
+        {/* WORLD BUILDING INPUT MODAL */}
+        {showWorldbuildingModal && (
+          <div
+            className="fixed inset-0 z-70 bg-black/50 flex items-center justify-center p-3"
+            onMouseDown={(e) => {
+              if (e.target === e.currentTarget) {
+                setShowWorldbuildingModal(false);
+                document.body.classList.toggle('overflow-hidden', false);
+              }
+            }}
+          >
+            <div className="w-full max-w-2xl max-h-[90vh] overflow-y-auto rounded-md bg-white dark:bg-gray-900 p-4 shadow-2xl notes-scroll" onMouseDown={(e) => e.stopPropagation()}>
+              <div className="flex items-start justify-between gap-3">
+                <div>
+                  <h2 className="text-lg font-semibold">Add Worldbuilding Section</h2>
+                  <p className="text-xs text-gray-500 dark:text-gray-400">Add a title, then as many label/value facts as you need.</p>
+                </div>
+                <button
+                  type="button"
+                  className="px-2 py-1 rounded border border-gray-400 hover:bg-gray-200 dark:hover:bg-gray-700"
+                  onClick={() => {setShowWorldbuildingModal(false); document.body.classList.toggle('overflow-hidden', false);}}
+                >
+                  Close
+                </button>
               </div>
 
+              <form onSubmit={saveWorldbuildingSection} className="mt-4 space-y-3">
+                <div>
+                  <label className="text-sm font-medium">Section Title</label>
+                  <input
+                    type="text"
+                    className="mt-1 w-full rounded border border-gray-300 dark:border-gray-700 px-3 py-2 bg-transparent"
+                    placeholder="ex: Economy, Politics, Religion..."
+                    value={worldSectionTitle}
+                    onChange={(e) => setWorldSectionTitle(e.target.value)}
+                    required
+                  />
+                </div>
+
+                <div className="space-y-2">
+                  <div className="flex items-center justify-between">
+                    <label className="text-sm font-medium">Entries (Label + Value)</label>
+                    <button
+                      type="button"
+                      className="text-xs px-2 py-1 rounded border border-gray-400 hover:bg-gray-200 dark:hover:bg-gray-700"
+                      onClick={addWorldDraftEntry}
+                    >
+                      <FontAwesomeIcon icon={faPlus} /> Add entry
+                    </button>
+                  </div>
+
+                  {worldDraftEntries.map((entry, index) => (
+                    <div key={`draft-entry-${index}`} className="rounded border border-gray-300 dark:border-gray-700 p-2 space-y-2">
+                      <div className="flex items-center justify-between">
+                        <span className="text-xs text-gray-500">Entry #{index + 1}</span>
+                        <button
+                          type="button"
+                          className="text-xs text-red-500 disabled:opacity-40"
+                          onClick={() => removeWorldDraftEntry(index)}
+                          disabled={worldDraftEntries.length === 1}
+                        >
+                          Remove
+                        </button>
+                      </div>
+
+                      <input
+                        type="text"
+                        className="w-full rounded border border-gray-300 dark:border-gray-700 px-2 py-1 bg-transparent"
+                        placeholder="Label (ex: Cost, Rule, Limitation)"
+                        value={entry.label}
+                        onChange={(e) => updateWorldDraftEntry(index, "label", e.target.value)}
+                      />
+                      <textarea
+                        rows={2}
+                        className="w-full rounded border border-gray-300 dark:border-gray-700 px-2 py-1 bg-transparent"
+                        placeholder="Value / detail"
+                        value={entry.value}
+                        onChange={(e) => updateWorldDraftEntry(index, "value", e.target.value)}
+                      />
+                    </div>
+                  ))}
+                </div>
+
+                <div className="flex justify-end gap-2 pt-1">
+                  <button
+                    type="button"
+                    className="px-3 py-1 rounded bg-gray-500 text-white hover:bg-gray-600"
+                    onClick={() => {setShowWorldbuildingModal(false); document.body.classList.toggle('overflow-hidden', false);}}
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    type="submit"
+                    className="px-3 py-1 rounded bg-blue-600 text-white hover:bg-blue-700"
+                  >
+                    Save Section
+                  </button>
+                </div>
+              </form>
+            </div>
           </div>
         )}
-      
 
-        {/* MODALS */}
-            {/* Undo Popup */}
-            {showUndoPopup && (
-                <div className="fixed top-14 left-1/2 bg-gray-300 py-4 px-8 transform -translate-x-1/2 rounded shadow-lg flex justify-center space-x-4 animate-fadeDown">
-                <span>Deleted</span>
-                <button 
-                    className="bg-blue-500 hover:bg-blue-400 px-3 py-1 rounded text-sm font-semibold flex"
-                    onClick={handleUndo}
-                    >
-                    <svg
-                    xmlns="http://www.w3.org/2000/svg"
-                    fill="none"
-                    viewBox="0 0 24 24"
-                    strokeWidth={2}
-                    stroke="currentColor"
-                    className="w-4 h-5"
-                    >
-                    <path d="M9 15L3 9m0 0l6-6M3 9h12a6 6 0 010 12h-3" />
-                    </svg> Undo
+        {/* WORLD BUILDING EDIT MODAL */}
+        {showEditWorldbuildingModal && (
+          <div
+            className="fixed inset-0 z-70 bg-black/50 flex items-center justify-center p-3"
+            onMouseDown={(e) => {
+              if (e.target === e.currentTarget) {
+                closeEditWorldbuildingModal();
+              }
+            }}
+          >
+            <div className="w-full max-w-2xl max-h-[90vh] overflow-y-auto rounded-md bg-white dark:bg-gray-900 p-4 shadow-2xl notes-scroll" onMouseDown={(e) => e.stopPropagation()}>
+              {/* title */}
+              <div className="flex items-start justify-between gap-3">
+
+                  {selectedWorldSectionId ?
+                    (<button 
+                      className={`text-gray-500 dark:text-gray-400 hover:text-gray-300`}
+                      onClick={() => setSelectedWorldSectionId(null)}
+                    > <FontAwesomeIcon icon={faArrowLeft} size="lg"/>
+                    </button>
+                    )
+                    :
+                    (
+                    <div>
+                      <h2 className="text-lg font-semibold">Edit World Setting Section</h2>
+                      <p className="text-xs text-gray-500 dark:text-gray-400">Choose one section, then update its title and entries.</p>
+                    </div>
+                    )
+                  }
+
+                <button
+                  type="button"
+                  className="px-2 py-1 rounded border border-gray-400 hover:bg-gray-200 dark:hover:bg-gray-700"
+                  onClick={closeEditWorldbuildingModal}
+                >
+                  Close
                 </button>
-                </div>
-            )}
+              </div>
 
-            {/* CHANGES SAVED POPUP */}
-            {showStatePopup && (
-            <div className="fixed top-14 left-1/2 bg-gray-300 py-1 px-5 transform -translate-x-1/2 rounded shadow-lg flex justify-center space-x-4 animate-fadeDown">
-                <span>
-                {alertMessage}
-                <FontAwesomeIcon className="text-green-500" size="lg" icon={faCheck}/>
-                </span>
+              {/* world sections list */}
+              <div className="mt-2 space-y-3">
+                {/* list */}
+                {!selectedWorldSectionId && (
+                  <div>
+                    <label className="text-sm font-medium">Choose Section</label>
+                    <div className="grid gap-2 sm:grid-cols-3">
+                      {worldbuildingSections.map((section) => (
+                        <button
+                          key={`edit-selector-${section.id}`}
+                          type="button"
+                          className={`text-left px-2 py-1 border border-gray-600/50 group`}
+                          onClick={() => selectWorldSectionForEdit(section.id)}
+                        >
+                          <span className="text-sm font-medium text-blue-700 dark:text-blue-300 group-hover:text-blue-500 line-clamp-1">{section.title}</span>
+                          <span className="block text-xs text-gray-500 dark:text-gray-400">{section.entries.length} entr{section.entries.length === 1 ? "y" : "ies"}</span>
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                {/* chosen section edit */}
+                {selectedWorldSectionId && (
+                  <form onSubmit={saveEditedWorldbuildingSection} className="space-y-3">
+                    <div>
+                      <label className="text-sm font-medium">Section Title</label>
+                      <input
+                        type="text"
+                        className="mt-1 w-full rounded border border-gray-300 dark:border-gray-700 px-3 py-2 bg-transparent"
+                        placeholder="ex: Economy, Politics, Religion..."
+                        value={editWorldSectionTitle}
+                        onChange={(e) => setEditWorldSectionTitle(e.target.value)}
+                        required
+                      />
+                    </div>
+
+                    <div className="space-y-2">
+                      <div className="flex items-center justify-between">
+                        <label className="text-sm font-medium">Entries (Label + Value)</label>
+                        <button
+                          type="button"
+                          className="text-xs px-2 py-1 rounded border border-gray-400 hover:bg-gray-200 dark:hover:bg-gray-700"
+                          onClick={addEditWorldDraftEntry}
+                        >
+                          <FontAwesomeIcon icon={faPlus} /> Add entry
+                        </button>
+                      </div>
+
+                      {editWorldDraftEntries.map((entry, index) => (
+                        <div key={`edit-draft-entry-${index}`} className="rounded border border-gray-300 dark:border-gray-700 p-2 space-y-2">
+                          <div className="flex items-center justify-between">
+                            <span className="text-xs text-gray-500">Entry #{index + 1}</span>
+                            <button
+                              type="button"
+                              className="text-xs text-red-500 disabled:opacity-40"
+                              onClick={() => removeEditWorldDraftEntry(index)}
+                              disabled={editWorldDraftEntries.length === 1}
+                            >
+                              Remove
+                            </button>
+                          </div>
+
+                          <input
+                            type="text"
+                            className="w-full rounded border border-gray-300 dark:border-gray-700 px-2 py-1 bg-transparent"
+                            placeholder="Label (ex: Cost, Rule, Limitation)"
+                            value={entry.label}
+                            onChange={(e) => updateEditWorldDraftEntry(index, "label", e.target.value)}
+                          />
+                          <textarea
+                            rows={2}
+                            className="w-full rounded border border-gray-300 dark:border-gray-700 px-2 py-1 bg-transparent"
+                            placeholder="Value / detail"
+                            value={entry.value}
+                            onChange={(e) => updateEditWorldDraftEntry(index, "value", e.target.value)}
+                          />
+                        </div>
+                      ))}
+                    </div>
+
+                    <div className="flex items-center justify-between gap-2 pt-1">
+                      <button
+                        type="button"
+                        className="px-3 py-1 rounded bg-red-600 text-white hover:bg-red-700"
+                        onClick={() => deleteWorldbuildingSection(selectedWorldSectionId)}
+                      >
+                        Delete Section
+                      </button>
+
+                      <div className="flex gap-2">
+                        <button
+                          type="button"
+                          className="px-3 py-1 rounded bg-gray-500 text-white hover:bg-gray-600"
+                          onClick={() => setSelectedWorldSectionId(null)}
+                        >
+                          Cancel
+                        </button>
+                        <button
+                          type="submit"
+                          className="px-3 py-1 rounded bg-blue-600 text-white hover:bg-blue-700"
+                        >
+                          Save Changes
+                        </button>
+                      </div>
+                    </div>
+                  </form>
+                )}
+              </div>
             </div>
-            )}
+          </div>
+        )}
+
+        {/* world atlas slide bar */}
+        {isWorldAtlasMounted && (
+          <div
+            className={`fixed inset-0 z-50 backdrop-blur-[2px] transition-all duration-300 ease-out ${
+              isWorldAtlasVisible ? "bg-slate-950/55 opacity-100" : "bg-slate-950/0 opacity-0"
+            }`}
+            onMouseDown={(e) => {
+              if (e.target === e.currentTarget) {
+                closeWorldAtlas();
+              }
+            }}
+          >
+            <div
+              className={`h-full w-full max-w-[92vw] sm:max-w-[70vw] lg:max-w-[52vw] xl:max-w-[42vw] rounded-r-3xl border-r border-white/10 bg-gradient-to-b from-slate-950 via-slate-900 to-[#081224] text-white shadow-2xl transition-transform duration-600 ease-out will-change-transform ${
+                isWorldAtlasVisible ? "translate-x-0" : "-translate-x-full"
+              }`}
+              onMouseDown={(e) => e.stopPropagation()}
+            >
+              <div className="flex h-full flex-col overflow-hidden">
+                <div className="border-b border-white/10 px-5 py-4">
+                  <div className="flex items-start justify-between gap-3">
+                    <div>
+                      <p className="text-[11px] uppercase tracking-[0.35em] text-cyan-300/75">Archive of Worlds</p>
+                      <h2 className="mt-1 text-2xl font-semibold">The living codex of {currentBook?.title || "your story"}</h2>
+                      <p className="mt-2 max-w-2xl text-sm text-slate-300">
+                        Reveal your setting like a guided discovery: regions, rules, legends, factions, religions, magic systems, and hidden truths.
+                      </p>
+                    </div>
+
+                    <button
+                      type="button"
+                      className="rounded-full border border-white/15 px-3 py-1 text-sm text-slate-200 transition hover:bg-white/10"
+                      onClick={closeWorldAtlas}
+                    >
+                      Close
+                    </button>
+                  </div>
+
+                  <div className="mt-4 flex flex-wrap gap-2">
+                    <button
+                      type="button"
+                      className="rounded-full border border-cyan-400/30 bg-cyan-400/10 px-3 py-1 text-xs font-medium text-cyan-100 transition hover:bg-cyan-400/20"
+                      onClick={openWorldbuildingModal}
+                    >
+                      <FontAwesomeIcon icon={faPlus} /> Add lore section
+                    </button>
+                    <button
+                      type="button"
+                      className="rounded-full border border-white/15 px-3 py-1 text-xs font-medium text-slate-100 transition hover:bg-white/10 disabled:opacity-40"
+                      onClick={openEditWorldbuildingModal}
+                      disabled={worldbuildingSections.length < 1}
+                    >
+                      <FontAwesomeIcon icon={faPen} /> Edit sections
+                    </button>
+                  </div>
+                </div>
+
+                {worldbuildingSections.length > 0 ? (
+                  <div className="grid min-h-0 flex-1 lg:grid-cols-[0.9fr_1.4fr]">
+                    <div className="overflow-y-auto border-b border-white/10 p-4 lg:border-b-0 lg:border-r notes-scroll">
+                      <p className="mb-3 text-xs uppercase tracking-[0.3em] text-slate-400">Lore paths</p>
+                      <div className="space-y-3">
+                        {worldbuildingSections.map((section, index) => (
+                          <button
+                            key={`atlas-section-${section.id}`}
+                            type="button"
+                            onClick={() => setActiveWorldSectionId(section.id)}
+                            className={`w-full rounded-2xl border px-4 py-4 text-left transition ${
+                              activeWorldSectionId === section.id
+                                ? "border-cyan-300/70 bg-cyan-300/12 shadow-lg shadow-cyan-950/30"
+                                : "border-white/10 bg-white/5 hover:bg-white/10"
+                            }`}
+                          >
+                            <span className="text-[10px] uppercase tracking-[0.35em] text-slate-400">Fragment {String(index + 1).padStart(2, "0")}</span>
+                            <h3 className="mt-2 text-base font-semibold text-white">{section.title}</h3>
+                            <p className="mt-2 text-sm text-slate-300 line-clamp-3">
+                              {section.entries[0]?.value || "Add a first lore detail to begin this chapter of your world."}
+                            </p>
+                            <div className="mt-3 flex items-center justify-between text-xs text-slate-400">
+                              <span>{section.entries.length} lore note{section.entries.length === 1 ? "" : "s"}</span>
+                              <span>{activeWorldSectionId === section.id ? "Opened" : "Reveal"}</span>
+                            </div>
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+
+                    <div className="overflow-y-auto p-5 notes-scroll">
+                      {activeWorldSection && (
+                        <div className="space-y-5">
+                          <div className="rounded-3xl border border-cyan-300/15 bg-white/[0.03] p-5">
+                            <p className="text-[11px] uppercase tracking-[0.35em] text-cyan-300/70">Selected entry</p>
+                            <h3 className="mt-2 text-3xl font-semibold text-white">{activeWorldSection.title}</h3>
+                            <p className="mt-3 text-sm leading-6 text-slate-300">
+                              Think of this panel like a story guidebook page. Keep each label short, then make the value vivid: not just facts, but mood, danger, beauty, ritual, memory, and consequence.
+                            </p>
+                          </div>
+
+                          <div className="grid gap-3">
+                            {activeWorldSection.entries.map((entry, index) => (
+                              <article
+                                key={`atlas-entry-${activeWorldSection.id}-${entry.label}-${index}`}
+                                className="rounded-2xl border border-white/10 bg-gradient-to-br from-white/8 to-transparent p-4 shadow-lg shadow-slate-950/20"
+                              >
+                                <div className="flex items-start justify-between gap-3">
+                                  <div>
+                                    <p className="text-[11px] uppercase tracking-[0.28em] text-cyan-300/70">{entry.label}</p>
+                                    <p className="mt-2 text-sm leading-7 text-slate-100 whitespace-pre-wrap">{entry.value}</p>
+                                  </div>
+                                  <span className="rounded-full border border-white/10 px-2 py-1 text-[10px] uppercase tracking-[0.25em] text-slate-400">
+                                    {String(index + 1).padStart(2, "0")}
+                                  </span>
+                                </div>
+                              </article>
+                            ))}
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                ) : (
+                  <div className="flex flex-1 items-center justify-center p-6">
+                    <div className="max-w-md rounded-3xl border border-dashed border-cyan-300/25 bg-white/[0.03] p-8 text-center">
+                      <p className="text-[11px] uppercase tracking-[0.35em] text-cyan-300/70">Blank map</p>
+                      <h3 className="mt-3 text-2xl font-semibold">Your world has not been charted yet.</h3>
+                      <p className="mt-3 text-sm leading-6 text-slate-300">
+                        Start with broad categories like Kingdoms, Magic Rules, Religions, Timeline, Factions, or Landmarks. Then let each section unfold the book's world in layers.
+                      </p>
+                      <button
+                        type="button"
+                        className="mt-5 rounded-full border border-cyan-400/30 bg-cyan-400/10 px-4 py-2 text-sm font-medium text-cyan-100 transition hover:bg-cyan-400/20"
+                        onClick={openWorldbuildingModal}
+                      >
+                        <FontAwesomeIcon icon={faPlus} /> Create first lore section
+                      </button>
+                    </div>
+                  </div>
+                )}
+              </div>
+            </div>
+          </div>
+        )}
 
     {/* MAIN PARENT CONTAINER DIV CLOSER */}
     </div>

@@ -496,10 +496,10 @@ async function confirmDisplayImage() {
 
   return (
     // MAIN EDIT PAGE CONTAINER
-    <div className="mx-auto w-full max-w-7xl p-4 md:p-6 mt-11">
+    <div className="mx-auto w-full max-w-full xxs:max-w-6xl p-4 md:p-6 mt-11">
 
       {/* HERO CARD HEADER OF EDIT PAGE */}
-      <div className="rounded-2xl border border-indigo-300/30 bg-gradient-to-br from-gray-700 to-slate-900 px-5 py-2 text-white shadow-lg">
+      <div className="rounded-2xl border border-indigo-200/20 bg-gradient-to-br from-indigo-900/20 to-slate-900 px-5 py-2 text-white shadow-lg">
         <div className="flex flex-wrap items-center justify-between gap-4">
           <div className="flex items-center gap-3">
             <button
@@ -536,6 +536,7 @@ async function confirmDisplayImage() {
 
       {/* TABS EDITABLE CONTENT */}
       <div className="mt-3 grid gap-4 lg:grid-cols-[1.65fr_0.8fr]">
+        
         <div className="space-y-2">
           <div className="flex flex-wrap gap-2 rounded-xl border border-gray-200 bg-white p-3 dark:border-gray-700 dark:bg-gray-900">
             {tabs.map((tab) => (
@@ -738,7 +739,7 @@ async function confirmDisplayImage() {
             </div>
 
             <div className="space-y-1 text-sm">
-              <p><strong>Book:</strong> {book.title}</p>
+              <p><strong>Title:</strong> {book.title}</p>
               <p><strong>Tags:</strong> {editingCharacter.tags.length > 0 ? editingCharacter.tags.join(", ") : "None"}</p>
             </div>
 

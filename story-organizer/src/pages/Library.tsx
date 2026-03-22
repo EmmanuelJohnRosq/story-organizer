@@ -6,8 +6,6 @@ import { db, type Book, type Notes, type Character } from "../db";
 import { FontAwesomeIcon} from "@fortawesome/react-fontawesome";
 import { faPlus, faMinus, faTrashCan} from "@fortawesome/free-solid-svg-icons";
 import { faCheck } from "@fortawesome/free-solid-svg-icons/faCheck";
-import NotesCollection, { type EditableNote } from "../components/NotesCollection";
-import { createPortal } from "react-dom";
 
 export default function UserPage() {
     // FUNCTIONS AND LOGIC OF USER PAGE
@@ -49,9 +47,9 @@ export default function UserPage() {
     const notesContent = "";
 
     // DRAFT NOTE/ Blank note for adding new notes
-    const [draftNote, setDraftNote] = useState<EditableNote | null>(null);
+    const [draftNote, setDraftNote] = useState<Notes | null>(null);
     const [draftNoteState, setDraftstate] = useState(false);
-    const [notesShowState, setNotesShowState] = useState(false);
+    const [notesShowState, setNotesShowState] = useState(true);
 
     function normalizeWhitespace(text: string) {
     return text
@@ -354,56 +352,15 @@ export default function UserPage() {
     "gray",
     ];
 
-    const [isNotesDrawerMounted, setIsNotesDrawerMounted] = useState(false);
-    const [isNotesDrawerVisible, setIsNotesDrawerVisible] = useState(false);
-    const notesFabRef = useRef<HTMLButtonElement | null>(null);
-    const notesDrawerPanelRef = useRef<HTMLDivElement | null>(null);
-
-    const notesDrawerTimeoutRef = useRef<number | null>(null);
-
-    const openNotesDrawer = () => {
-      if (notesDrawerTimeoutRef.current) {
-        clearTimeout(notesDrawerTimeoutRef.current);
-        notesDrawerTimeoutRef.current = null;
-      }
-
-      setIsNotesDrawerMounted(true);
-      setNotesShowState(true);
-      addDraftNotes();
-
-      requestAnimationFrame(() => {
-        setIsNotesDrawerVisible(true);
-      });
+    // COLOR MAP FOR RANDOM COLOR ASSIGNMENT OF NOTES
+    const colorMap: Record<string, string> = {
+    yellow: "bg-yellow-200 dark:bg-yellow-800",
+    pink: "bg-pink-200 dark:bg-pink-800",
+    green: "bg-green-200 dark:bg-green-800",
+    sky: "bg-sky-200 dark:bg-sky-800",
+    purple: "bg-purple-200 dark:bg-purple-800",
+    gray: "bg-gray-200 dark:bg-gray-900"
     };
-
-    const closeNotesDrawer = () => {
-      setIsNotesDrawerVisible(false);
-      setNotesShowState(false);
-      setDraftNote(null)
-
-      notesDrawerTimeoutRef.current = window.setTimeout(() => {
-        setIsNotesDrawerMounted(false);
-        notesDrawerTimeoutRef.current = null;
-      }, 300);
-    };
-  
-    // SHOW/HIDE NOTES DISPLAY
-    const displayNotes = () => {
-       if (notesShowState) {
-        closeNotesDrawer();
-        return;
-      }
-
-      openNotesDrawer();
-    };
-
-    useEffect(() => {
-      return () => {
-        if (notesDrawerTimeoutRef.current) {
-          clearTimeout(notesDrawerTimeoutRef.current);
-        }
-      };
-    }, []);
 
     async function addDraftNotes() {
         if (draftNote) return;
@@ -466,9 +423,13 @@ export default function UserPage() {
         setAddnewBooks(!Addnewbooks);
     };
 
+    // SHOW/HIDE NOTES DISPLAY
+    const displayNotes = () => {
+        setNotesShowState(!notesShowState);
+    };
+
     const [hideSave, setHideSave] = useState(false);
     const [onFocusId, setOnFocusId] = useState("");
-    const [noteContent, setNoteContent] = useState("");
 
     // MATCHES THE SIZE OF THE CONTENT INSIDE THE NOTE
     function autoResize(e: React.ChangeEvent<HTMLTextAreaElement>) {
@@ -476,6 +437,22 @@ export default function UserPage() {
         el.style.height = "auto";
         el.style.height = el.scrollHeight + "px";
     }
+
+    // CREATING NEW NOTES WILL FOCUS AND SCROLL
+    const draftTextareaRef = useRef<HTMLTextAreaElement | null>(null);
+
+    // INTERACTION WITH THE TEXT AREA AND NOTES
+    useEffect(() => {
+        if (draftNote && draftTextareaRef.current) {
+        draftTextareaRef.current?.focus({ 
+            preventScroll: true 
+        });
+        draftTextareaRef.current.scrollIntoView({
+            behavior: "smooth",
+            block: "center",
+        });
+        }
+    }, [draftNote]);
 
     // POP UP VARIABLES
     const [showUndoPopup, setShowUndoPopup] = useState(false);
@@ -554,13 +531,13 @@ export default function UserPage() {
     return (
 
     // MAIN PARENT CONTAINER DIV CLOSER
-    <div className="max-w-6xl mx-auto flex justify-center gap-2 pt-15">
+    <div className="w-full mx-auto flex justify-center gap-2 pt-15">
     
         {/* LEFT SIDE CONTAINER */}
         <div className="hidden xs:block flex-1 relative">
 
             {/* LEFT SIDE INNER CONTAINER */}
-            <div className="space-y-2">
+            <div className="sticky top-15 space-y-2">
 
                 <div className="h-[calc(100vh-4rem)] overflow-y-auto overflow-x-hidden notes-scroll overflow-contain">
                     {/* TOP DASHBOARD SECTION */}
@@ -568,7 +545,8 @@ export default function UserPage() {
                         {!Addnewbooks && (
                         <>
                             <div className="flex flex-wrap items-center justify-between gap-2">
-                                <p className="text-sm font-semibold text-cyan-300/70">Welcome back — keep your story momentum.</p>
+                                <h2 className="text-xl font-semibold">Dashboard</h2>
+                                <p className="text-xs text-gray-500 dark:text-gray-400">Welcome back — keep your story momentum.</p>
                             </div>
 
                             {/* Stats Row */}
@@ -620,6 +598,12 @@ export default function UserPage() {
                                         </div>
                                     </div>
                                 </div>
+                            </div>
+
+                            {/* Rotating Tip Card */}
+                            <div className="rounded-md border border-emerald-300 dark:border-emerald-700 bg-emerald-50/80 dark:bg-emerald-900/20 p-3">
+                                <p className="text-xs font-semibold text-emerald-700 dark:text-emerald-300 mb-1">Creative Prompts.</p>
+                                <p className="text-sm min-h-6 transition-all duration-300">{dashboardTips[tipIndex]}</p>
                             </div>
                         </>
                         )}
@@ -776,136 +760,287 @@ export default function UserPage() {
         {/* CENTER CONTAINER */}
         <div className="w-full max-w-3xl mx-auto">
             
-             {/* Rotating Tip Card */}
-                <div className="rounded-md border border-emerald-300 dark:border-emerald-700 bg-emerald-50/80 dark:bg-emerald-900/20 p-2 mb-2">
-                    <p className="text-xs font-semibold text-emerald-700 dark:text-emerald-300">Creative Prompts.</p>
-                    <p className="text-sm min-h-6 transition-all duration-300">{dashboardTips[tipIndex]}</p>
-                </div>
-            
             {/* LIBRARY SECTION BOOK LIST / HOMEPAGE */}
-                <div className="p-3 mb-3 rounded-md shadow-lg bg-gray-100 dark:bg-gray-900">
-                    
-                    <div className="py-4 gap-2 flex xs:hidden">
+            <div className="p-3 mb-3 rounded-md shadow-lg bg-gray-100 dark:bg-gray-900">
+                
+                <div className="py-4 gap-2 flex xs:hidden">
 
-                    <input
-                    className="border-b-1 border-gray-200 px-1 w-full outline-none hover:border-gray-500 transition text-gray-500 dark:text-white placeholder-gray-400 dark:placeholder-gray-600"
-                    placeholder="New Book Title"
-                    value={bookTitle}
-                    onChange={e => setBookTitle(e.target.value)}
-                    onKeyDown={(e) => {
-                        if (e.key === "Enter") addBook();
-                        }}
-                    title="Add new book"
-                    />
+                <input
+                className="border-b-1 border-gray-200 px-1 w-full outline-none hover:border-gray-500 transition text-gray-500 dark:text-white placeholder-gray-400 dark:placeholder-gray-600"
+                placeholder="New Book Title"
+                value={bookTitle}
+                onChange={e => setBookTitle(e.target.value)}
+                onKeyDown={(e) => {
+                    if (e.key === "Enter") addBook();
+                    }}
+                title="Add new book"
+                />
 
-                    <button 
-                        onClick={addBook} 
-                        title="Add book title"
-                        className="border-gray-200 border-1 text-black rounded hover:bg-gray-300 hover:text-gray-950 p-1 transition dark:border-white dark:text-white"
-                    >
-                        <FontAwesomeIcon icon={faPlus} size="lg"/>
-                    </button>
+                <button 
+                    onClick={addBook} 
+                    title="Add book title"
+                    className="border-gray-200 border-1 text-black rounded hover:bg-gray-300 hover:text-gray-950 p-1 transition dark:border-white dark:text-white"
+                >
+                    <FontAwesomeIcon icon={faPlus} size="lg"/>
+                </button>
 
-                    {/* Conditional "Successfully Added" message */}
-                    <div className="absolute mt-9">
-                        {bookAdded && (
-                        <span className="mt-2 text-sm text-green-600 font-semibold animate-pulse">
-                            Book Successfully Added!
-                        </span>
-                        )}
-                    </div>
-                    
-                    </div>
-
-                    {/* SHOW BOOK LIST */}
-                    {/* BOOK CARDS */}
-                    <h2 className="text-2xl font-semibold">Library</h2>
-
-                    {!books.length && (
-                    <div className="w-full flex justify-center items-center py-20 px-10"> 
-                        <h1 className="text-3xl font-bold text-gray-400 text-center">
-                            PLEASE ADD BOOKS HERE. INSTEAD OF JUST LETTING THEM GATHER DUST IN YOUR INSANE MIND...
-                        </h1>
-                    </div>
+                {/* Conditional "Successfully Added" message */}
+                <div className="absolute mt-9">
+                    {bookAdded && (
+                    <span className="mt-2 text-sm text-green-600 font-semibold animate-pulse">
+                        Book Successfully Added!
+                    </span>
                     )}
-                    
-                    <div className="grid grid-cols-2 px-15 pt-2 sm:grid-cols-2 md:grid-cols-3 gap-2 md:gap-x-20 md:gap-y-5 pb-1 place-items-center overflow-y-auto notes-scroll">
-                        {books.map(book => (
-                        <div
-                        role="list"
-                        key={book.id} 
-                        draggable
-                        onDragStart={handleDragStart}
-                        data-id={book.id}
-                        data-title={book.title}
-                        onDragEnd={() => { setDraggingId(null); setIsDraggingBook(false);}}
-                        onClick={() => selectBook(book.id!)}
-                        className={`
-                            relative group cursor-pointer
-                            w-55 h-70 rounded-tl-xl rounded-bl-xl
-                            bg-gradient-to-br from-gray-100 to-gray-50
-                            dark:bg-gradient-to-br dark:from-gray-600 dark:to-gray-500
-                            shadow-lg
-                            hover:-translate-y-2 hover:shadow-2xl
-                            transition-all duration-300 animate-fadeDown
-                            ${draggingId === book.id ? "opacity-0" : ""}
+                </div>
+                
+                </div>
+
+                {/* SHOW BOOK LIST */}
+                {/* BOOK CARDS */}
+                <h2 className="text-2xl font-semibold">Library</h2>
+
+                {!books.length && (
+                <div className="w-full flex justify-center items-center py-20 px-10"> 
+                    <h1 className="text-3xl font-bold text-gray-400 text-center">
+                        PLEASE ADD BOOKS HERE. INSTEAD OF JUST LETTING THEM GATHER DUST IN YOUR INSANE MIND...
+                    </h1>
+                </div>
+                )}
+                
+                <div className="grid grid-cols-2 px-15 pt-2 sm:grid-cols-2 md:grid-cols-3 gap-2 md:gap-x-20 md:gap-y-5 pb-1 place-items-center overflow-y-auto notes-scroll">
+                    {books.map(book => (
+                    <div
+                    role="list"
+                    key={book.id} 
+                    draggable
+                    onDragStart={handleDragStart}
+                    data-id={book.id}
+                    data-title={book.title}
+                    onDragEnd={() => { setDraggingId(null); setIsDraggingBook(false);}}
+                    onClick={() => selectBook(book.id!)}
+                    className={`
+                        relative group cursor-pointer
+                        w-55 h-70 rounded-tl-xl rounded-bl-xl
+                        bg-gradient-to-br from-gray-100 to-gray-50
+                        dark:bg-gradient-to-br dark:from-gray-600 dark:to-gray-500
+                        shadow-lg
+                        hover:-translate-y-2 hover:shadow-2xl
+                        transition-all duration-300 animate-fadeDown
+                        ${draggingId === book.id ? "opacity-0" : ""}
                         `}>
-                            {/* Spine and bottom pages design */}
-                            <div
-                                className="absolute -bottom-0 w-full h-0.5
-                                bg-gray-400
-                                rounded-tl-lg"/>
-                            <div
-                                className="absolute -left-1 top-0 h-full w-4
-                                bg-gray-400
-                                rounded-tl-lg"/>
+                    {/* Spine and bottom pages design */}
+                    <div
+                        className="absolute -bottom-0 w-full h-0.5
+                        bg-gray-400
+                        rounded-tl-lg"/>
+                    <div
+                        className="absolute -left-1 top-0 h-full w-4
+                        bg-gray-400
+                        rounded-tl-lg"/>
+                    
+
+                    {/* Title */}
+                    <div className="p-4 pt-15 text-base text-center font-semibold line-clamp-5 max-h-45">
+                        {book.title}
+
+                        {/* Vertical TITLE */}
+                        <div className="absolute text-white text-outline-2 -left-2 top-1/2 -translate-y-1/2 rotate-180 [writing-mode:vertical-rl] truncate line-clamp-1 max-h-50">
+                        <span className="text-xs font-bold">{book.title}</span>
+                        </div>
+                    </div>
+                    <p className="text-center text-sm">Status: {upcaseLetter(book.status)}</p>
+                    
+                    </div>
+                    ))}
+                </div>  
+                
+
+
+            </div>
+            
+        </div>
+
+        {/* RIGHT SIDE CONTAINER */}
+        <div className="hidden xs:block flex-1 flex flex-col relative">
+
+            {/* NOTES CONTAINER */}
+            <div className="PARENT CONTAINER FOR THE NOTES PANEL sticky top-15">
+
+                {/* NOTES TITLE */}
+                <div className="flex-1 rounded-md shadow-lg p-3 bg-gray-100 dark:bg-gray-900 mb-2 flex justify-between">
+
+                    <h3 
+                    onClick={displayNotes}
+                    className="text-2xl font-semibold cursor-pointer hover:text-blue-400 select-none"
+                    title="Click to minimize notes"
+                    role="button"
+                    >Notes</h3>
+
+                    <div className="flex justify-center">
+                    <button 
+                        value={bookTitle}
+                        className="border-gray-500 border-1 text-black rounded hover:bg-gray-300 hover:text-gray-950 px-2 transition dark:border-white dark:text-white"
+                        onClick={addDraftNotes}>
+                        <FontAwesomeIcon icon={faPlus} size="xs"/>
+                    </button>
+                    </div>
+
+                </div>
+
+                {/* NOTES CONTENTS */}
+                <div className="h-[calc(100vh-8rem)] overflow-y-auto overflow-x-hidden notes-scroll overflow-contain">
+                    
+                    {/* THIS IS FOR THE USER NOTES */}
+                    { notesShowState && (
+                    <div 
+                        className=""
+                    >
+                        {[ ...(draftNote ? [draftNote] : []), ...userNotes ].map(notes => (
+                        <div 
+                            className={`${colorMap[notes.color]} relative p-1 rounded-md shadow-md mb-2 bg-gray-100 dark:bg-gray-900 cursor-pointer animate-fadeDown`}
+                            key={notes.id ?? notes.notesId}
+                            data-id={notes.id}
+                        >
+
+                            <div className="flex justify-between pb-1"> 
                             
-                            {/* Main Content Container */}
-                                <div className="flex-1 flex flex-col p-12">
-                                    
-                                    {/* Title Section */}
-                                    <div className="flex-1 flex items-center justify-center pb-2">
-                                        <h2 className="text-base text-center font-bold line-clamp-4 leading-tight">
-                                            {book.title}
-                                        </h2>
-                                        
-                                         {/* Vertical TITLE */}
-                                        <div className="absolute text-white text-outline-2 -left-2 top-1/2 -translate-y-1/2 rotate-180 [writing-mode:vertical-rl] truncate line-clamp-1 max-h-50">
-                                            <span className="text-xs font-bold">{book.title}</span>
-                                        </div>
-                                    </div>
+                            <span className="text-xs text-gray-800 dark:text-gray-400">
+                                {new Date(notes.createdAt).toLocaleString("en-US", {
+                                month: "short",
+                                day: "numeric",
+                                year: "numeric",
+                                hour: "2-digit",
+                                minute: "2-digit",
+                                })}
+                            </span>
 
-                                    {/* Metadata Section */}
-                                    <div className="space-y-3 pb-2">
-                                        <p className="text-center text-xs font-medium uppercase tracking-tighter">
-                                            Status: {upcaseLetter(book.status)}
-                                        </p>
-                                        
-                                        {/* Genres - Wrapped for small space */}
-                                        {book.genre?.length >= 1 && (
-                                            <div className="flex flex-wrap justify-center gap-1">
-                                                {book.genre?.map((genre, i) => (
-                                                <span
-                                                    key={i}
-                                                    className="rounded bg-black/20 px-1.5 py-0.5 text-[10px] text-white whitespace-nowrap border border-white/10"
-                                                >
-                                                    {genre}
-                                                </span>
-                                                ))}
-                                            </div>
-                                        )}
-                                    </div>
+                            <button 
+                                className="hover:bg-neutral-300/50 rounded-2xl group"
+                                onClick={() => {setNoteToDelete(notes);}}>
+                                <svg
+                                xmlns="http://www.w3.org/2000/svg"
+                                className="h-5 w-5 text-gray-700 dark:text-gray-400 group-hover:text-red-500"
+                                fill="none"
+                                viewBox="0 0 24 24"
+                                stroke="currentColor"
+                                strokeWidth={2}
+                                >
+                                <path strokeLinecap="round" strokeLinejoin="round" d="M6 6l12 12M6 18L18 6" />
+                                </svg>
+                            </button>
 
+                            </div>
+                            
+                            <textarea
+                            onInput={(e: React.FormEvent<HTMLTextAreaElement>) => {
+                                const target = e.currentTarget;
+                                target.style.height = '';
+                                target.style.height = target.scrollHeight + 'px';
+                            }}
+                            className="
+                            w-full text-sm
+                            rounded-md 
+                            px-1
+                            focus:outline-none focus:ring-2 focus:ring-blue-400 
+                            hover:ring-blue-400 hover:ring-2
+                            placeholder-gray-400 dark:placeholder-gray-400 
+                            resize-none
+                            overflow-hidden
+                            transition-all duration-200
+                            "
+                            ref={!notes.id ? draftTextareaRef : null}
+                            placeholder="Enter Notes"
+                            onFocus={(e) => {autoResize(e); setOnFocusId(String(notes.id!)); setHideSave(true);
+                                if (notes.id) {
+                                setDraftstate(false);
+                                }
+                                else {
+                                setDraftstate(true);
+                                }
+                            }}
+                            rows={3}
+                            value={notes.content}
+                            onChange={(e) => {
+                                if (!notes.id) {
+                                // This is draft
+                                setDraftNote(prev =>
+                                    prev ? { ...prev, content: e.target.value } : prev
+                                );
+                                } 
+                                else {
+                                // This is saved note
+                                setUserNotes(prev =>
+                                    prev.map(note =>
+                                    note.id === notes.id
+                                        ? { ...note, content: e.target.value }
+                                        : note
+                                    )
+                                );
+                                }
+                            }}
+                            onKeyDown={(e) => {
+                                if (e.key === "Enter" && !e.shiftKey) {
+                                e.preventDefault();
+                                (e.target as HTMLElement).blur();
+                                (saveNote(notes));
+                                }
+                            }}
+                            onBlur={(e) => { e.currentTarget.style.height = "auto";}}
+                            />
+
+                            {(hideSave && (notes.id ? Number(onFocusId) === notes.id : draftNoteState) &&
+                            <div className="flex justify-end gap-1">
+                                {/* {(notSaved &&
+                                <span>Not saved</span>
+                                )} */}
+
+                                <button 
+                                className="flex px-4 py-1 bg-neutral-500 rounded-xl hover:bg-neutral-600"
+                                onMouseDown={() => {setHideSave(false); setDraftNote(null);}}
+                                >
+                                Cancel
+                                </button>
+
+                                <button 
+                                className="flex px-4 py-1 bg-blue-700 rounded-xl hover:bg-blue-800"
+                                onMouseDown={() => {saveNote(notes);}}
+                                >
+                                Save 
+                                </button>
+                            </div>
+                            )}
+
+                            {noteToDelete && noteToDelete.id === notes.id && (
+                            <div className="absolute inset-0 bg-black/40 backdrop-blur-sm flex items-center justify-center rounded-md z-10">
+                                <div className="bg-white dark:bg-gray-800 p-3 rounded-md shadow-lg text-center w-40">
+                                <p className="text-sm mb-2">Delete this note?</p>
+                                <div className="flex justify-between">
+                                    <button
+                                    onClick={() => handleDeleteNote(noteToDelete!)}
+                                    className="text-red-500 text-sm hover:scale-105"
+                                    >
+                                    Delete
+                                    </button>
+                                    <button
+                                    onClick={() => setNoteToDelete(null)}
+                                    className="text-gray-500 text-sm"
+                                    >
+                                    Cancel
+                                    </button>
                                 </div>
-                        
+                                </div>
+                            </div>
+                            )}
+
                         </div>
                         ))}
-                    </div>  
-                    
-
+                    </div>
+                    )}
 
                 </div>
-            
+
+            </div>
+
         </div>
 
         {/* MODALS */}
@@ -913,7 +1048,7 @@ export default function UserPage() {
             {isDraggingBook && (
                 <div
                 className="
-                    fixed top-16 right-6 z-50
+                    fixed bottom-6 right-6 z-50
                     transition-all duration-300
                     scale-100 opacity-100
                 "
@@ -932,9 +1067,8 @@ export default function UserPage() {
                     shadow-xl
                     hover:scale-110
                     hover:bg-red-500
-                    opacity-50
                     transition-transform
-                    ${setDrag ? "scale-110 bg-red-500/50" : ""}
+                    ${setDrag ? "scale-110 bg-red-500" : ""}
                     `}
                 > 
                 <FontAwesomeIcon 
@@ -990,85 +1124,6 @@ export default function UserPage() {
                 <FontAwesomeIcon className="text-green-500" size="lg" icon={faCheck}/>
                 </span>
             </div>
-            )}
-
-            {/* LIBRARY NOTES */}
-            {createPortal(
-                <>
-                {/* MOBILE NOTES TOGGLE */}
-                <button
-                    ref={notesFabRef}
-                    onClick={displayNotes}
-                    className={`
-                    fixed bottom-5 right-5 z-50
-                    bg-blue-600 hover:bg-blue-700
-                    border border-blue-600 hover:border-blue-400
-                    text-white rounded-full
-                    px-4 py-3.5 shadow-xl
-                    transition-transform duration-600 
-                    ${notesShowState ? "hidden" : "none"}
-                    `}
-                    title={notesShowState ? "Close notes" : "Open notes"}
-                >
-                    <FontAwesomeIcon icon={notesShowState ? faMinus : faPlus}/>
-                </button>
-    
-                {/* Collapsible notes drawer*/}
-                {isNotesDrawerMounted && (
-                    <div
-                    className={`text-black dark:text-white fixed inset-0 z-40 transition-opacity duration-300 justify-items-center ${isNotesDrawerVisible ? "opacity-100" : "opacity-0"}`}
-                    role="dialog"
-                    aria-modal="true"
-                    >
-                    <button
-                        className="absolute inset-0 bg-black/50"
-                        aria-label="Close notes drawer"
-                        onClick={closeNotesDrawer}
-                    />
-    
-                    {/* THIS IS FOR THE USER NOTES */}
-                    { notesShowState && (
-                    <NotesCollection
-                        className={`absolute bottom-0 xxs:right-15
-                        bg-gray-100 dark:bg-gray-800
-                        shadow-2xl p-3
-                        w-full max-w-[60vh] max-h-[90vh]
-                        transition-all duration-500
-                        ${isNotesDrawerVisible ? "translate-y-0" : "translate-y-full"}
-                        `}
-                        title="Author Notes"
-                        notes={userNotes}
-                        draftNote={draftNote}
-                        draftNoteState={draftNoteState}
-                        noteToDelete={noteToDelete}
-                        hideSave={hideSave}
-                        onFocusId={onFocusId}
-                        contentClassName="h-[calc(75vh-3.5rem)] xxs:h-[calc(85vh-3.5rem)] overflow-y-auto overflow-x-hidden notes-scroll overflow-contain mt-2"
-                        noteContent={noteContent}
-                        emptyMessage="Add notes, references, future scenarios, book plans, etc..."
-                        onAddDraft={addDraftNotes}
-                        onCloseDraft={closeNotesDrawer}
-                        onChangeDraft={(content) => setDraftNote(prev => (prev ? { ...prev, content } : prev))}
-                        onChangeNote={(noteId, content) => setUserNotes(prev => prev.map(note => note.id === noteId ? { ...note, content } : note))}
-                        onSaveNote={saveNote}
-                        onDeleteRequest={setNoteToDelete}
-                        onDeleteConfirm={handleDeleteNote}
-                        onDeleteCancel={() => setNoteToDelete(null)}
-                        onFocusNote={(note) => {
-                            setOnFocusId(String(note.id ?? ""));
-                            setNoteContent(note.content);
-                            setHideSave(true);
-                            setDraftstate(!note.id);
-                        }}
-                        onCancelEditing={() => { setHideSave(false); setDraftNote(null); }}
-                    />
-                    )}
-    
-                    {/* notes closer */}
-                    </div>
-                )}
-                </>,
-                document.body
             )}
 
     {/* MAIN PARENT CONTAINER DIV CLOSER */}

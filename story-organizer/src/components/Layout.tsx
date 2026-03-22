@@ -14,7 +14,7 @@ export default function Layout() {
             bg-white text-black dark:bg-gray-800 dark:text-white`}
         >
             {/* All pages will render here */}
-            <main className="px-1">
+            <main>
               <Outlet key={location.pathname} /> 
           </main>
         </div>

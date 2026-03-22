@@ -1,13 +1,15 @@
 import { useNavigate, useParams } from "react-router-dom";
-import { useState, useEffect, useRef, type Dispatch, type SetStateAction, type FormEvent } from "react";
+import { useState, useEffect, useRef, type Dispatch, type SetStateAction } from "react";
 
 import Navbar, { type NavbarAction } from "../components/Navbar";
 
 import { db, type Book, type Character, type EditableCharacter, type Notes, type CharacterDescription, type CharImage, type WorldbuildingSection, type WorldbuildingEntry } from "../db";
 
 import { FontAwesomeIcon} from "@fortawesome/react-fontawesome";
-import { faCheck, faPlus, faMinus, faEllipsis, faUserPlus, faNoteSticky, faTableColumns, faWandMagicSparkles, faProjectDiagram, faGlobe, faPenToSquare, faFileLines, faHouse, faStar, faPen, faArrowLeft } from "@fortawesome/free-solid-svg-icons";
+import { faCheck, faPlus, faMinus, faEllipsis, faUserPlus, faTableColumns, faWandMagicSparkles, faProjectDiagram, faGlobe, faPenToSquare, faFileLines, faHouse, faStar, faPen, faArrowLeft } from "@fortawesome/free-solid-svg-icons";
 import { createPortal } from "react-dom";
+
+import NotesCollection, { type EditableNote } from "../components/NotesCollection";
 
 export default function ExperimentPage() {
   const { currentBookId } = useParams();
@@ -571,7 +573,7 @@ export default function ExperimentPage() {
     const notesContent = "";
   
     // DRAFT NOTE/ Blank note for adding new notes
-    const [draftNote, setDraftNote] = useState<Notes | null>(null);
+    const [draftNote, setDraftNote] = useState<EditableNote | null>(null);
     const [draftNoteState, setDraftstate] = useState(false);
   
     async function addDraftNotes() {
@@ -738,22 +740,6 @@ export default function ExperimentPage() {
       el.style.height = "auto";
       el.style.height = el.scrollHeight + "px";
     }
-  
-    // CREATING NEW NOTES WILL FOCUS AND SCROLL
-    const draftTextareaRef = useRef<HTMLTextAreaElement | null>(null);
-  
-    // INTERACTION WITH THE TEXT AREA AND NOTES
-    useEffect(() => {
-      if (draftNote && draftTextareaRef.current) {
-        draftTextareaRef.current?.focus({ 
-          preventScroll: true 
-        });
-        draftTextareaRef.current.scrollIntoView({
-          behavior: "smooth",
-          block: "center",
-        });
-      }
-    }, [draftNote]);
   
     // POP UP VARIABLES
     const [showUndoPopup, setShowUndoPopup] = useState(false);
@@ -1281,14 +1267,14 @@ export default function ExperimentPage() {
 
   return (
     // MAIN PARENT CONTAINER DIV CLOSER
-    <div className="pt-15 xxs:pt-0 w-full mx-auto px-2">
+    <div className="mx-auto w-full max-w-7xl 2xl:max-w-8xl p-2 xxs:pl-20 xxs:p-6">
       <Navbar actions={navbarActions} />
 
       {/* CONTENT CONTAINER */}
-      <div className="grid grid-col-2 xxs:grid-cols-17 xl:grid-cols-9 gap-2 justify-center xxs:pt-14">
+      <div className="mt-12 xxs:mt-8.5 grid gap-3 xxs:grid-cols-[1.2fr_1.5fr]">
 
         {/* LEFT SIDE CONTAINER */}
-        <div className="col-span-1 xxs:col-start-2 xxs:col-span-7 xl:col-start-2 xl:col-span-3 flex-1">
+        <div className="flex-1">
 
             {/* BOOK AND CHARACTER FORMS LEFT PANEL */}
             <div className="w-full">
@@ -1808,7 +1794,7 @@ export default function ExperimentPage() {
         </div>
         
         {/* CENTER CONTAINER */}
-        <div className="col-span-1 xxs:col-span-8 xl:col-span-4 w-full flex-1">
+        <div className="w-full flex-1">
 
           {/* character data and grid display */}
           <div className="rounded-md shadow-lg p-4 mb-2 bg-gray-100 dark:bg-gray-900 transition duration-300">
@@ -2117,7 +2103,7 @@ export default function ExperimentPage() {
         </div>
         )}
 
-        {/* NOTES */}
+        {/* BOOK NOTES */}
         {createPortal(
           <>
             {/* MOBILE NOTES TOGGLE */}
@@ -2163,184 +2149,37 @@ export default function ExperimentPage() {
                     ${isNotesDrawerVisible ? "translate-y-0" : "translate-y-full"}
                   `}
                 >
-                  <div className="flex items-center justify-between mb-2">
-                    <h2 className="text-sm font-semibold">Notes</h2>
-                    <div className="flex gap-2">
-                      <button
-                        onClick={addDraftNotes}
-                        className="text-xs bg-blue-600 hover:bg-blue-700 text-white px-3 py-1 rounded-md"
-                      >
-                        Add
-                      </button>
-                      <button
-                        onClick={closeNotesDrawer}
-                        className="text-xs bg-gray-400 hover:bg-gray-500 text-white px-3 py-1 rounded-md"
-                      >
-                        Close
-                      </button>
-                    </div>
-                  </div>
 
-                  <div className="h-[calc(75vh-3.5rem)] xxs:h-[calc(85vh-3.5rem)] overflow-y-auto overflow-x-hidden notes-scroll overflow-contain mt-2">
-                    {bookNotes.length < 1 && !draftNote && (
-                      <div className="py-8 text-center border-2 border-dashed border-gray-100 dark:border-gray-500 rounded-xl">
-                        <p className="text-xs text-gray-300 italic">Add notes, references, future scenarios, book plans, etc...</p>
-                      </div>
-                    )}
-
-                    {/* // THIS IS THE BOOK NOTES */}
-                    <div>
-                        {[ ...(draftNote ? [draftNote] : []), ...bookNotes ].map(notes => (
-                          <div 
-                              className={`${colorMap[notes.color]} relative p-1 rounded-md shadow-md mb-2 bg-gray-100 dark:bg-gray-900 cursor-pointer animate-fadeDown`}
-                              key={notes.id ?? notes.notesId}
-                              data-id={notes.id}
-                          >
-
-                              <div className="flex justify-between pb-1"> 
-                              
-                              <div className="flex items-center gap-1">
-                                {notes.id && (
-                                  <span> 
-                                    <FontAwesomeIcon icon={faStar} 
-                                      className={`${notes.pinned ? "text-yellow-400" : "text-gray-500"} hover:text-yellow-500 transition-transform hover:scale-110`}
-                                      onMouseDown={() => {
-                                        togglePin(notes);
-                                      }}
-                                    /> 
-                                  </span>
-                                )}
-
-                                <span className="text-xs text-gray-800 dark:text-gray-400">
-                                    {new Date(notes.createdAt).toLocaleString("en-US", {
-                                    month: "short",
-                                    day: "numeric",
-                                    year: "numeric",
-                                    hour: "2-digit",
-                                    minute: "2-digit",
-                                    })}
-                                </span>
-                              </div>
-
-                              <button 
-                                className="rounded-full items-center px-0.5 group"
-                                onMouseDown={() => setNoteToDelete(notes)}
-                                disabled={!notes.id || notes.pinned === true}
-                              >
-                                <svg
-                                  xmlns="http://www.w3.org/2000/svg"
-                                  className="h-5 w-5 text-gray-700 dark:text-gray-400 group-hover:text-red-500"
-                                  fill="none"
-                                  viewBox="0 0 24 24"
-                                  stroke="currentColor"
-                                  strokeWidth={2}
-                                >
-                                <path strokeLinecap="round" strokeLinejoin="round" d="M6 6l12 12M6 18L18 6" />
-                                </svg>
-                              </button>
-
-                              </div>
-                              
-                              <textarea
-                              onInput={(e: React.FormEvent<HTMLTextAreaElement>) => {
-                                const target = e.currentTarget;
-                                target.style.height = '';
-                                target.style.height = target.scrollHeight + 'px';
-                              }}
-                              className="
-                              w-full text-sm
-                              rounded-md 
-                              px-1
-                              focus:outline-none focus:ring-1 focus:ring-gray-400 
-                              hover:ring-gray-400 hover:ring-1
-                              resize-none
-                              overflow-hidden
-                              transition-all duration-200
-                              "
-                              ref={!notes.id ? draftTextareaRef : null}
-                              placeholder="Enter Notes"
-                              onFocus={(e) => {autoResize(e); setOnFocusId(String(notes.id!)); setNoteContent(notes.content); setHideSave(true); 
-                                  if (notes.id) {
-                                  setDraftstate(false);
-                                  }
-                                  else {
-                                  setDraftstate(true);
-                                  }
-                              }}
-                              rows={3}
-                              value={notes.content}
-                              onChange={(e) => {
-                                  if (!notes.id) {
-                                  // This is draft
-                                  setDraftNote(prev =>
-                                      prev ? { ...prev, content: e.target.value } : prev
-                                  );
-                                  } else {
-                                  // This is saved note
-                                  setBookNotes(prev =>
-                                      prev.map(note =>
-                                      note.id === notes.id
-                                          ? { ...note, content: e.target.value }
-                                          : note
-                                      )
-                                  );
-                                  }
-                              }}
-                              onKeyDown={(e) => {
-                                  if (e.key === "Enter" && !e.shiftKey) {
-                                  e.preventDefault();
-                                  (e.target as HTMLElement).blur();
-                                  (saveNote(notes));
-                                  }
-                              }}
-                              onBlur={(e) => { e.currentTarget.style.height = "auto";}}
-                              />
-
-                              {(hideSave && (notes.id ? Number(onFocusId) === notes.id : draftNoteState) &&
-                              <div className="flex justify-end gap-1">
-
-                                  <button 
-                                  className="flex px-4 py-1 bg-neutral-500 rounded-xl hover:bg-neutral-600"
-                                  onMouseDown={() => {setHideSave(false); setDraftNote(null);}}
-                                  >
-                                  Cancel
-                                  </button>
-
-                                  <button 
-                                  className="flex px-4 py-1 bg-blue-700 rounded-xl"
-                                  onMouseDown={() => {saveNote(notes);}}
-                                  disabled={noteContent === notes.content}
-                                  >
-                                  Save 
-                                  </button> 
-                              </div>
-                              )}
-
-                              {noteToDelete && noteToDelete.id === notes.id && (
-                              <div className="absolute inset-0 bg-black/40 backdrop-blur-sm flex items-center justify-center rounded-md z-10">
-                                  <div className="bg-white dark:bg-gray-800 p-3 rounded-md shadow-lg text-center w-40">
-                                  <p className="text-sm mb-2">Delete this note?</p>
-                                  <div className="flex justify-between">
-                                      <button
-                                      onClick={() => handleDeleteNote(noteToDelete!)}
-                                      className="text-red-500 text-sm hover:scale-105"
-                                      >
-                                      Delete
-                                      </button>
-                                      <button
-                                      onClick={() => setNoteToDelete(null)}
-                                      className="text-gray-500 text-sm"
-                                      >
-                                      Cancel
-                                      </button>
-                                  </div>
-                                  </div>
-                              </div>
-                              )}
-                          </div>
-                        ))}
-                    </div>
-                  </div>
+                  <NotesCollection
+                    title="Notes"
+                    notes={bookNotes}
+                    draftNote={draftNote}
+                    draftNoteState={draftNoteState}
+                    noteToDelete={noteToDelete}
+                    hideSave={hideSave}
+                    onFocusId={onFocusId}
+                    noteContent={noteContent}
+                    emptyMessage="Add notes, references, future scenarios, book plans, etc..."
+                    contentClassName="mt-2 h-[calc(75vh-3.5rem)] xxs:h-[calc(85vh-3.5rem)] overflow-y-auto overflow-x-hidden notes-scroll overflow-contain"
+                    showPinnedIcon
+                    disableDeleteWhenPinned
+                    onAddDraft={addDraftNotes}
+                    onCloseDraft={closeNotesDrawer}
+                    onChangeDraft={(content) => setDraftNote(prev => (prev ? { ...prev, content } : prev))}
+                    onChangeNote={(noteId, content) => setBookNotes(prev => prev.map(note => note.id === noteId ? { ...note, content } : note))}
+                    onSaveNote={saveNote}
+                    onDeleteRequest={setNoteToDelete}
+                    onDeleteConfirm={handleDeleteNote}
+                    onDeleteCancel={() => setNoteToDelete(null)}
+                    onFocusNote={(note) => {
+                      setOnFocusId(String(note.id ?? ""));
+                      setNoteContent(note.content);
+                      setHideSave(true);
+                      setDraftstate(!note.id);
+                    }}
+                    onCancelEditing={() => { setHideSave(false); setDraftNote(null); }}
+                    onTogglePin={togglePin}
+                  />
 
                 {/* notes content closer   */}
                 </div>
@@ -2607,6 +2446,7 @@ export default function ExperimentPage() {
           </div>
         )}
 
+        {/* world atlas slide bar */}
         {isWorldAtlasMounted && (
           <div
             className={`fixed inset-0 z-50 backdrop-blur-[2px] transition-all duration-300 ease-out ${
