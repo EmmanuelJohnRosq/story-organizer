@@ -102,7 +102,9 @@ export default function Header() {
 
     // MODALS
     const [showRestoreBackupModal, setshowRestoreBackupModal] = useState(false);
-
+    const [isRestoringBackup, setIsRestoringBackup] = useState(false);
+    const [restoreStatus, setRestoreStatus] = useState<"idle" | "loading" | "success" | "cancelled" | "error">("idle");
+    const [restoreStatusMessage, setRestoreStatusMessage] = useState("");
 
     const toggleTheme = () => {
         setDarkTheme(prev => (prev === "dark" ? "light" : "dark"));
@@ -269,7 +271,15 @@ export default function Header() {
     };
     
     //   // IMPORT DATA/SAVE File
-    const importData = async (file: File) => {
+    const importData = async (
+        file: File,
+        options?: {
+            onSuccess?: () => void;
+            onError?: (message: string) => void;
+            skipSuccessAlert?: boolean;
+            skipReload?: boolean;
+        }
+    ) => {
         try {
             const text = await file.text();
             const parsed = JSON.parse(text);
@@ -301,12 +311,23 @@ export default function Header() {
             await db.images.bulkAdd(restoredImages);
             }
 
-            alert("Import successful!");
+            options?.onSuccess?.();
+
+            if (!options?.skipSuccessAlert) {
+                alert("Import successful!");
+            }
             showModalFile(false);
-            window.location.reload();
+            if (!options?.skipReload) {
+                window.location.reload();
+            }
         } catch (err) {
             console.error(err);
-            alert("Invalid file format");
+            const message = "Invalid file format";
+            options?.onError?.(message);
+            if (!options?.skipSuccessAlert) {
+                alert(message);
+            }
+            throw err;
         }
     };
 
@@ -374,22 +395,56 @@ export default function Header() {
 
     }
 
+    const closeRestoreModal = () => {
+        if (isRestoringBackup) return;
+        setshowRestoreBackupModal(false);
+        setRestoreStatus("idle");
+        setRestoreStatusMessage("");
+    };
+
+    const handleRestoreCancel = () => {
+        if (isRestoringBackup) return;
+        setRestoreStatus("cancelled");
+        setRestoreStatusMessage("Restore cancelled. Your current local data was not changed.");
+    };
+
     // IMPORT DATA FROM GOOGLE DRIVE TO LOCAL DB
     const handleRestoreFromDrive = async () => {
         const token = localStorage.getItem("googleAccessToken");
         if (!token || !selectedBackupId) return;
 
         const selectedBackup = restoreBackups.find((backup) => backup.id === selectedBackupId);
-        const isConfirmed = window.confirm(`Restore ${selectedBackup?.name ?? "the selected backup"}? This will overwrite the existing local data.`);
-        if (isConfirmed) {
-            try {
-                const file = await downloadDriveFile(selectedBackupId, token);
-                await importData(file);
-                setShowAccountSettings(false);
-            } catch (err) {
-                console.error(err);
-                alert("Restore failed.");
-            }
+
+        try {
+            setIsRestoringBackup(true);
+            setRestoreStatus("loading");
+            setRestoreStatusMessage(`Please wait. Restoring ${selectedBackup?.name ?? "your backup"}...`);
+
+            const file = await downloadDriveFile(selectedBackupId, token);
+            await importData(file, {
+                skipSuccessAlert: true,
+                skipReload: true,
+                onSuccess: () => {
+                    setRestoreStatus("success");
+                    setRestoreStatusMessage(`Backup restored successfully from ${selectedBackup?.name ?? "the selected file"}. Reloading now...`);
+                },
+                onError: (message) => {
+                    setRestoreStatus("error");
+                    setRestoreStatusMessage(message);
+                },
+            });
+
+            setShowAccountSettings(false);
+
+            window.setTimeout(() => {
+                window.location.reload();
+            }, 1400);
+        } catch (err) {
+            console.error(err);
+            setRestoreStatus("error");
+            setRestoreStatusMessage("Restore failed. Please try again.");
+        } finally {
+            setIsRestoringBackup(false);
         }
     };
 
@@ -753,7 +808,11 @@ export default function Header() {
                                 {manualBackups.length > 0 && (
                                 <div className="space-y-2 rounded">
                                     <button
-                                        onClick={() => setshowRestoreBackupModal(true)}
+                                        onClick={() => {
+                                            setRestoreStatus("idle");
+                                            setRestoreStatusMessage("");
+                                            setshowRestoreBackupModal(true);
+                                        }}
                                         title="Restore backup data from google drive save"
                                         className="w-full text-left px-2 py-1 rounded hover:bg-blue-100 dark:hover:bg-blue-900/40"
                                     >
@@ -932,7 +991,7 @@ export default function Header() {
                                 <button
                                     className="px-3 py-2 rounded-lg bg-emerald-400 w-full hover:bg-emerald-500 text-semibold"
                                     onClick={() => backupData()}
-                                    disabled={isGoogleSaving}
+                                    disabled={isGoogleSaving}   
                                 >
                                 {isGoogleSaving ? (
                                     <>
@@ -994,18 +1053,29 @@ export default function Header() {
                 className="fixed inset-0 z-60 bg-black/50 flex items-center justify-center p-3"
                 onMouseDown={(e) => {
                 if (e.target === e.currentTarget) {
-                    setshowRestoreBackupModal(false);
+                    closeRestoreModal();
                 }
                 }}
             >
                 <div className="w-full max-w-xl max-h-[90vh] overflow-y-auto rounded-md bg-white dark:bg-gray-900 p-4 shadow-2xl notes-scroll" onMouseDown={(e) => e.stopPropagation()}>
 
-                    <div className="space-y-2 px-2 py-2 rounded">
-                        <p className="text-xs text-blue-700 dark:text-blue-200">Restore one of your Google Drive backups.</p>
+                    <div className="space-y-4 px-2 py-2 rounded">
+                        <div className="flex justify-between">
+                            <p className="text-xs text-blue-700 dark:text-blue-200">Restore one of your Google Drive backups.</p>
+
+                            <button
+                                type="button"
+                                className="px-2 py-1 rounded border border-gray-400 dark:text-gray-400 hover:bg-gray-200 dark:hover:bg-gray-700"
+                                onClick={closeRestoreModal}
+                            >
+                            Close
+                            </button>
+                        </div>
                         <select
                             value={selectedBackupId}
                             onChange={(e) => setSelectedBackupId(e.target.value)}
-                            className="w-full rounded border border-blue-200 bg-white px-2 py-1 text-sm dark:bg-gray-900 dark:text-white"
+                            disabled={isRestoringBackup || restoreStatus === "success"}
+                            className="w-full rounded border border-blue-200 bg-white px-2 py-1 text-sm disabled:cursor-not-allowed disabled:opacity-60 dark:bg-gray-900 dark:text-white"
                         >
                             {restoreBackups.map((backup) => (
                                 <option key={backup.id} value={backup.id}>
@@ -1017,13 +1087,64 @@ export default function Header() {
                                 </option>
                             ))}
                         </select>
-                        <div className="flex justify-end">
+
+                        {restoreStatus !== "idle" && (
+                            <div
+                                className={`rounded-md border px-3 py-3 text-sm ${
+                                    restoreStatus === "success"
+                                        ? "border-green-200 bg-green-50 text-green-700 dark:border-green-700 dark:bg-green-950/40 dark:text-green-200"
+                                        : restoreStatus === "cancelled"
+                                        ? "border-amber-200 bg-amber-50 text-amber-700 dark:border-amber-700 dark:bg-amber-950/40 dark:text-amber-200"
+                                        : restoreStatus === "error"
+                                        ? "border-red-200 bg-red-50 text-red-700 dark:border-red-700 dark:bg-red-950/40 dark:text-red-200"
+                                        : "border-blue-200 bg-blue-50 text-blue-700 dark:border-blue-700 dark:bg-blue-950/40 dark:text-blue-200"
+                                }`}
+                            >
+                                <div className="flex items-start gap-3">
+                                    {restoreStatus === "loading" && (
+                                        <FontAwesomeIcon icon={faSpinner} spin className="mt-0.5" />
+                                    )}
+                                    {restoreStatus === "success" && (
+                                        <span className="mt-0.5 text-base leading-none">✓</span>
+                                    )}
+                                    {restoreStatus === "cancelled" && (
+                                        <span className="mt-0.5 text-base leading-none">!</span>
+                                    )}
+                                    {restoreStatus === "error" && (
+                                        <span className="mt-0.5 text-base leading-none">!</span>
+                                    )}
+                                    <p>{restoreStatusMessage}</p>
+                                </div>
+                            </div>
+                        )}
+
+                        <div className="flex justify-end gap-2">
+                            {restoreStatus === "success" && (
+                                <button
+                                    onClick={restoreStatus === "success" ? closeRestoreModal : handleRestoreCancel}
+                                    disabled={isRestoringBackup}
+                                    className="items-end px-3 py-2 rounded bg-gray-200 text-gray-800 hover:bg-gray-300 disabled:cursor-not-allowed disabled:opacity-60 dark:bg-gray-700 dark:text-white dark:hover:bg-gray-600"
+                                >
+                                    Close
+                                </button>
+                            )}
+
                             <button
                                 onClick={() => handleRestoreFromDrive()}
                                 title="Restore backup data from google drive save"
-                                className="items-end px-2 py-1 rounded hover:bg-blue-300 bg-blue-500 dark:bg-blue-400"
+                                disabled={!selectedBackupId || isRestoringBackup || restoreStatus === "success"}
+                                className="items-end px-3 py-2 rounded hover:bg-blue-300 bg-blue-500 text-white disabled:cursor-not-allowed disabled:opacity-60 dark:bg-blue-400"
                             >
-                                <FontAwesomeIcon icon={faDownload} className="mr-2"/>Restore backup
+                                {isRestoringBackup ? (
+                                    <>
+                                        <FontAwesomeIcon icon={faSpinner} className="mr-2" spin />
+                                        Restoring...
+                                    </>
+                                ) : (
+                                    <>
+                                        <FontAwesomeIcon icon={faDownload} className="mr-2"/>Restore backup
+                                    </>
+                                )}
                             </button>
                         </div>
                     </div>
