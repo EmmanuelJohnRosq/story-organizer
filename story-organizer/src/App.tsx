@@ -10,6 +10,8 @@ import { useEffect } from "react";
 import { useGoogleAuth} from "./context/GoogleAuthContext";
 import CharEditPage from "./pages/CharEditPage";
 import CharacterPageCopy from "./pages/CharacterPageCopy";
+import Library from "./pages/Library";
+import UserPageUpdatedBook from "./pages/UserPageUpdatedBook";
 
 export default function StoryOrganizer() {
 
@@ -41,6 +43,10 @@ useEffect(() => {
           index
           path="/" 
           element={<UserPage />} 
+        />
+        <Route 
+          path="/library"
+          element={<UserPageUpdatedBook/>}
         />
         <Route 
           path="book/:currentBookId/" 

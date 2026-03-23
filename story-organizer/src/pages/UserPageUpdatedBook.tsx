@@ -9,9 +9,6 @@ import { faCheck } from "@fortawesome/free-solid-svg-icons/faCheck";
 import NotesCollection, { type EditableNote } from "../components/NotesCollection";
 import { createPortal } from "react-dom";
 
-import Cropper from "react-easy-crop"
-import getCroppedImg from "../components/cropImage";
-
 export default function UserPage() {
     // FUNCTIONS AND LOGIC OF USER PAGE
     const navigate = useNavigate();
@@ -473,27 +470,8 @@ export default function UserPage() {
             return;
         }
 
-        const reader = new FileReader()
-        reader.readAsDataURL(file)
-
-        reader.onload = () => {
-            setImageSrc(reader.result)
-            setShowCropper(true)
-        }
-
         setBookCoverFile(file);
         setBookCoverPreview(URL.createObjectURL(file));
-    }
-
-    const onCropComplete = (_, croppedAreaPixels: any) => {
-        setCroppedAreaPixels(croppedAreaPixels)
-    }
-
-    const handleCropSave = async () => {
-        const croppedImage = await getCroppedImg(imageSrc, croppedAreaPixels)
-
-        setBookCoverPreview(croppedImage)
-        setShowCropper(false)
     }
 
     async function addDraftNotes() {
@@ -654,11 +632,7 @@ export default function UserPage() {
         }
     }, [Addnewbooks]);
 
-    const [imageSrc, setImageSrc] = useState(null)
-    const [crop, setCrop] = useState({ x: 0, y: 0 })
-    const [zoom, setZoom] = useState(1)
-    const [croppedAreaPixels, setCroppedAreaPixels] = useState(null)
-    const [showCropper, setShowCropper] = useState(false)
+    const [isLarge, setIsLarge] = useState(window.matchMedia("(min-width: 1024px)").matches);
     
     return (
 
@@ -670,8 +644,8 @@ export default function UserPage() {
             <div className="sticky top-15.5 space-y-3">
 
                 {/* 1st section dashcard */}
-                <section className="overflow-hidden rounded-3xl border border-violet-800/70 bg-gradient-to-br from-violet-900/50 via-indigo-900 to-cyan-950 p-5 text-white shadow-2xl">
-                    <div className="flex items-center justify-between"> 
+                <section className="overflow-hidden rounded-3xl border border-violet-200/70 bg-gradient-to-br from-violet-700 via-indigo-700 to-cyan-700 p-5 text-white shadow-2xl">
+                    <div className="flex items-center justify-between">
                         <div>
                             <p className="text-xs uppercase tracking-[0.3em] text-white/70">Story projects</p>
                             <h1 className="mt-2 text-3xl font-black leading-tight">Shape your universe faster.</h1>
@@ -918,27 +892,27 @@ export default function UserPage() {
         {/* CENTER CONTAINER */}
         <main className="min-w-0 flex-1">
             {/* center section header web app details */}
-            <section className="rounded-3xl border border-gray-200 p-4 shadow-lg bg-gradient-to-br from-slate-900 via-blue-900/30 to-cyan-950 border border-indigo-500/30">
+            <section className="rounded-3xl border border-gray-200 bg-white p-4 shadow-lg dark:border-gray-800 dark:bg-gray-900">
                 <div className="flex flex-col gap-4 justify-between">
                     <div>
-                        <p className="text-xs uppercase tracking-[0.3em] text-indigo-200">Your library</p>
+                        <p className="text-xs uppercase tracking-[0.3em] text-indigo-500">Your library</p>
                         <h2 className="mt-2 text-3xl font-black">A visual shelf for every world you're building.</h2>
-                        <p className="mt-2 max-w-2xl text-sm text-gray-500 dark:text-gray-300">Inspired by modern writing dashboards, this layout gives each project a stronger identity with cover art, quick metadata, and a clearer path back into your workspace.</p>
+                        <p className="mt-2 max-w-2xl text-sm text-gray-500 dark:text-gray-400">Inspired by modern writing dashboards, this layout gives each project a stronger identity with cover art, quick metadata, and a clearer path back into your workspace.</p>
                     </div>
                     <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
-                        <div className="rounded-2xl shadow-xl g-gray-50 px-4 py-3 text-center dark:bg-gray-800/70">
+                        <div className="rounded-2xl bg-gray-50 px-4 py-3 text-center dark:bg-gray-800/70">
                             <p className="text-xs uppercase tracking-[0.2em] text-gray-400">Books</p>
                             <p className="mt-1 text-xl font-bold">{books.length}</p>
                         </div>
-                        <div className="rounded-2xl shadow-xl bg-gray-50 px-4 py-3 text-center dark:bg-gray-800/70">
+                        <div className="rounded-2xl bg-gray-50 px-4 py-3 text-center dark:bg-gray-800/70">
                             <p className="text-xs uppercase tracking-[0.2em] text-gray-400">Ongoing</p>
                             <p className="mt-1 text-xl font-bold">{ongoingBooks}</p>
                         </div>
-                        <div className="rounded-2xl shadow-xl bg-gray-50 px-4 py-3 text-center dark:bg-gray-800/70">
+                        <div className="rounded-2xl bg-gray-50 px-4 py-3 text-center dark:bg-gray-800/70">
                             <p className="text-xs uppercase tracking-[0.2em] text-gray-400">Notes</p>
                             <p className="mt-1 text-xl font-bold">{userNotes.length}</p>
                         </div>
-                        <div className="rounded-2xl shadow-xl bg-gray-50 px-4 py-3 text-center dark:bg-gray-800/70">
+                        <div className="rounded-2xl bg-gray-50 px-4 py-3 text-center dark:bg-gray-800/70">
                             <p className="text-xs uppercase tracking-[0.2em] text-gray-400">Covers</p>
                             <p className="mt-1 text-xl font-bold">{Object.keys(bookCoverMap).length}</p>
                         </div>
@@ -1032,44 +1006,6 @@ export default function UserPage() {
                                     <img src={bookCoverPreview} alt="Book cover preview" className="h-44 w-full object-cover" />
                                 </div>
                             )}
-
-                            {showCropper && (
-                                <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70">
-                                    
-                                    <div className="w-[400px] rounded-xl bg-white p-4 dark:bg-gray-900">
-
-                                    <div className="relative h-96 w-full">
-                                        <Cropper
-                                        image={imageSrc}
-                                        crop={crop}
-                                        zoom={zoom}
-                                        aspect={3 / 4}
-                                        onCropChange={setCrop}
-                                        onZoomChange={setZoom}
-                                        onCropComplete={onCropComplete}
-                                        />
-                                    </div>
-
-                                    <div className="mt-4 flex justify-end gap-3">
-                                        <button
-                                        onClick={() => setShowCropper(false)}
-                                        className="rounded-lg bg-gray-500 px-4 py-2 text-white"
-                                        >
-                                        Cancel
-                                        </button>
-
-                                        <button
-                                        onClick={handleCropSave}
-                                        className="rounded-lg bg-indigo-600 px-4 py-2 text-white"
-                                        >
-                                        Save
-                                        </button>
-                                    </div>
-
-                                    </div>
-
-                                </div>
-                            )}
                         </div>
 
                         <button
@@ -1087,7 +1023,7 @@ export default function UserPage() {
                 <div className="mb-4 flex items-center justify-between gap-3">
                     <div>
                         <h2 className="text-2xl font-bold">Library shelf</h2>
-                        <p className="text-sm text-gray-500 dark:text-gray-400">Click any book to open its story workshop.</p>
+                        <p className="text-sm text-gray-500 dark:text-gray-400">Click any book to open its story workshop. Drag a card to the trash bubble to delete it.</p>
                     </div>
 
                     <div className="hidden items-center gap-2 rounded-2xl border border-gray-200 bg-gray-50 px-3 py-2 text-xs text-gray-500 dark:border-gray-700 dark:bg-gray-800/70 dark:text-gray-300 sm:flex">
@@ -1127,25 +1063,12 @@ export default function UserPage() {
                             ${draggingId === book.id ? "opacity-0" : ""}`}
                         >
                             {/* Spine/Edge Design (Always visible or tucked behind) */}
-                            {bookCoverMap[book.id] ? (
-                                <div className="absolute -left-1 top-0 h-75 w-4 bg-gray-800 rounded-tl-lg z-20"/>
-                            ) : (
-                                <div className="absolute -left-1 top-0 h-75 w-4 bg-gray-600 rounded-tl-lg z-20" />
-                            )}
+                            <div className="absolute -left-1 top-0 h-75 w-4 bg-gray-600 rounded-tl-lg z-20" />
 
                             {/* 1. FRONT COVER LAYER: Fades out on hover */}
                             <div className="absolute inset-0 z-10 transition-opacity duration-500 group-hover:opacity-15">
                                 {bookCoverMap[book.id] ? (
-                                    <div className="relative w-full h-full">
-
-                                        {/* full image */}
-                                        <img
-                                            src={bookCoverMap[book.id]}
-                                            alt={`${book.title} cover`}
-                                            className="relative w-full h-full object-cover"
-                                        />
-
-                                    </div>
+                                    <img src={bookCoverMap[book.id]} alt={`${book.title} cover`} className="h-full w-full object-cover" />
                                 ) : (
                                     <div className="flex h-full w-full flex-col justify-between bg-gradient-to-br from-slate-900 via-blue-900/30 to-cyan-950 border border-indigo-500/30 p-5 text-white">
                                         <div className="flex items-start justify-between group-hover:opacity-0"> 
@@ -1173,7 +1096,7 @@ export default function UserPage() {
                                         <span className="text-[10px] dark:text-gray-400">Vol {book.volume || 0}</span>
                                     </div>
                                     
-                                    <h3 className="text-md font-bold dark:text-white line-clamp-2">{book.title}</h3>
+                                    <h3 className="text-md font-bold dark:text-white line-clamp-1">{book.title}</h3>
                                     
                                     <p className="text-xs text-gray-600 dark:text-gray-300 line-clamp-4 leading-relaxed">
                                         {book.summary || "Open this workspace and shape the next scenes, chapters, and arcs."}
@@ -1188,7 +1111,7 @@ export default function UserPage() {
                                     </div>
                                 </div>
 
-                                <div className="space-y-1 mt-1">
+                                <div className="space-y-1">
                                     <div className="flex items-center justify-between text-[10px] text-gray-200">
                                         <span>{book.chapterCount ?? 0} Chapters</span>
                                         <span className="uppercase">{book.status}</span>
