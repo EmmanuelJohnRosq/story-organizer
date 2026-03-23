@@ -1,15 +1,15 @@
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, type FormEvent } from "react";
 import { useNavigate } from "react-router-dom";
 
 import { db, type Book, type Notes, type Character } from "../db";
 
 import { FontAwesomeIcon} from "@fortawesome/react-fontawesome";
-import { faPlus, faMinus, faTrashCan, faWandMagicSparkles, faBookOpen, faImages, faPenNib, faUpload, faPen, faImage } from "@fortawesome/free-solid-svg-icons";
+import { faPlus, faMinus, faTrashCan, faWandMagicSparkles, faBookOpen, faImages, faPenNib, faUpload } from "@fortawesome/free-solid-svg-icons";
 import { faCheck } from "@fortawesome/free-solid-svg-icons/faCheck";
 import NotesCollection, { type EditableNote } from "../components/NotesCollection";
 import { createPortal } from "react-dom";
 
-import Cropper from "react-easy-crop"
+import Cropper, { type Area, type Point } from "react-easy-crop";
 import getCroppedImg from "../components/cropImage";
 
 export default function UserPage() {
@@ -271,7 +271,8 @@ export default function UserPage() {
     };
 
     // CREATE NEW BOOK/ ASYNC WITH DEXIEDB
-    async function addBook() {
+    async function addBook(event?: FormEvent<HTMLFormElement>) {
+        event?.preventDefault();
         const normalizedTitle = normalizeWhitespace(bookTitle);
 
         if (!normalizedTitle) return;
@@ -460,41 +461,78 @@ export default function UserPage() {
         };
     }, [bookCoverMap, bookCoverPreview]);
 
-    function handleBookCoverChange(event: React.ChangeEvent<HTMLInputElement>) {
-        const file = event.target.files?.[0] ?? null;
+    function resetCropState() {
+        setImageSrc(null);
+        setSelectedFile(null);
+        setCrop({ x: 0, y: 0 });
+        setZoom(0.5);
+        setCroppedAreaPixels(null);
+        setShowCropper(false);
+    }
+    
+    const [selectedFile, setSelectedFile] = useState<File | null>(null);
 
-        if (bookCoverPreview) {
-            URL.revokeObjectURL(bookCoverPreview);
+    function handleBookCoverChange(event: React.ChangeEvent<HTMLInputElement>) {
+        const input = event.currentTarget;
+        const file = event.target.files?.[0] ?? null;
+        if (event.target.files?.[0]) {
+            setSelectedFile(event.target.files[0]);
         }
 
         if (!file) {
+            if (bookCoverPreview) {
+                URL.revokeObjectURL(bookCoverPreview);
+            }
+
             setBookCoverFile(null);
             setBookCoverPreview(null);
+            resetCropState();
             return;
         }
 
-        const reader = new FileReader()
-        reader.readAsDataURL(file)
+        const reader = new FileReader();
 
         reader.onload = () => {
-            setImageSrc(reader.result)
-            setShowCropper(true)
-        }
+            const result = reader.result;
 
-        setBookCoverFile(file);
-        setBookCoverPreview(URL.createObjectURL(file));
+            if (typeof result !== "string") {
+                alert("Could not read that image file.");
+                return;
+            }
+
+        setImageSrc(result);
+            setCrop({ x: 0, y: 0 });
+            setZoom(0.6);
+            setCroppedAreaPixels(null);
+            setShowCropper(true);
+        };
+        reader.readAsDataURL(file);
+        input.value = "";
     }
 
-    const onCropComplete = (_, croppedAreaPixels: any) => {
-        setCroppedAreaPixels(croppedAreaPixels)
-    }
+    const onCropComplete = (_croppedArea: Area, croppedPixels: Area) => {
+        setCroppedAreaPixels(croppedPixels);
+    };
 
     const handleCropSave = async () => {
-        const croppedImage = await getCroppedImg(imageSrc, croppedAreaPixels)
+        if (!imageSrc || !croppedAreaPixels) return;
 
-        setBookCoverPreview(croppedImage)
-        setShowCropper(false)
-    }
+        try {
+            const croppedFile = await getCroppedImg(imageSrc, croppedAreaPixels, bookCoverFile?.name ?? "book-cover.jpg");
+
+            if (bookCoverPreview) {
+                URL.revokeObjectURL(bookCoverPreview);
+            }
+
+            const previewUrl = URL.createObjectURL(croppedFile);
+            setBookCoverFile(croppedFile);
+            setBookCoverPreview(previewUrl);
+            resetCropState();
+        } catch (error) {
+            console.error("Failed to crop book cover", error);
+            alert("We couldn't crop that image. Please try another image.");
+        }
+    };
 
     async function addDraftNotes() {
         if (draftNote) return;
@@ -654,11 +692,11 @@ export default function UserPage() {
         }
     }, [Addnewbooks]);
 
-    const [imageSrc, setImageSrc] = useState(null)
-    const [crop, setCrop] = useState({ x: 0, y: 0 })
-    const [zoom, setZoom] = useState(1)
-    const [croppedAreaPixels, setCroppedAreaPixels] = useState(null)
-    const [showCropper, setShowCropper] = useState(false)
+    const [imageSrc, setImageSrc] = useState<string | null>(null);
+    const [crop, setCrop] = useState<Point>({ x: 0, y: 0 });
+    const [zoom, setZoom] = useState(1);
+    const [croppedAreaPixels, setCroppedAreaPixels] = useState<Area | null>(null);
+    const [showCropper, setShowCropper] = useState(false);
     
     return (
 
@@ -777,7 +815,7 @@ export default function UserPage() {
                                     className="w-full rounded-2xl border px-4 py-3 focus:outline-none focus:ring-2 focus:ring-blue-400 placeholder-gray-400 dark:border-gray-700 dark:bg-gray-900 dark:placeholder-gray-600"
                                     value={bookTitle}
                                     onChange={e => setBookTitle(e.target.value)}
-                                    onKeyDown={(e) => { if (e.key === "Enter") onsubmit }}
+                                    onKeyDown={(e) => { if (e.key === "Enter") e.preventDefault(); }}
                                     title="Add new book"
                                     placeholder="Enter book title"
                                     required
@@ -827,7 +865,7 @@ export default function UserPage() {
                                 <label className="mb-1 block text-sm font-medium">Book cover</label>
                                 <label className="flex cursor-pointer items-center justify-center gap-3 rounded-2xl border border-dashed border-gray-300 bg-white/70 px-4 py-4 text-sm text-gray-600 transition hover:border-indigo-400 hover:text-indigo-600 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-300">
                                     <FontAwesomeIcon icon={faUpload} />
-                                    <span>{bookCoverFile ? bookCoverFile.name : "Upload a cover image"}</span>
+                                    <span>{selectedFile ? selectedFile.name : "Upload a cover image"}</span>
                                     <input type="file" accept="image/*" className="hidden" onChange={handleBookCoverChange} />
                                 </label>
                                 {bookCoverPreview && (
@@ -974,7 +1012,7 @@ export default function UserPage() {
                                 className="w-full rounded-2xl border px-4 py-3 focus:outline-none focus:ring-2 focus:ring-blue-400 placeholder-gray-400 dark:border-gray-700 dark:bg-gray-900 dark:placeholder-gray-600"
                                 value={bookTitle}
                                 onChange={e => setBookTitle(e.target.value)}
-                                onKeyDown={(e) => { if (e.key === "Enter") onsubmit }}
+                                onKeyDown={(e) => { if (e.key === "Enter") e.preventDefault(); }}
                                 title="Add new book"
                                 placeholder="Enter book title"
                                 required
@@ -1024,50 +1062,12 @@ export default function UserPage() {
                             <label className="mb-1 block text-sm font-medium">Book cover</label>
                             <label className="flex cursor-pointer items-center justify-center gap-3 rounded-2xl border border-dashed border-gray-300 bg-white/70 px-4 py-4 text-sm text-gray-600 transition hover:border-indigo-400 hover:text-indigo-600 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-300">
                                 <FontAwesomeIcon icon={faUpload} />
-                                <span>{bookCoverFile ? bookCoverFile.name : "Upload a cover image"}</span>
+                                <span>{selectedFile ? selectedFile.name : "Upload a cover image"}</span>
                                 <input type="file" accept="image/*" className="hidden" onChange={handleBookCoverChange} />
                             </label>
                             {bookCoverPreview && (
                                 <div className="mt-3 overflow-hidden rounded-2xl border border-gray-200 dark:border-gray-700">
                                     <img src={bookCoverPreview} alt="Book cover preview" className="h-44 w-full object-cover" />
-                                </div>
-                            )}
-
-                            {showCropper && (
-                                <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70">
-                                    
-                                    <div className="w-[400px] rounded-xl bg-white p-4 dark:bg-gray-900">
-
-                                    <div className="relative h-96 w-full">
-                                        <Cropper
-                                        image={imageSrc}
-                                        crop={crop}
-                                        zoom={zoom}
-                                        aspect={3 / 4}
-                                        onCropChange={setCrop}
-                                        onZoomChange={setZoom}
-                                        onCropComplete={onCropComplete}
-                                        />
-                                    </div>
-
-                                    <div className="mt-4 flex justify-end gap-3">
-                                        <button
-                                        onClick={() => setShowCropper(false)}
-                                        className="rounded-lg bg-gray-500 px-4 py-2 text-white"
-                                        >
-                                        Cancel
-                                        </button>
-
-                                        <button
-                                        onClick={handleCropSave}
-                                        className="rounded-lg bg-indigo-600 px-4 py-2 text-white"
-                                        >
-                                        Save
-                                        </button>
-                                    </div>
-
-                                    </div>
-
                                 </div>
                             )}
                         </div>
@@ -1385,6 +1385,63 @@ export default function UserPage() {
                     </div>
                 )}
                 </>,
+                document.body
+            )}
+
+            {showCropper && imageSrc && createPortal(
+                <div className="fixed inset-0 z-[70] flex items-center justify-center bg-black/70 px-4">
+                    <div className="w-full max-w-lg rounded-3xl bg-white p-4 shadow-2xl dark:bg-gray-900">
+                        <div className="text-gray-500 dark:text-gray-200">
+                            <h3 className="text-lg font-semibold">Crop book cover</h3>
+                            <p className="mt-1 text-sm">
+                                Select the part of the image that should appear on your book cards.
+                            </p>
+                        </div>
+
+                        <div className="relative mt-4 h-96 w-full overflow-hidden rounded-2xl bg-gray-950">
+                            <Cropper
+                                image={imageSrc}
+                                crop={crop}
+                                zoom={zoom}
+                                aspect={3 / 4}
+                                objectFit="cover"
+                                onCropChange={setCrop}
+                                onZoomChange={setZoom}
+                                onCropComplete={onCropComplete}
+                            />
+                        </div>
+
+                        <div className="mt-4">
+                            <label className="mb-2 block text-sm font-medium">Zoom</label>
+                            <input
+                                type="range"
+                                min={0.5}
+                                max={3}
+                                step={0.05}
+                                value={zoom}
+                                onChange={(e) => setZoom(Number(e.target.value))}
+                                className="w-full"
+                            />
+                        </div>
+
+                        <div className="mt-5 flex justify-end gap-3">
+                            <button
+                                type="button"
+                                onClick={resetCropState}
+                                className="rounded-xl border border-gray-300 px-4 py-2 text-sm font-medium transition text-gray-500 dark:text-gray-200 hover:bg-gray-100 dark:border-gray-700 dark:hover:bg-gray-800"
+                            >
+                                Cancel
+                            </button>
+                            <button
+                                type="button"
+                                onClick={handleCropSave}
+                                className="rounded-xl bg-indigo-600 px-4 py-2 text-sm font-semibold text-white transition hover:bg-indigo-500"
+                            >
+                                Use this crop
+                            </button>
+                        </div>
+                    </div>
+                </div>,
                 document.body
             )}
 
