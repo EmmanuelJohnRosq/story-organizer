@@ -35,6 +35,7 @@ export default function ExperimentPage() {
         loadBookNotes(currentBookId); 
         loadChars(currentBookId);
         loadBookWorldSettings(currentBookId);
+        loadBookCover(currentBookId);
       };
 
       loadBook();
@@ -512,7 +513,46 @@ export default function ExperimentPage() {
     }
   
     // DEFAULT CHAR IMAGE FORMAT
-    const [char_image] = useState("/textures/char_images/default_char.jpg")
+    const [char_image] = useState("/textures/char_images/default_char.jpg");
+    const bookCoverInputRef = useRef<HTMLInputElement | null>(null);
+
+    const loadBookCover = async (bookId: string) => {
+      const images = await db.images
+        .where("bookId")
+        .equals(bookId)
+        .toArray();
+
+      images.sort((a, b) => b.createdAt - a.createdAt);
+      const selected = images.find(img => img.isDisplayed) ?? images[0];
+
+      setBookCoverUrl(prev => {
+        if (prev) URL.revokeObjectURL(prev);
+        return selected ? URL.createObjectURL(selected.imageBlob) : null;
+      });
+    };
+
+    const uploadBookCover = async (event: React.ChangeEvent<HTMLInputElement>) => {
+      const file = event.target.files?.[0];
+      if (!file || !currentBookId) return;
+
+      const existing = await db.images.where("bookId").equals(currentBookId).toArray();
+      await Promise.all(existing.map(image => db.images.update(image.imageId, { isDisplayed: false })));
+
+      await db.images.add({
+        imageId: crypto.randomUUID(),
+        charId: 0,
+        bookId: currentBookId,
+        createdAt: Date.now(),
+        imageBlob: file,
+        isDisplayed: true,
+      });
+
+      await loadBookCover(currentBookId);
+      setAlert("Cover Updated");
+      setStatePopup(true);
+      setTimeout(() => { setStatePopup(false); setAlert(""); }, 2000);
+      event.target.value = "";
+    };
 
   
     // LOAD IMAGES FROM DB, fetch and put on a setState for display
@@ -654,6 +694,7 @@ export default function ExperimentPage() {
     const [addCharacterState, setAddCharState] = useState(false);
     const [showSettingsMenu, setShowSettingsMenu] = useState(false);
     const [editBookContent, setEditBookContent] = useState(false);
+    const [bookCoverUrl, setBookCoverUrl] = useState<string | null>(null);
 
     const [showPinnedNotes, setShowPinnedNotes] = useState(true);
  
@@ -1258,6 +1299,12 @@ export default function ExperimentPage() {
       },
     ];
 
+    useEffect(() => {
+      return () => {
+        if (bookCoverUrl) URL.revokeObjectURL(bookCoverUrl);
+      };
+    }, [bookCoverUrl]);
+
     const goToTop = () => {
       window.scrollTo({
         top: 0,
@@ -1580,10 +1627,18 @@ export default function ExperimentPage() {
                           <div>
 
                             {/* book title and settings dropdown */}
+                            {bookCoverUrl && !showBookContent && (
+                                  <div className="overflow-hidden rounded-2xl border border-gray-200 dark:border-gray-700">
+                                    <img src={bookCoverUrl} alt={`${currentBook?.title || "Book"} cover`} className="h-10 w-full object-cover" />
+                                  </div>
+                                )}
                             <div className="flex justify-between">
-                              <label className="text-xl font-semibold truncate">
-                                {titleDraft || currentBook?.title || "Book Content"}
-                              </label>
+                              <div className="flex">
+                                <label className="text-xl font-semibold truncate">
+                                  {titleDraft || currentBook?.title || "Book Content"}
+                                </label>
+                              </div>
+                              
 
                               <div className="relative inline-block"> 
                                 <button
@@ -1611,9 +1666,10 @@ export default function ExperimentPage() {
                                       className="w-full text-left px-3 py-2 rounded hover:bg-gray-200 dark:hover:bg-gray-700"
                                       onClick={() => {
                                         setShowBookContent(prev => !prev);
+                                        setShowSettingsMenu(false);
                                       }}
                                     >
-                                      {showBookContent ? "Maximize" : "Minimize"}
+                                      {showBookContent ? "Expand synopsis panel" : "Compact synopsis panel"}
                                     </button>
                                     
                                     {/* open edit book details */}
@@ -1625,6 +1681,17 @@ export default function ExperimentPage() {
                                       }}
                                     >
                                       Edit book details
+                                    </button>
+
+                                    {/* upload book cover */}
+                                    <button
+                                      className="w-full text-left px-3 py-2 rounded hover:bg-gray-200 dark:hover:bg-gray-700"
+                                      onClick={() => {
+                                        bookCoverInputRef.current?.click();
+                                        setShowSettingsMenu(false);
+                                      }}
+                                    >
+                                      Upload / change cover art
                                     </button>
 
                                     {/* open add new character */}
@@ -1652,6 +1719,8 @@ export default function ExperimentPage() {
                                 )}
                               </div>
                             </div>
+
+                            <input ref={bookCoverInputRef} type="file" accept="image/*" className="hidden" onChange={uploadBookCover} />
                             
                             {/* quick details */}
                             <div className="flex justify-between mb-1">

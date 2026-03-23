@@ -134,7 +134,6 @@ export async function uploadManualBackup(data: BackupPayload, accessToken: strin
 
 export async function upsertAutoBackup(data: BackupPayload, accessToken: string) {
   const existingFile = await getAutoBackupFile(accessToken);
-  alert("fires auto upload backup");
   return uploadJsonToDrive(AUTO_BACKUP_FILE_NAME, data, accessToken, existingFile?.id);
 }
 
