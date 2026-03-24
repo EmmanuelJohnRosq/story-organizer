@@ -18,6 +18,31 @@ function buildPrefixDriveQuery(fileNamePrefix: string) {
   return `name contains '${fileNamePrefix}' and trashed=false`;
 }
 
+// check auth token status
+export async function isTokenActive(accessToken: string): Promise<boolean> {
+  try {
+    const response = await fetch(
+      `https://www.googleapis.com/oauth2/v1/tokeninfo?access_token=${accessToken}`
+    );
+
+    if (!response.ok) {
+      sessionStorage.setItem("googleAuth", "false");
+      return false;
+    }
+
+    const data = await response.json();
+
+    // If expires_in exists and > 0, token is valid
+    const isValid = data.expires_in && data.expires_in > 0;
+
+    sessionStorage.setItem("googleAuth", isValid ? "true" : "false");
+    return isValid;
+  } catch (error) {
+    sessionStorage.setItem("googleAuth", "false");
+    return false;
+  }
+}
+
 async function listDriveFiles(query: string, accessToken: string) {
   const response = await fetch(
     `https://www.googleapis.com/drive/v3/files?q=${encodeURIComponent(query)}&orderBy=createdTime desc&fields=files(id,name,createdTime,modifiedTime)`,
@@ -27,6 +52,10 @@ async function listDriveFiles(query: string, accessToken: string) {
       },
     }
   );
+  
+  if (response.ok) {
+    sessionStorage.setItem("googleAuth", "true");
+  }
 
   if (response.status === 401) {
     sessionStorage.setItem("googleAuth", "false");
@@ -35,6 +64,7 @@ async function listDriveFiles(query: string, accessToken: string) {
   if (!response.ok) {
     throw new Error("Failed to check Drive");
   }
+
 
   const data = await response.json();
   return (data.files ?? []) as DriveBackupFile[];

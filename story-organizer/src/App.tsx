@@ -45,8 +45,8 @@ useEffect(() => {
           element={<UserPage />} 
         />
         <Route 
-          path="/library"
-          element={<UserPageUpdatedBook/>}
+          path="/library/:currentBookId/"
+          element={<BookPage/>}
         />
         <Route 
           path="book/:currentBookId/" 

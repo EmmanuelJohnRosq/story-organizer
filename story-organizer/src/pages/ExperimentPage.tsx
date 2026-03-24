@@ -2019,14 +2019,26 @@ export default function ExperimentPage() {
                     <div 
                       key={char.id} 
                       title="Open character sheet."
-                      className="group relative flex cursor-pointer flex-col items-center justify-center overflow-hidden rounded-[28px] border border-gray-200 bg-white p-3 shadow-md transition-all duration-300 hover:-translate-y-1 hover:bg-gray-50 hover:shadow-2xl dark:border-gray-800 dark:bg-gray-950 dark:hover:bg-gray-900 animate-fadeDown"
+                      className="group relative flex cursor-pointer flex-col 
+                      items-center justify-center rounded-[28px] border border-gray-200 
+                      bg-white p-3 shadow-md transition-all duration-300 
+                      hover:bg-gray-50 hover:shadow-2xl 
+                      dark:border-gray-800 dark:bg-gray-950 dark:hover:bg-gray-900 animate-fadeDown"
                       onClick={() => openEditCharacter(char)}
                     >
-                      <div className="absolute inset-x-0 top-0 h-20 bg-gradient-to-b from-indigo-100/90 via-cyan-50/60 to-transparent dark:from-indigo-900/30 dark:via-cyan-900/10 dark:to-transparent" />
+                      <div className="absolute inset-x-0 top-0 h-20 rounded-[28px]
+                      bg-gradient-to-b from-indigo-100/90 via-cyan-50/60 to-transparent 
+                      dark:from-indigo-900/30 dark:via-cyan-900/10 dark:to-transparent" />
                       <button
                         type="button"
                         title="Set character priority"
-                        className={`absolute right-2 top-2 z-10 inline-flex items-center gap-1 rounded-full border px-2 py-1 text-[10px] font-semibold shadow-sm transition hover:border-amber-500 ${char.priority > 0 ? "border-amber-300 bg-amber-100 text-amber-700 dark:border-amber-500/60 dark:bg-amber-500/10 dark:text-amber-200" : "border-gray-200 bg-white/90 text-gray-500 dark:border-gray-700 dark:bg-gray-900/90 dark:text-gray-300"}`}
+                        className={`absolute right-2 top-2 z-10
+                          inline-flex items-center gap-1 rounded-full 
+                          border px-2 py-1 text-[10px] font-semibold 
+                          shadow-sm transition hover:border-amber-500 
+                          ${char.priority > 0 
+                            ? "border-amber-300 bg-amber-100 text-amber-700 dark:border-amber-500/60 dark:bg-amber-500/10 dark:text-amber-200" 
+                            : "border-gray-200 bg-white/90 text-gray-500 dark:border-gray-700 dark:bg-gray-900/90 dark:text-gray-300"}`}
                         onClick={(e) => {
                           e.stopPropagation();
                           setPriority(priority === char.id ? null : char.id);
@@ -2049,8 +2061,11 @@ export default function ExperimentPage() {
                           />
                           
                           <div 
-                            className="absolute left-12 top-10 z-20 mb-2 w-35 rounded-lg bg-gray-900 p-1 shadow-xl ring-1 ring-white/10 dark:bg-slate-800 animate-in fade-in zoom-in duration-200 origin-bottom"
-                            onClick={(e) => e.stopPropagation()} // Prevents clicking the menu from opening the card
+                            className="absolute left-12 top-10 z-20 mb-2 w-35 
+                            rounded-lg bg-gray-500 p-1 shadow-xl ring-1 ring-white/10 
+                            dark:bg-slate-800 animate-in fade-in zoom-in duration-200 
+                            origin-bottom"
+                            onClick={(e) => e.stopPropagation()}
                           >
                             <label className="text-xs text-gray-400 p-1">Select priority value:</label>
                             <div className="flex flex-col gap-0.5">
@@ -2076,9 +2091,6 @@ export default function ExperimentPage() {
                                 );
                               })}
                             </div>
-
-                            {/* Small arrow/tail */}
-                            <div className="absolute -top-1 left-1/2 h-2 w-2 -translate-x-1/2 rotate-45 bg-gray-900 dark:bg-slate-800" />
                           </div>
                         </>
                       )}

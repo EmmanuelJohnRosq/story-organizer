@@ -1917,7 +1917,13 @@ export default function ExperimentPage() {
                     <button
                       type="button"
                       title="Set character priority"
-                      className={`absolute right-2 top-2 z-10 inline-flex items-center gap-1 rounded-full border px-2 py-1 text-[10px] font-semibold shadow-sm transition hover:border-amber-500 ${char.priority > 0 ? "border-amber-300 bg-amber-100 text-amber-700 dark:border-amber-500/60 dark:bg-amber-500/10 dark:text-amber-200" : "border-gray-200 bg-white/90 text-gray-500 dark:border-gray-700 dark:bg-gray-900/90 dark:text-gray-300"}`}
+                      className={`absolute right-2 top-2 z-10 
+                        inline-flex items-center gap-1 rounded-full 
+                        border px-2 py-1 text-[10px] font-semibold shadow-sm 
+                        transition hover:border-amber-500 
+                        ${char.priority > 0 
+                          ? "border-amber-300 bg-amber-100 text-amber-700 dark:border-amber-500/60 dark:bg-amber-500/10 dark:text-amber-200" 
+                          : "border-gray-200 bg-white/90 text-gray-500 dark:border-gray-700 dark:bg-gray-900/90 dark:text-gray-300"}`}
                       onClick={(e) => {
                         e.stopPropagation();
                         setPriority(priority === char.id ? null : char.id);
@@ -1940,7 +1946,10 @@ export default function ExperimentPage() {
                         />
                         
                         <div 
-                          className="absolute left-12 top-10 z-20 mb-2 w-35 rounded-lg bg-gray-900 p-1 shadow-xl ring-1 ring-white/10 dark:bg-slate-800 animate-in fade-in zoom-in duration-200 origin-bottom"
+                          className="absolute left-12 top-10 z-20 mb-2 w-35 
+                          rounded-lg bg-gray-900 p-1 shadow-xl ring-1 ring-white/10 
+                          dark:bg-slate-800 animate-in fade-in zoom-in duration-200 
+                          origin-bottom"
                           onClick={(e) => e.stopPropagation()} // Prevents clicking the menu from opening the card
                         >
                           <label className="text-xs text-gray-400 p-1">Select priority value:</label>

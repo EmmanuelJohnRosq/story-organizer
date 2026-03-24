@@ -1180,11 +1180,14 @@ export default function UserPage() {
                                     </p>
 
                                     <div className="flex flex-wrap gap-1.5">
-                                        {(book.genre || []).slice(0, 3).map((genre, i) => (
+                                        {(book.genre || []).slice(0, 2).map((genre, i) => (
                                             <span key={i} className="rounded-md bg-indigo-100 px-2 py-0.5 text-[10px] font-semibold text-gray-700 dark:bg-stale-900/40">
                                                 {genre}
                                             </span>
                                         ))}
+                                        {book.genre.length > 2 && (
+                                            <span className="rounded-full bg-gray-100 px-3 py-1 text-[11px] font-semibold text-gray-500 dark:bg-gray-800 dark:text-gray-300">+{book.genre.length - 2}</span>
+                                        )}
                                     </div>
                                 </div>
 

@@ -232,21 +232,17 @@ button:disabled {
 
 .bigmeteor-diagonal {
   position: absolute;
-  /* 1. START POSITION: Top Right corner area */
   top: -10%;
   right: 10%;
   
   width: 6px;
   height: 100px;
-  /* Gradient: White head at the bottom (225deg), trailing to transparent */
-  background: linear-gradient(30deg, #fff, transparent);
+  background: linear-gradient(30deg, #ffe5c0, transparent);
   opacity: 0;
   filter: blur(1px);
   
-  /* 2. GLOW: Makes it look like it's burning up */
-  box-shadow: 0 0 20px rgba(255, 255, 255, 0.4);
+  box-shadow: 0 0 20px rgba(255, 0, 0, 0.4);
 
-  /* 3. ANIMATION: Slower than a small star, faster than a planet */
   animation: meteorDiagonal 12s linear infinite;
 }
 

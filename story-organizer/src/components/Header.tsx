@@ -1,5 +1,5 @@
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
-import { faFileImport, faCircleUser, faUpload, faSpinner, faDownload, faArrowLeft, faUser, faAngleRight } from "@fortawesome/free-solid-svg-icons";
+import { faFileImport, faCircleUser, faUpload, faSpinner, faDownload, faArrowLeft, faUser, faAngleRight, faLink, faX } from "@fortawesome/free-solid-svg-icons";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { db } from "../db";
 import { useNavigate, useParams, useLocation } from "react-router-dom";
@@ -7,7 +7,8 @@ import { useDropzone } from "react-dropzone";
 
 import { useGoogleAuth, type GoogleUser } from "../context/GoogleAuthContext";
 import { signOut } from "../services/googleAuth";
-import { downloadDriveFile, listManualBackupFiles, listRestoreBackupFiles, type DriveBackupFile, uploadManualBackup, upsertAutoBackup } from "../services/driveService";
+import { downloadDriveFile, listManualBackupFiles, listRestoreBackupFiles, type DriveBackupFile, uploadManualBackup, upsertAutoBackup, isTokenActive } from "../services/driveService";
+import { IoMdReturnLeft } from "react-icons/io";
 
 interface HeaderProps {
   showGalaxy: boolean;
@@ -103,7 +104,7 @@ export default function Header({ showGalaxy, onToggle }: HeaderProps) {
     const [manualBackups, setManualBackups] = useState<DriveBackupFile[]>([]);
     const [restoreBackups, setRestoreBackups] = useState<DriveBackupFile[]>([]);
     const [selectedBackupId, setSelectedBackupId] = useState<string>("");
-     const [displayExpiringAuth, setDisplayExpiringAuth] = useState(false);
+    const [displayExpiringAuth, setDisplayExpiringAuth] = useState(false);
 
     // MODALS
     const [showRestoreBackupModal, setshowRestoreBackupModal] = useState(false);
@@ -135,7 +136,13 @@ export default function Header({ showGalaxy, onToggle }: HeaderProps) {
     useEffect(() => {
       const checkBackup = async () => {
         const token = localStorage.getItem("googleAccessToken");
+        const authState = sessionStorage.getItem("googleAuth");
         if (!token) return;
+        if (authState === "false") {
+            console.error("Google Authentication Required");
+            setDisplayExpiringAuth(true);
+            return;
+        }
     
         try {
           const [manualFiles, restoreFiles] = await Promise.all([
@@ -154,6 +161,30 @@ export default function Header({ showGalaxy, onToggle }: HeaderProps) {
 
     checkBackup();
     }, [user]);
+
+    useEffect(() => {
+        const checkBackup = async () => {
+            const token = localStorage.getItem("googleAccessToken");
+            const authState = sessionStorage.getItem("googleAuth");
+            if (!token) return;
+            if (authState === "false") {
+                console.error("Google Authentication Required");
+                setDisplayExpiringAuth(true);
+                return;
+            }
+        
+            if (authState === "true") {
+                setDisplayExpiringAuth(false);
+            }
+            else {
+                console.error("Drive check failed");
+                setDisplayExpiringAuth(true);
+                return;
+            }
+        };
+
+    checkBackup();
+    }, [showAccountSettings]);
     
 
     // DARK MODE EFFECT
@@ -418,6 +449,15 @@ export default function Header({ showGalaxy, onToggle }: HeaderProps) {
         const token = localStorage.getItem("googleAccessToken");
         if (!token || !selectedBackupId) return;
 
+        const checkAuth = await isTokenActive(token);
+        if(!checkAuth) {
+            console.error("Google Authentication Required");
+            setDisplayExpiringAuth(true);
+            setShowAccountSettings(false);
+            setSelectedBackupId("")
+            return;
+        };
+
         const selectedBackup = restoreBackups.find((backup) => backup.id === selectedBackupId);
 
         try {
@@ -452,6 +492,12 @@ export default function Header({ showGalaxy, onToggle }: HeaderProps) {
             setIsRestoringBackup(false);
         }
     };
+
+    const openRestoreModal = () => {
+        setRestoreStatus("idle");
+        setRestoreStatusMessage("");
+        setshowRestoreBackupModal(true);
+    }
 
     async function googleLogout() {
         const isConfirmed = window.confirm("Are you sure you want to log out?");
@@ -819,29 +865,36 @@ export default function Header({ showGalaxy, onToggle }: HeaderProps) {
                                 </button>
 
                                 {/* THIS IS FOR SAVING TO GOOGLE DRIVE */}
-                                <button
-                                    title="Create/Save a backup data to Gdrive"
-                                    onClick={() => showSaveGoogleModal(true)}
-                                    className="w-full text-left px-2 py-1 rounded hover:bg-green-100 dark:hover:bg-gray-700"
-                                >
-                                    <FontAwesomeIcon icon={faUpload} className="mr-2"/>Backup Data
-                                </button>
-
-                                {/* DOWNLOAD THE BACKUP FILE FOR DATA UPDATES */}
-                                {manualBackups.length > 0 && (
-                                <div className="space-y-2 rounded">
+                                {!displayExpiringAuth ? (
+                                <>
                                     <button
-                                        onClick={() => {
-                                            setRestoreStatus("idle");
-                                            setRestoreStatusMessage("");
-                                            setshowRestoreBackupModal(true);
-                                        }}
-                                        title="Restore backup data from google drive save"
-                                        className="w-full text-left px-2 py-1 rounded hover:bg-blue-100 dark:hover:bg-blue-900/40"
+                                        title="Create/Save a backup data to Gdrive"
+                                        onClick={() => showSaveGoogleModal(true)}
+                                        className="w-full text-left px-2 py-1 rounded hover:bg-green-100 dark:hover:bg-gray-700"
                                     >
-                                        <FontAwesomeIcon icon={faDownload} className="mr-2"/>Restore backup
+                                        <FontAwesomeIcon icon={faUpload} className="mr-2"/>Backup Data
                                     </button>
-                                </div>
+
+                                    {/* DOWNLOAD THE BACKUP FILE FOR DATA UPDATES */}
+                                    <div className="space-y-2 rounded">
+                                        <button
+                                            onClick={() => {openRestoreModal()}}
+                                            title="Restore backup data from google drive save"
+                                            className="w-full text-left px-2 py-1 rounded hover:bg-blue-100 dark:hover:bg-blue-900/40"
+                                        >
+                                            <FontAwesomeIcon icon={faDownload} className="mr-2"/>Restore backup
+                                        </button>
+                                    </div>
+                                </>
+                                ) : (
+
+                                    <button
+                                        title="Re-authenticate Google connection to backup/restore data"
+                                        onClick={() => logIn()}
+                                        className="w-full text-left px-2 py-1 rounded hover:bg-green-100 dark:hover:bg-gray-700"
+                                    >
+                                        <FontAwesomeIcon icon={faLink} className="mr-2"/>Re-authenticate Google
+                                    </button>
                                 )}
 
                                 {googleUser ? 
@@ -1177,11 +1230,17 @@ export default function Header({ showGalaxy, onToggle }: HeaderProps) {
             )}
 
             {autoBackupState && (
-                <div className="fixed z-60 top-15 left-1/2 transform -translate-x-1/2 bg-teal-100 border-t-4 border-teal-500 rounded-b text-teal-900 px-4 py-2 shadow-md" role="alert">
-                    <div className="flex">
-                        <div className="py-1"><svg className="fill-current h-6 w-6 text-teal-500 mr-4" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20"><path d="M2.93 17.07A10 10 0 1 1 17.07 2.93 10 10 0 0 1 2.93 17.07zm12.73-1.41A8 8 0 1 0 4.34 4.34a8 8 0 0 0 11.32 11.32zM9 11V9h2v6H9v-4zm0-6h2v2H9V5z"/></svg></div>
-                        <div>
-                        <p className="font-bold">Automatic system backup upload successfully.</p>
+                <div className="fixed w-full sm:w-lg z-60 top-15 left-1/2 transform -translate-x-1/2 bg-teal-100 border-t-4 border-teal-500 rounded-b text-teal-900 px-4 py-2 shadow-md" role="alert">
+                    <div className="flex justify-center">
+                        <div className="py-2"><svg className="fill-current h-6 w-6 text-teal-500 mr-2" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20"><path d="M2.93 17.07A10 10 0 1 1 17.07 2.93 10 10 0 0 1 2.93 17.07zm12.73-1.41A8 8 0 1 0 4.34 4.34a8 8 0 0 0 11.32 11.32zM9 11V9h2v6H9v-4zm0-6h2v2H9V5z"/></svg></div>
+                        <div className="flex justify-between items-center">
+                            <p className="font-bold sm:mr-4">Automatic system backup upload successfully.</p>
+                            <span 
+                                className="cursor-pointer rounded-full px-2 py-1.5 text-gray-500 hover:text-red-500 hover:bg-gray-300/50"
+                                onClick={() => setAutoBackupState(false)}
+                            >
+                                <FontAwesomeIcon icon={faX}/>
+                            </span>
                         </div>
                     </div>
                 </div>
