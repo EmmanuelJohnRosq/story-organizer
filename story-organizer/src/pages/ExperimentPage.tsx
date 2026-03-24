@@ -1307,832 +1307,942 @@ export default function ExperimentPage() {
 
     const goToTop = () => {
       window.scrollTo({
-        top: 0,
+        top: 100,
         behavior: 'smooth', // 'smooth' for animation, 'auto' for instant jump
       });
     };
 
+    const activeBookStatus = upcaseLetter(bookStatus || currentBook?.status || "ongoing");
+    const highlightedCharacterCount = character.filter(char => (char.priority ?? 0) > 0).length;
+    const pinnedNotesCount = bookNotes.filter(note => note.pinned).length;
+    const statusTone =
+      bookStatus === "completed"
+        ? "from-emerald-500 to-cyan-500"
+        : bookStatus === "hiatus"
+          ? "from-amber-500 to-orange-500"
+          : bookStatus === "dropped"
+            ? "from-rose-500 to-pink-500"
+            : "from-indigo-700 to-cyan-700";
+
   return (
     // MAIN PARENT CONTAINER DIV CLOSER
-    <div className="mx-auto w-full max-w-7xl 2xl:max-w-8xl p-2 xxs:pl-20 xxs:p-6">
+    <div className="mx-auto w-full max-w-7xl px-3 pb-6 pt-2 xxs:pl-20 xxs:px-6">
       <Navbar actions={navbarActions} />
 
       {/* CONTENT CONTAINER */}
-      <div className="mt-12 xxs:mt-8.5 grid gap-3 xxs:grid-cols-[1.2fr_1.5fr]">
+      <div className="mt-12 space-y-3 xxs:mt-13">
+        <section className="overflow-hidden rounded-3xl border border-gray-200 bg-white shadow-lg dark:border-gray-800 dark:bg-gray-900">
+          <div className="grid gap-0 lg:grid-cols-[1.4fr_0.9fr]">
+            <div className={`relative overflow-hidden bg-gradient-to-br ${statusTone} p-6 text-white sm:p-8`}>
+              <div className="absolute inset-0 bg-[radial-gradient(circle_at_top_right,rgba(255,255,255,0.22),transparent_32%),radial-gradient(circle_at_bottom_left,rgba(255,255,255,0.18),transparent_28%)]" />
+              <div className="relative">
+                
+                <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
+                  <div className="min-w-0 mt-1">
+                    <h2 className="text-xl font-semibold uppercase tracking-[0.35em] text-white/70">Story workshop</h2>
+                  </div>
 
-        {/* LEFT SIDE CONTAINER */}
-        <div className="flex-1">
-
-            {/* BOOK AND CHARACTER FORMS LEFT PANEL */}
-            <div className="w-full">
-              <div className="">
-                {/* ADD CHARACTER FORM */}
-                {(addCharacterState &&
-                  <form
-                    className="flex-1 rounded-xl shadow-2xl p-6 mb-2 bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 transition-all duration-300 animate-fadeDown"
-                    onSubmit={addCharacter}
+                  <button
+                    type="button"
+                    onClick={() => navigate("/")}
+                    className="inline-flex items-center gap-2 self-start rounded-2xl border border-white/20 bg-white/10 px-4 py-2 text-sm font-semibold text-white backdrop-blur transition hover:bg-white/20"
                   >
-                    <div className="flex items-center justify-between mb-6">
-                      <h2 className="text-lg font-bold text-gray-800 dark:text-gray-100">Add New Character</h2>
-                      <span className="px-2 py-1 text-xs font-medium bg-blue-100 text-blue-600 rounded-full dark:bg-blue-900/30 dark:text-blue-400">
-                        Draft Mode
-                      </span>
-                    </div>
+                    <FontAwesomeIcon icon={faArrowLeft} />
+                    Back to library
+                  </button>
+                </div>
 
-                    <div className="space-y-5 my-2">
-                      {/* Name Input */}
-                      <div>
-                        <label className="block text-xs font-semibold uppercase tracking-wider text-gray-500 mb-1 ml-1">Full Name</label>
-                        <input 
-                          className="rounded-lg border border-gray-300 dark:border-gray-700 p-2.5 dark:bg-gray-800 w-full focus:ring-2 focus:ring-blue-500 outline-none transition" 
-                          placeholder="e.g. Artorius Pendragon" 
-                          value={name} 
-                          onChange={e => setName(e.target.value)}
-                          required 
-                        />
+                <p className="mt-3 max-w-2xl text-sm text-white/85 sm:text-base">
+                  Keep your book profile, cast, and lore aligned in one polished workspace.
+                </p>
+
+                <div className="mt-7 flex flex-wrap gap-2 text-xs font-semibold uppercase tracking-[0.22em] text-white/80">
+                  <span className="rounded-full border border-white/20 bg-white/10 px-3 py-1.5">{activeBookStatus}</span>
+                  <span className="rounded-full border border-white/20 bg-white/10 px-3 py-1.5">Volume {bookVolume || currentBook?.volume || 0}</span>
+                  <span className="rounded-full border border-white/20 bg-white/10 px-3 py-1.5">{bookChapterCount || 0} Chapters</span>
+                </div>
+              </div>
+            </div>
+
+            <div className="hidden sm:grid grid-cols-2 gap-3 bg-gray-50 p-4 dark:bg-gray-950/60 sm:p-2">
+              {[
+                { label: "Characters", value: character.length },
+                { label: "Highlighted", value: highlightedCharacterCount },
+                { label: "Pinned notes", value: pinnedNotesCount },
+                { label: "Lore sections", value: worldbuildingSections.length },
+              ].map(stat => (
+                <div key={stat.label} className="rounded-2xl border border-gray-200 bg-white px-4 py-4 shadow-sm dark:border-gray-800 dark:bg-gray-900 transition-colors hover:bg-gray-100 dark:hover:bg-gray-800">
+                  <p className="text-[11px] uppercase tracking-[0.24em] text-gray-400">{stat.label}</p>
+                  <p className="mt-2 text-2xl font-bold text-gray-900 dark:text-white">{stat.value}</p>
+                </div>
+              ))}
+            </div>
+          </div>
+        </section>
+
+        <div className="grid gap-3 xxs:grid-cols-[1.2fr_1.5fr]">
+          {/* LEFT SIDE CONTAINER */}
+          <div className="flex-1">
+
+              {/* BOOK AND CHARACTER FORMS LEFT PANEL */}
+              <div className="w-full">
+                <div className="">
+                  {/* ADD CHARACTER FORM */}
+                  {(addCharacterState &&
+                    <form
+                      className="flex-1 rounded-xl shadow-2xl p-6 mb-2 bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 transition-all duration-300 animate-fadeDown"
+                      onSubmit={addCharacter}
+                    >
+                      <div className="flex items-center justify-between mb-6">
+                        <h2 className="text-lg font-bold text-gray-800 dark:text-gray-100">Add New Character</h2>
+                        <span className="px-2 py-1 text-xs font-medium bg-blue-100 text-blue-600 rounded-full dark:bg-blue-900/30 dark:text-blue-400">
+                          Draft Mode
+                        </span>
                       </div>
 
-                      {/* Row for Role & Race */}
-                      <div className="grid grid-cols-2 gap-4">
+                      <div className="space-y-5 my-2">
+                        {/* Name Input */}
                         <div>
-                          <label className="block text-xs font-semibold uppercase tracking-wider text-gray-500 mb-1 ml-1">Role</label>
-                          <select 
-                            className="rounded-lg border border-gray-300 dark:border-gray-700 p-2.5 dark:bg-gray-800 w-full focus:ring-2 focus:ring-blue-500 outline-none transition appearance-none cursor-pointer"
-                            value={role} 
-                            onChange={e => setRole(e.target.value)}
-                            required
-                          >
-                            <option value="">Select Role</option>
-                            <option value="protagonist">Protagonist</option>
-                            <option value="antagonist">Antagonist</option>
-                            <option value="supporting">Supporting character</option>
-                            <option value="confidant">Confidant</option>
-                            <option value="mentor">Mentor</option>
-                            <option value="love interest">Love interest</option>
-                            <option value="background">Background character</option>
-                            <option value="rival">Rival</option>
-                            <option value="side character">Side character</option>
-                            <option value="unknown">Unknown</option>
-                          </select>
-                        </div> 
-
-                        <div>
-                          <label className="block text-xs font-semibold uppercase tracking-wider text-gray-500 mb-1 ml-1">Race</label>
-                          <select 
-                            className="rounded-lg border border-gray-300 dark:border-gray-700 p-2.5 dark:bg-gray-800 w-full focus:ring-2 focus:ring-blue-500 outline-none transition appearance-none cursor-pointer"
-                            value={race} 
-                            onChange={e => setRace(e.target.value)}
-                            required
-                          >
-                            <option value="">Select Race</option>
-                            <option value="human">Human</option>
-                            <option value="elf">Elf</option>
-                            <option value="dwarf">Dwarf</option>
-                            <option value="orc">Orc</option>
-                            <option value="dragon">Dragon</option>
-                            <option value="other">Other</option>
-                          </select>
-                        </div>
-                      </div>
-
-                      {/* Row for Status & Appearance */}
-                      <div className="grid grid-cols-2 gap-4">
-                        <div>
-                          <label className="block text-xs font-semibold uppercase tracking-wider text-gray-500 mb-1 ml-1">Status</label>
-                          <select 
-                            className="rounded-lg border border-gray-300 dark:border-gray-700 p-2.5 dark:bg-gray-800 w-full focus:ring-2 focus:ring-blue-500 outline-none transition appearance-none cursor-pointer"
-                            value={status} 
-                            onChange={e => setStatus(e.target.value)}
-                            required
-                          >
-                            <option value="Alive">Alive</option>
-                            <option value="Deceased">Deceased</option>
-                            <option value="Deceased">Undead</option>
-                            <option value="Unknown">Unknown</option>
-                          </select>
-                        </div>
-
-                        <div>
-                          <label className="block text-xs font-semibold uppercase tracking-wider text-gray-500 mb-1 ml-1">First Chapter Appearance</label>
+                          <label className="block text-xs font-semibold uppercase tracking-wider text-gray-500 mb-1 ml-1">Full Name</label>
                           <input 
-                            type="number" 
                             className="rounded-lg border border-gray-300 dark:border-gray-700 p-2.5 dark:bg-gray-800 w-full focus:ring-2 focus:ring-blue-500 outline-none transition" 
-                            placeholder="Ch. #" 
-                            value={chapterAppearance} 
-                            onChange={e => setChapterAppearance(e.target.value)} 
-                            required
+                            placeholder="e.g. Artorius Pendragon" 
+                            value={name} 
+                            onChange={e => setName(e.target.value)}
+                            required 
                           />
                         </div>
-                      </div>
-                    </div>
 
-                    <button
-                      type="submit"
-                      className="w-full mt-6 bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 rounded-lg shadow-lg hover:shadow-blue-500/30 transform hover:-translate-y-0.5 transition-all active:scale-95"
-                    >
-                      Create Character
-                    </button>
-
-                    <button
-                      type="button"
-                      className="w-full my-3 bg-gray-600 hover:bg-gray-700 text-white font-bold py-3 rounded-lg shadow-lg hover:shadow-gray-700/30 transform transition-all5"
-                      onClick={cancelCharacterAdd}
-                    >
-                      Cancel
-                    </button>
-                  </form>
-                )}
-
-                {/* EDIT BOOK CONTENT FORM */}
-                {(editBookContent &&
-                  <form
-                    className="flex-1 rounded-xl shadow-2xl p-6 mb-2 bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 transition-all duration-300 animate-fadeDown"
-                    onSubmit={saveBookDetails}
-                  >
-                    <div className="flex items-center justify-between mb-6">
-                      <h2 className="text-lg font-bold text-gray-800 dark:text-gray-100">Edit Book Details</h2>
-                      <span className="px-2 py-1 text-xs font-medium bg-blue-100 text-blue-600 rounded-full dark:bg-blue-900/30 dark:text-blue-400">
-                        Draft Mode
-                      </span>
-                    </div>
-
-                    <div className="space-y-5 my-2">
-                      {/* Title Input */}
-                      <div>
-                        <label className="block text-xs font-semibold uppercase tracking-wider text-gray-500 mb-1 ml-1">Book Title</label>
-                        <input
-                          className="rounded-lg border border-gray-300 dark:border-gray-700 p-2.5 dark:bg-gray-800 w-full focus:ring-2 focus:ring-blue-500 outline-none transition"
-                          placeholder="Enter book title"
-                          value={titleDraft}
-                          onChange={e => setTitleDraft(e.target.value)}
-                          required
-                        />
-                      </div>
-
-                      {/* Book Volume */}
-                      <div className="grid grid-cols-2 gap-4">
-                        <div>
-                          <label className="block text-xs font-semibold uppercase tracking-wider text-gray-500 mb-1 ml-1">Book Volume</label>
-                          <input
-                            type="number"
-                            min={0}
-                            className="rounded-lg border border-gray-300 dark:border-gray-700 p-2.5 dark:bg-gray-800 w-full focus:ring-2 focus:ring-blue-500 outline-none transition"
-                            placeholder="e.g. 1"
-                            value={bookVolume}
-                            onChange={e => setBookVolume(e.target.value)}
-                            required
-                          />
-                        </div> 
-
-                        <div>
-                          <label className="block text-xs font-semibold uppercase tracking-wider text-gray-500 mb-1 ml-1">Volume Name</label>
-                          <input
-                            className="rounded-lg border border-gray-300 dark:border-gray-700 p-2.5 dark:bg-gray-800 w-full focus:ring-2 focus:ring-blue-500 outline-none transition"
-                            placeholder="e.g. Dawn of Ashes"
-                            value={bookVolName}
-                            onChange={e => setbookVolName(e.target.value)}
-                          />
-                        </div>
-                      </div>
-
-                      {/* Book status */}
-                      <div className="grid grid-cols-2 gap-4">
-                        <div>
-                          <label className="block text-xs font-semibold uppercase tracking-wider text-gray-500 mb-1 ml-1">Status</label>
-                          <select 
-                            className="rounded-lg border border-gray-300 dark:border-gray-700 p-2.5 dark:bg-gray-800 w-full focus:ring-2 focus:ring-blue-500 outline-none transition appearance-none cursor-pointer"
-                            value={bookStatus}
-                            onChange={e => setBookStatus(e.target.value)}
-                            required
-                          >
-                            <option value="ongoing">Ongoing</option>
-                            <option value="completed">Completed</option>
-                            <option value="hiatus">Hiatus</option>
-                            <option value="dropped">Dropped</option>
-                          </select>
-                        </div>
-
-                        {/* CHAPTER COUNT */}
-                        <div>
-                          <label className="block text-xs font-semibold uppercase tracking-wider text-gray-500 mb-1 ml-1">Chapter Count</label>
-                          <input
-                            type="number"
-                            min={0}
-                            className="rounded-lg border border-gray-300 dark:border-gray-700 p-2.5 dark:bg-gray-800 w-full focus:ring-2 focus:ring-blue-500 outline-none transition"
-                            placeholder="0"
-                            value={bookChapterCount}
-                            onChange={e => setBookChapterCount(Number(e.target.value))}
-                            required
-                          />
-                        </div>
-                      </div>
-
-                      {/* Summary */}
-                      <div>
-                        <label className="block text-xs font-semibold uppercase tracking-wider text-gray-500 mb-1 ml-1">Summary</label>
-                        <textarea
-                          rows={8}
-                          className="rounded-lg border border-gray-300 dark:border-gray-700 p-2.5 dark:bg-gray-800 w-full focus:ring-2 focus:ring-blue-500 outline-none transition resize-y notes-scroll"
-                          placeholder="Write book summary"
-                          value={bookSummary}
-                          onChange={e => setBookSummary(e.target.value)}
-                        />
-                      </div>
-
-                      {/* Genre check list */}
-                      <div>
-                        <label className="block text-xs font-semibold uppercase tracking-wider text-gray-500 mb-1 ml-1">Genre</label>
-                        <div className="grid grid-cols-2 gap-x-10 gap-y-1 overflow-y-auto rounded-lg border border-gray-200 dark:border-gray-700 p-3">
-                          {genreOptions.map(option => (
-                            <label key={option} className="flex items-center gap-2 text-sm text-gray-700 dark:text-gray-200">
-                              <input
-                                type="checkbox"
-                                className="h-4 w-4 rounded border-gray-400 dark:border-gray-600 dark:bg-gray-800"
-                                checked={bookGenre.includes(option)}
-                                onChange={() => toggleBookArrayValue(option, bookGenre, setBookGenre)}
-                              />
-                              {option}
-                            </label>
-                          ))}
-                        </div>
-                      </div>
-
-                      {/* Tags dropdown select */}
-                      <div>
-                        <label className="block text-xs font-semibold uppercase tracking-wider text-gray-500 mb-1 ml-1">Tags</label>
-                        <select
-                          className="rounded-lg border border-gray-300 dark:border-gray-700 p-2.5 dark:bg-gray-800 w-full focus:ring-2 focus:ring-blue-500 outline-none transition"
-                          value=""
-                          onChange={e => {
-                            if (!e.target.value) return;
-                            toggleBookArrayValue(e.target.value, bookTags, setBookTags);
-                          }}
-                        >
-                          <option value="">Select tags...</option>
-                          {Object.entries(tagOptions).map(([category, tags]) => (
-                            <optgroup className="text-sm text-gray-500 font-semibold" key={category} label={category.replace("_", " ")}>
-                              {tags.map((tag) => (
-                                <option className="text-black dark:text-white" key={tag} value={tag}>
-                                  {tag}
-                                </option>
-                              ))}
-                            </optgroup>
-                          ))}
-                        </select>
-
-                        <div className="flex flex-wrap gap-2 mt-3">
-                          {bookTags.length ? bookTags.map(tag => (
-                            <button
-                              key={tag}
-                              type="button"
-                              onClick={() => toggleBookArrayValue(tag, bookTags, setBookTags)}
-                              className="px-3 py-1 rounded-full text-sm bg-purple-200 text-purple-900 dark:bg-purple-900/40 dark:text-purple-200"
-                              title="Click to remove"
-                            >
-                              {tag}
-                            </button>
-                          )) : (
-                            <span className="text-sm text-gray-500 dark:text-gray-400">No tags selected.</span>
-                          )}
-                        </div>
-                      </div>
-
-                    </div>
-
-                    <button
-                      type="submit"
-                      className="w-full mt-6 bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 rounded-lg shadow-lg hover:shadow-blue-500/30 transform hover:-translate-y-0.5 transition-all active:scale-95"
-                    >
-                      Save book details
-                    </button>
-
-                    <button
-                      type="button"
-                      className="w-full my-3 bg-gray-600 hover:bg-gray-700 text-white font-bold py-3 rounded-lg shadow-lg hover:shadow-gray-700/30 transform transition-all5"
-                      onClick={cancelBookDetailsEdit}
-                    >
-                      Cancel
-                    </button>
-
-                  </form>
-                )}
-
-                {/* BOOK SUMMARY FORM */}
-                {!editBookContent && (
-                  <div className="flex flex-col">
-                    <div className="flex-1 rounded-md shadow-lg pt-4 px-4 pb-1 mb-1 bg-gray-100 dark:bg-gray-900 transition duration-300 animate-fadeDown ">
-                      <div className="space-y-2">
-
-                          {/* Summary */}
+                        {/* Row for Role & Race */}
+                        <div className="grid grid-cols-2 gap-4">
                           <div>
+                            <label className="block text-xs font-semibold uppercase tracking-wider text-gray-500 mb-1 ml-1">Role</label>
+                            <select 
+                              className="rounded-lg border border-gray-300 dark:border-gray-700 p-2.5 dark:bg-gray-800 w-full focus:ring-2 focus:ring-blue-500 outline-none transition appearance-none cursor-pointer"
+                              value={role} 
+                              onChange={e => setRole(e.target.value)}
+                              required
+                            >
+                              <option value="">Select Role</option>
+                              <option value="protagonist">Protagonist</option>
+                              <option value="antagonist">Antagonist</option>
+                              <option value="supporting">Supporting character</option>
+                              <option value="confidant">Confidant</option>
+                              <option value="mentor">Mentor</option>
+                              <option value="love interest">Love interest</option>
+                              <option value="background">Background character</option>
+                              <option value="rival">Rival</option>
+                              <option value="side character">Side character</option>
+                              <option value="unknown">Unknown</option>
+                            </select>
+                          </div> 
 
-                            {/* book title and settings dropdown */}
-                            {bookCoverUrl && !showBookContent && (
-                                  <div className="overflow-hidden rounded-2xl border border-gray-200 dark:border-gray-700">
-                                    <img src={bookCoverUrl} alt={`${currentBook?.title || "Book"} cover`} className="h-10 w-full object-cover" />
-                                  </div>
-                                )}
-                            <div className="flex justify-between">
-                              <div className="flex">
-                                <label className="text-xl font-semibold truncate">
+                          <div>
+                            <label className="block text-xs font-semibold uppercase tracking-wider text-gray-500 mb-1 ml-1">Race</label>
+                            <select 
+                              className="rounded-lg border border-gray-300 dark:border-gray-700 p-2.5 dark:bg-gray-800 w-full focus:ring-2 focus:ring-blue-500 outline-none transition appearance-none cursor-pointer"
+                              value={race} 
+                              onChange={e => setRace(e.target.value)}
+                              required
+                            >
+                              <option value="">Select Race</option>
+                              <option value="human">Human</option>
+                              <option value="elf">Elf</option>
+                              <option value="dwarf">Dwarf</option>
+                              <option value="orc">Orc</option>
+                              <option value="dragon">Dragon</option>
+                              <option value="other">Other</option>
+                            </select>
+                          </div>
+                        </div>
+
+                        {/* Row for Status & Appearance */}
+                        <div className="grid grid-cols-2 gap-4">
+                          <div>
+                            <label className="block text-xs font-semibold uppercase tracking-wider text-gray-500 mb-1 ml-1">Status</label>
+                            <select 
+                              className="rounded-lg border border-gray-300 dark:border-gray-700 p-2.5 dark:bg-gray-800 w-full focus:ring-2 focus:ring-blue-500 outline-none transition appearance-none cursor-pointer"
+                              value={status} 
+                              onChange={e => setStatus(e.target.value)}
+                              required
+                            >
+                              <option value="Alive">Alive</option>
+                              <option value="Deceased">Deceased</option>
+                              <option value="Deceased">Undead</option>
+                              <option value="Unknown">Unknown</option>
+                            </select>
+                          </div>
+
+                          <div>
+                            <label className="block text-xs font-semibold uppercase tracking-wider text-gray-500 mb-1 ml-1">First Chapter Appearance</label>
+                            <input 
+                              type="number" 
+                              className="rounded-lg border border-gray-300 dark:border-gray-700 p-2.5 dark:bg-gray-800 w-full focus:ring-2 focus:ring-blue-500 outline-none transition" 
+                              placeholder="Ch. #" 
+                              value={chapterAppearance} 
+                              onChange={e => setChapterAppearance(e.target.value)} 
+                              required
+                            />
+                          </div>
+                        </div>
+                      </div>
+
+                      <button
+                        type="submit"
+                        className="w-full mt-6 bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 rounded-lg shadow-lg hover:shadow-blue-500/30 transform hover:-translate-y-0.5 transition-all active:scale-95"
+                      >
+                        Create Character
+                      </button>
+
+                      <button
+                        type="button"
+                        className="w-full my-3 bg-gray-600 hover:bg-gray-700 text-white font-bold py-3 rounded-lg shadow-lg hover:shadow-gray-700/30 transform transition-all5"
+                        onClick={cancelCharacterAdd}
+                      >
+                        Cancel
+                      </button>
+                    </form>
+                  )}
+
+                  {/* EDIT BOOK CONTENT FORM */}
+                  {(editBookContent &&
+                    <form
+                      className="flex-1 rounded-xl shadow-2xl p-6 mb-2 bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 transition-all duration-300 animate-fadeDown"
+                      onSubmit={saveBookDetails}
+                    >
+                      <div className="flex items-center justify-between mb-6">
+                        <h2 className="text-lg font-bold text-gray-800 dark:text-gray-100">Edit Book Details</h2>
+                        <span className="px-2 py-1 text-xs font-medium bg-blue-100 text-blue-600 rounded-full dark:bg-blue-900/30 dark:text-blue-400">
+                          Draft Mode
+                        </span>
+                      </div>
+
+                      <div className="space-y-5 my-2">
+                        {/* Title Input */}
+                        <div>
+                          <label className="block text-xs font-semibold uppercase tracking-wider text-gray-500 mb-1 ml-1">Book Title</label>
+                          <input
+                            className="rounded-lg border border-gray-300 dark:border-gray-700 p-2.5 dark:bg-gray-800 w-full focus:ring-2 focus:ring-blue-500 outline-none transition"
+                            placeholder="Enter book title"
+                            value={titleDraft}
+                            onChange={e => setTitleDraft(e.target.value)}
+                            required
+                          />
+                        </div>
+
+                        {/* Book Volume */}
+                        <div className="grid grid-cols-2 gap-4">
+                          <div>
+                            <label className="block text-xs font-semibold uppercase tracking-wider text-gray-500 mb-1 ml-1">Book Volume</label>
+                            <input
+                              type="number"
+                              min={0}
+                              className="rounded-lg border border-gray-300 dark:border-gray-700 p-2.5 dark:bg-gray-800 w-full focus:ring-2 focus:ring-blue-500 outline-none transition"
+                              placeholder="e.g. 1"
+                              value={bookVolume}
+                              onChange={e => setBookVolume(e.target.value)}
+                              required
+                            />
+                          </div> 
+
+                          <div>
+                            <label className="block text-xs font-semibold uppercase tracking-wider text-gray-500 mb-1 ml-1">Volume Name</label>
+                            <input
+                              className="rounded-lg border border-gray-300 dark:border-gray-700 p-2.5 dark:bg-gray-800 w-full focus:ring-2 focus:ring-blue-500 outline-none transition"
+                              placeholder="e.g. Dawn of Ashes"
+                              value={bookVolName}
+                              onChange={e => setbookVolName(e.target.value)}
+                            />
+                          </div>
+                        </div>
+
+                        {/* Book status */}
+                        <div className="grid grid-cols-2 gap-4">
+                          <div>
+                            <label className="block text-xs font-semibold uppercase tracking-wider text-gray-500 mb-1 ml-1">Status</label>
+                            <select 
+                              className="rounded-lg border border-gray-300 dark:border-gray-700 p-2.5 dark:bg-gray-800 w-full focus:ring-2 focus:ring-blue-500 outline-none transition appearance-none cursor-pointer"
+                              value={bookStatus}
+                              onChange={e => setBookStatus(e.target.value)}
+                              required
+                            >
+                              <option value="ongoing">Ongoing</option>
+                              <option value="completed">Completed</option>
+                              <option value="hiatus">Hiatus</option>
+                              <option value="dropped">Dropped</option>
+                            </select>
+                          </div>
+
+                          {/* CHAPTER COUNT */}
+                          <div>
+                            <label className="block text-xs font-semibold uppercase tracking-wider text-gray-500 mb-1 ml-1">Chapter Count</label>
+                            <input
+                              type="number"
+                              min={0}
+                              className="rounded-lg border border-gray-300 dark:border-gray-700 p-2.5 dark:bg-gray-800 w-full focus:ring-2 focus:ring-blue-500 outline-none transition"
+                              placeholder="0"
+                              value={bookChapterCount}
+                              onChange={e => setBookChapterCount(Number(e.target.value))}
+                              required
+                            />
+                          </div>
+                        </div>
+
+                        {/* Summary */}
+                        <div>
+                          <label className="block text-xs font-semibold uppercase tracking-wider text-gray-500 mb-1 ml-1">Summary</label>
+                          <textarea
+                            rows={8}
+                            className="rounded-lg border border-gray-300 dark:border-gray-700 p-2.5 dark:bg-gray-800 w-full focus:ring-2 focus:ring-blue-500 outline-none transition resize-y notes-scroll"
+                            placeholder="Write book summary"
+                            value={bookSummary}
+                            onChange={e => setBookSummary(e.target.value)}
+                          />
+                        </div>
+
+                        {/* Genre check list */}
+                        <div>
+                          <label className="block text-xs font-semibold uppercase tracking-wider text-gray-500 mb-1 ml-1">Genre</label>
+                          <div className="grid grid-cols-2 gap-x-10 gap-y-1 overflow-y-auto rounded-lg border border-gray-200 dark:border-gray-700 p-3">
+                            {genreOptions.map(option => (
+                              <label key={option} className="flex items-center gap-2 text-sm text-gray-700 dark:text-gray-200">
+                                <input
+                                  type="checkbox"
+                                  className="h-4 w-4 rounded border-gray-400 dark:border-gray-600 dark:bg-gray-800"
+                                  checked={bookGenre.includes(option)}
+                                  onChange={() => toggleBookArrayValue(option, bookGenre, setBookGenre)}
+                                />
+                                {option}
+                              </label>
+                            ))}
+                          </div>
+                        </div>
+
+                        {/* Tags dropdown select */}
+                        <div>
+                          <label className="block text-xs font-semibold uppercase tracking-wider text-gray-500 mb-1 ml-1">Tags</label>
+                          <select
+                            className="rounded-lg border border-gray-300 dark:border-gray-700 p-2.5 dark:bg-gray-800 w-full focus:ring-2 focus:ring-blue-500 outline-none transition"
+                            value=""
+                            onChange={e => {
+                              if (!e.target.value) return;
+                              toggleBookArrayValue(e.target.value, bookTags, setBookTags);
+                            }}
+                          >
+                            <option value="">Select tags...</option>
+                            {Object.entries(tagOptions).map(([category, tags]) => (
+                              <optgroup className="text-sm text-gray-500 font-semibold" key={category} label={category.replace("_", " ")}>
+                                {tags.map((tag) => (
+                                  <option className="text-black dark:text-white" key={tag} value={tag}>
+                                    {tag}
+                                  </option>
+                                ))}
+                              </optgroup>
+                            ))}
+                          </select>
+
+                          <div className="flex flex-wrap gap-2 mt-3">
+                            {bookTags.length ? bookTags.map(tag => (
+                              <button
+                                key={tag}
+                                type="button"
+                                onClick={() => toggleBookArrayValue(tag, bookTags, setBookTags)}
+                                className="px-3 py-1 rounded-full text-sm bg-purple-200 text-purple-900 dark:bg-purple-900/40 dark:text-purple-200"
+                                title="Click to remove"
+                              >
+                                {tag}
+                              </button>
+                            )) : (
+                              <span className="text-sm text-gray-500 dark:text-gray-400">No tags selected.</span>
+                            )}
+                          </div>
+                        </div>
+
+                      </div>
+
+                      <button
+                        type="submit"
+                        className="w-full mt-6 bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 rounded-lg shadow-lg hover:shadow-blue-500/30 transform hover:-translate-y-0.5 transition-all active:scale-95"
+                      >
+                        Save book details
+                      </button>
+
+                      <button
+                        type="button"
+                        className="w-full my-3 bg-gray-600 hover:bg-gray-700 text-white font-bold py-3 rounded-lg shadow-lg hover:shadow-gray-700/30 transform transition-all5"
+                        onClick={cancelBookDetailsEdit}
+                      >
+                        Cancel
+                      </button>
+
+                    </form>
+                  )}
+
+                  {/* BOOK SUMMARY FORM */}
+                  {!editBookContent && (
+                    <div className="flex flex-col">
+                      <div className="rounded-3xl border border-gray-200 bg-white px-4 pb-4 pt-4 shadow-lg dark:border-gray-800 dark:bg-gray-900 transition duration-300 animate-fadeDown">
+                        <div className="space-y-2">
+
+                            {/* Summary */}
+                            <div>
+
+                              {/* book title and settings dropdown */}
+                              {bookCoverUrl && !showBookContent && (
+                                    <div className="mb-4 overflow-hidden rounded-[24px] border border-gray-200 dark:border-gray-700">
+                                      <img src={bookCoverUrl} alt={`${currentBook?.title || "Book"} cover`} className="h-40 w-full object-cover" />
+                                    </div>
+                                  )}
+                              <div className="flex items-start justify-between gap-3">
+                                <div className="min-w-0">
+                                  <p className="text-xs uppercase tracking-[0.28em] text-indigo-500">Book profile</p>
+                                </div>
+                                  
+                                <div className="relative inline-block"> 
+                                  <button
+                                    className="flex px-2 items-center justify-center rounded-2xl border border-gray-300 text-black transition hover:bg-gray-100 dark:border-gray-700 dark:text-gray-300 dark:hover:bg-gray-800"
+                                    onClick={() => setShowSettingsMenu(prev => !prev)}
+                                    title="Book settings"
+                                  >
+                                    <FontAwesomeIcon icon={faEllipsis} size="lg"/>
+                                  </button>
+
+                                  {showSettingsMenu && (
+                                  <>
+                                    <div 
+                                      className="fixed inset-0 z-20 cursor-default" 
+                                      onClick={(e) => {
+                                        e.stopPropagation(); // Prevents clicking the backdrop from triggering the Card
+                                        setShowSettingsMenu(false);
+                                      }}
+                                    />
+                                  
+                                    <div className="absolute top-9 right-1 z-30 w-56 rounded-md border bg-white dark:bg-gray-800 dark:border-gray-600 shadow-xl p-2 space-y-1">
+                                      
+                                      {/* minimize book details */}
+                                      <button
+                                        className="w-full text-left px-3 py-2 rounded hover:bg-gray-200 dark:hover:bg-gray-700"
+                                        onClick={() => {
+                                          setShowBookContent(prev => !prev);
+                                          setShowSettingsMenu(false);
+                                        }}
+                                      >
+                                        {showBookContent ? "Expand synopsis panel" : "Compact synopsis panel"}
+                                      </button>
+                                      
+                                      {/* open edit book details */}
+                                      <button
+                                        className="w-full text-left px-3 py-2 rounded hover:bg-gray-200 dark:hover:bg-gray-700"
+                                        onClick={() => {
+                                          editBook()
+                                          setShowSettingsMenu(false);
+                                        }}
+                                      >
+                                        Edit book details
+                                      </button>
+
+                                      {/* upload book cover */}
+                                      <button
+                                        className="w-full text-left px-3 py-2 rounded hover:bg-gray-200 dark:hover:bg-gray-700"
+                                        onClick={() => {
+                                          bookCoverInputRef.current?.click();
+                                          setShowSettingsMenu(false);
+                                        }}
+                                      >
+                                        Upload book cover
+                                      </button>
+
+                                      {/* open add new character */}
+                                      <button
+                                        className="w-full text-left px-3 py-2 rounded hover:bg-gray-200 dark:hover:bg-gray-700"
+                                        onClick={() => {
+                                          addNewcharacter();
+                                          setShowSettingsMenu(false);
+                                        }}
+                                      >
+                                        Add character
+                                      </button>
+
+                                      {/* delete the current book */}
+                                      <button
+                                        className="w-full text-left px-3 py-2 rounded text-red-600 hover:bg-red-100 dark:hover:bg-red-900/30"
+                                        onClick={() => {
+                                          if (currentBook?.id) deleteBook(currentBook.id);
+                                        }}
+                                      >
+                                        Delete book
+                                      </button>
+                                    </div>
+                                  </>
+                                  )}
+                                </div>
+                              </div>
+
+                              <div className="mt-2 flex">
+                                <label className="block truncate text-2xl font-black">
                                   {titleDraft || currentBook?.title || "Book Content"}
                                 </label>
                               </div>
-                              
 
-                              <div className="relative inline-block"> 
-                                <button
-                                  className="border-gray-500 text-black rounded-xl dark:text-gray-500 hover:text-white"
-                                  onClick={() => setShowSettingsMenu(prev => !prev)}
-                                  title="Book settings"
+                              <input ref={bookCoverInputRef} type="file" accept="image/*" className="hidden" onChange={uploadBookCover} />
+                              
+                              {/* quick details */}
+                              <div className="mt-2 grid grid-cols-2 gap-2 shadow-sm">
+                                {/* Volume Box */}
+                                <div className="flex flex-col gap-1 rounded-xl bg-gray-50 p-2 dark:bg-gray-800/50 transition-colors hover:bg-gray-100 dark:hover:bg-gray-800">
+                                  <span className="text-[10px] font-bold uppercase tracking-wider text-neutral-400 dark:text-neutral-500">
+                                    Format
+                                  </span>
+                                  <span className="text-sm font-semibold text-neutral-700 dark:text-neutral-200">
+                                    Volume {bookVolume || "0"}
+                                  </span>
+                                </div>
+
+                                {/* Name Box */}
+                                <div className="flex flex-col gap-1 rounded-xl bg-gray-50 p-2 dark:bg-gray-800/50 transition-colors hover:bg-gray-100 dark:hover:bg-gray-800">
+                                  <span className="text-[10px] font-bold uppercase tracking-wider text-neutral-400 dark:text-neutral-500">
+                                    Series Name
+                                  </span>
+                                  <span className="truncate text-sm font-semibold text-neutral-700 dark:text-neutral-200">
+                                    {bookVolName || "Main Story"}
+                                  </span>
+                                </div>
+
+                                {/* Status Box */}
+                                <div className="flex flex-col gap-1 rounded-xl bg-gray-50 p-2 dark:bg-gray-800/50 transition-colors hover:bg-gray-100 dark:hover:bg-gray-800">
+                                  <span className="text-[10px] font-bold uppercase tracking-wider text-neutral-400 dark:text-neutral-500">
+                                    Book Status
+                                  </span>
+                                  <div className="flex items-center gap-1.5">
+                                    <span className="h-1.5 w-1.5 rounded-full bg-emerald-500 shadow-[0_0_8px_rgba(16,185,129,0.5)]"></span>
+                                    <span className="text-sm font-semibold text-neutral-700 dark:text-neutral-200">
+                                      {upcaseLetter(bookStatus) || "In Progress"}
+                                    </span>
+                                  </div>
+                                </div>
+
+                                {/* Chapter Box */}
+                                <div className="flex flex-col gap-1 rounded-xl bg-gray-50 p-2 dark:bg-gray-800/50 transition-colors hover:bg-gray-100 dark:hover:bg-gray-800">
+                                  <span className="text-[10px] font-bold uppercase tracking-wider text-neutral-400 dark:text-neutral-500">
+                                    Count
+                                  </span>
+                                  <span className="text-sm font-semibold text-neutral-700 dark:text-neutral-200">
+                                    {bookChapterCount ? `${bookChapterCount} Chapters` : "Count Pending"}
+                                  </span>
+                                </div>
+                              </div>
+
+                              <textarea
+                                  rows={bookSummary ? 12 : 1}
+                                  className={`${showBookContent ? "hidden" : ""} mt-4 min-h-[180px] w-full rounded-2xl border border-gray-200 bg-gray-50 px-4 py-4 font-serif text-sm leading-7 text-gray-700 transition-all duration-300 placeholder:text-center placeholder:text-lg placeholder-gray-400 focus:outline-none dark:border-gray-800 dark:bg-gray-950/60 dark:text-gray-200 dark:placeholder-gray-600 text-area-scroll resize-none`}
+                                  placeholder="Update book summary"
+                                  value={bookSummary}
+                                  onFocus={(e) => autoResize(e)}
+                                  onBlur={(e) => { e.currentTarget.style.height = "auto";}}
+                                  readOnly
+                              />
+                            </div>
+                        </div>
+                      </div>
+
+                      {/* CHARACTER GENRE AND TAGS */}
+                      {!showBookContent && (
+                        <div className="rounded-3xl border border-gray-200 bg-white p-4 shadow-lg dark:border-gray-800 dark:bg-gray-900 transition duration-300">
+                          <label className="text-sm font-semibold">Book Classification</label>
+
+                          <div className="mb-1 mt-1 block">
+                            <label className="text-xs uppercase tracking-[0.22em] text-blue-900 dark:text-blue-400">Genre</label>
+                            <label className="text-xs text-gray-300"> • </label>
+                            <label className="text-xs uppercase tracking-[0.22em] text-purple-900 dark:text-purple-400">Tags</label>
+                          </div>
+                          
+                          <div className="flex flex-wrap gap-2">
+                            {bookChips.length ? (
+                              bookChips.map((chip, index) => (
+                                <span 
+                                  key={`${chip.type}-${chip.text}-${index}`} 
+                                  className={`px-3 py-1 rounded-full text-sm ${
+                                    chip.type === 'genre' 
+                                      ? "bg-blue-200 text-blue-900 dark:bg-blue-900/40 dark:text-blue-200" // Genre Style
+                                      : "bg-purple-200 text-purple-900 dark:bg-purple-900/40 dark:text-purple-200" // Tag Style
+                                  }`}
                                 >
-                                  <FontAwesomeIcon icon={faEllipsis} size="lg"/>
+                                  {upcaseLetter(chip.text)}
+                                </span>
+                              ))
+                            ) : (
+                              <span className="text-sm text-gray-500 dark:text-gray-400">No data yet.</span>
+                            )}
+                          </div>
+                        </div>
+                      )}
+
+                    </div>
+                  )}
+
+                </div>
+              
+              </div>
+
+              {/* display pinned notes */}
+              <div className="hidden h-fit w-full flex-col rounded-3xl border border-gray-200 bg-white p-3 shadow-lg transition-all duration-300 dark:border-gray-800 dark:bg-gray-900 xxs:sticky xxs:top-13 xxs:flex">
+              
+                <div className="mb-2 flex items-center justify-between gap-1 border-b border-gray-100 px-2 pb-2 dark:border-gray-800">
+                  
+                  <label className="text-sm font-semibold">
+                    <span className="text-yellow-600 text-lg">★
+                    </span>
+                    Pinned Notes
+                  </label>
+
+                  <button onClick={() => setShowPinnedNotes(prev => !prev)} className="text-gray-500 hover:text-white"> <FontAwesomeIcon icon={showPinnedNotes ? faMinus : faPlus}/> </button>
+                </div>
+
+                {showPinnedNotes && (
+                  <div className="space-y-1 overflow-y-auto max-h-[calc(100vh-8rem)] pr-1 notes-scroll">
+                    {bookNotes.filter(note => note.pinned).length > 0 ? (
+                      bookNotes
+                        .filter(note => note.pinned)
+                        .map(notes => (
+                          <div 
+                            className={`${colorMap[notes.color] || 'bg-gray-50 dark:bg-gray-800'} relative p-2 rounded-lg border border-transparent hover:border-yellow-400/50 shadow-sm transition-all animate-fadeDown`}
+                            key={notes.id ?? notes.notesId}
+                          >
+                            {/* Header: Star & Date */}
+                            <div className="flex items-center mb-1"> 
+                              <div className="flex items-center gap-1">
+                                <button 
+                                  onMouseDown={() => {
+                                    togglePin(notes);
+                                  }}
+                                  className="transition-transform hover:scale-110"
+                                >
+                                  <FontAwesomeIcon icon={faStar} className="text-yellow-400 text-sm" />
                                 </button>
 
-                                {showSettingsMenu && (
-                                <>
-                                  <div 
-                                    className="fixed inset-0 z-20 cursor-default" 
-                                    onClick={(e) => {
-                                      e.stopPropagation(); // Prevents clicking the backdrop from triggering the Card
-                                      setShowSettingsMenu(false);
-                                    }}
-                                  />
-                                
-                                  <div className="absolute top-9 right-1 z-30 w-56 rounded-md border bg-white dark:bg-gray-800 dark:border-gray-600 shadow-xl p-2 space-y-1">
-                                    
-                                    {/* minimize book details */}
-                                    <button
-                                      className="w-full text-left px-3 py-2 rounded hover:bg-gray-200 dark:hover:bg-gray-700"
-                                      onClick={() => {
-                                        setShowBookContent(prev => !prev);
-                                        setShowSettingsMenu(false);
-                                      }}
-                                    >
-                                      {showBookContent ? "Expand synopsis panel" : "Compact synopsis panel"}
-                                    </button>
-                                    
-                                    {/* open edit book details */}
-                                    <button
-                                      className="w-full text-left px-3 py-2 rounded hover:bg-gray-200 dark:hover:bg-gray-700"
-                                      onClick={() => {
-                                        editBook()
-                                        setShowSettingsMenu(false);
-                                      }}
-                                    >
-                                      Edit book details
-                                    </button>
-
-                                    {/* upload book cover */}
-                                    <button
-                                      className="w-full text-left px-3 py-2 rounded hover:bg-gray-200 dark:hover:bg-gray-700"
-                                      onClick={() => {
-                                        bookCoverInputRef.current?.click();
-                                        setShowSettingsMenu(false);
-                                      }}
-                                    >
-                                      Upload / change cover art
-                                    </button>
-
-                                    {/* open add new character */}
-                                    <button
-                                      className="w-full text-left px-3 py-2 rounded hover:bg-gray-200 dark:hover:bg-gray-700"
-                                      onClick={() => {
-                                        addNewcharacter();
-                                        setShowSettingsMenu(false);
-                                      }}
-                                    >
-                                      Add character
-                                    </button>
-
-                                    {/* delete the current book */}
-                                    <button
-                                      className="w-full text-left px-3 py-2 rounded text-red-600 hover:bg-red-100 dark:hover:bg-red-900/30"
-                                      onClick={() => {
-                                        if (currentBook?.id) deleteBook(currentBook.id);
-                                      }}
-                                    >
-                                      Delete book
-                                    </button>
-                                  </div>
-                                </>
-                                )}
+                                <span className="text-xs text-gray-800 dark:text-gray-400">
+                                    {new Date(notes.createdAt).toLocaleString("en-US", {
+                                    month: "short",
+                                    day: "numeric",
+                                    year: "numeric",
+                                    hour: "2-digit",
+                                    minute: "2-digit",
+                                    })}
+                                </span>
                               </div>
                             </div>
-
-                            <input ref={bookCoverInputRef} type="file" accept="image/*" className="hidden" onChange={uploadBookCover} />
                             
-                            {/* quick details */}
-                            <div className="flex justify-between mb-1">
-                              <label className="text-xs text-neutral-400">
-                                Volume {bookVolume || "0"} • {bookVolName || "Volume Name"} • {upcaseLetter(bookStatus) || "unknown"}
-                              </label>
-                              
-                              <label className="text-xs text-neutral-400">{"Chapter count: " + bookChapterCount || "add chapter count"}</label>
-                            </div>
-
+                            {/* Note Content */}
                             <textarea
-                                rows={bookSummary ? 12 : 1}
-                                className={`${showBookContent ? "hidden" : ""} font-serif text-sm leading-6 w-full px-1 py-1 focus:outline-none text-sm placeholder-gray-400 dark:placeholder-gray-600 text-area-scroll transition-all duration-300 resize-none placeholder:text-center placeholder:text-lg placeholder:`}
-                                placeholder="Update book summary"
-                                value={bookSummary}
-                                onFocus={(e) => autoResize(e)}
-                                onBlur={(e) => { e.currentTarget.style.height = "auto";}}
-                                readOnly
+                              value={notes.content}
+                              rows={3}
+                              readOnly // Pinned notes are often for reference; make editable on focus if needed
+                              onFocus={(e) => {
+                                autoResize(e); 
+                                setOnFocusId(String(notes.id!)); 
+                                setNoteContent(notes.content); 
+                                setHideSave(true);
+                              }}
+                              className="
+                                notes-scroll w-full text-sm bg-transparent border-none rounded-md
+                                focus:outline-none
+                                resize-none text-gray-800 dark:text-gray-200 placeholder-gray-400"
+                              placeholder="Note content..."
                             />
                           </div>
-                      </div>
-                    </div>
-
-                    {/* CHARACTER GENRE AND TAGS */}
-                    {!showBookContent && (
-                      <div className="rounded-md shadow-lg p-4 mb-2 bg-gray-100 dark:bg-gray-900 transition duration-300">
-                        <label className="text-sm font-semibold">Book Classification</label>
-
-                        <div className="block mb-1 -mt-1">
-                          <label className="text-xs text-blue-900 dark:text-blue-400">Genre</label>
-                          <label className="text-xs text-gray-300"> • </label>
-                          <label className="text-xs text-purple-900 dark:text-purple-400">Tags</label>
-                        </div>
-                        
-                        <div className="flex flex-wrap gap-2">
-                          {bookChips.length ? (
-                            bookChips.map((chip, index) => (
-                              <span 
-                                key={`${chip.type}-${chip.text}-${index}`} 
-                                className={`px-3 py-1 rounded-full text-sm ${
-                                  chip.type === 'genre' 
-                                    ? "bg-blue-200 text-blue-900 dark:bg-blue-900/40 dark:text-blue-200" // Genre Style
-                                    : "bg-purple-200 text-purple-900 dark:bg-purple-900/40 dark:text-purple-200" // Tag Style
-                                }`}
-                              >
-                                {upcaseLetter(chip.text)}
-                              </span>
-                            ))
-                          ) : (
-                            <span className="text-sm text-gray-500 dark:text-gray-400">No data yet.</span>
-                          )}
-                        </div>
+                        ))
+                    ) : (
+                      <div className="py-8 text-center border-2 border-dashed border-gray-100 dark:border-gray-800 rounded-xl">
+                        <p className="text-xs text-gray-400 italic">No pinned notes yet</p>
                       </div>
                     )}
-
                   </div>
                 )}
 
               </div>
-            
-            </div>
 
-            {/* display pinned notes */}
-            <div className="hidden xxs:flex flex-col xxs:sticky xxs:top-13 h-fit w-full rounded-md shadow-sm border border-gray-200 dark:border-gray-800 p-2 xxs:mb-4 bg-white dark:bg-gray-900 transition-all duration-300">
-              
-              <div className="flex items-center justify-between px-2 gap-1 mb-2 border-b border-gray-100 dark:border-gray-800">
-                
-                <label className="text-sm font-semibold">
-                  <span className="text-yellow-600 text-lg">★
-                  </span>
-                  Pinned Notes
-                </label>
-
-                <button onClick={() => setShowPinnedNotes(prev => !prev)} className="text-gray-500 hover:text-white"> <FontAwesomeIcon icon={showPinnedNotes ? faMinus : faPlus}/> </button>
-              </div>
-
-              {showPinnedNotes && (
-                <div className="space-y-1 overflow-y-auto max-h-[calc(100vh-7rem)] pr-1 notes-scroll">
-                  {bookNotes.filter(note => note.pinned).length > 0 ? (
-                    bookNotes
-                      .filter(note => note.pinned)
-                      .map(notes => (
-                        <div 
-                          className={`${colorMap[notes.color] || 'bg-gray-50 dark:bg-gray-800'} relative p-2 rounded-lg border border-transparent hover:border-yellow-400/50 shadow-sm transition-all animate-fadeDown`}
-                          key={notes.id ?? notes.notesId}
-                        >
-                          {/* Header: Star & Date */}
-                          <div className="flex items-center mb-1"> 
-                            <div className="flex items-center gap-1">
-                              <button 
-                                onMouseDown={() => {
-                                  togglePin(notes);
-                                }}
-                                className="transition-transform hover:scale-110"
-                              >
-                                <FontAwesomeIcon icon={faStar} className="text-yellow-400 text-sm" />
-                              </button>
-
-                              <span className="text-xs text-gray-800 dark:text-gray-400">
-                                  {new Date(notes.createdAt).toLocaleString("en-US", {
-                                  month: "short",
-                                  day: "numeric",
-                                  year: "numeric",
-                                  hour: "2-digit",
-                                  minute: "2-digit",
-                                  })}
-                              </span>
-                            </div>
-                          </div>
-                          
-                          {/* Note Content */}
-                          <textarea
-                            value={notes.content}
-                            rows={3}
-                            readOnly // Pinned notes are often for reference; make editable on focus if needed
-                            onFocus={(e) => {
-                              autoResize(e); 
-                              setOnFocusId(String(notes.id!)); 
-                              setNoteContent(notes.content); 
-                              setHideSave(true);
-                            }}
-                            className="
-                              notes-scroll w-full text-sm bg-transparent border-none rounded-md
-                              focus:outline-none
-                              resize-none text-gray-800 dark:text-gray-200 placeholder-gray-400"
-                            placeholder="Note content..."
-                          />
-                        </div>
-                      ))
-                  ) : (
-                    <div className="py-8 text-center border-2 border-dashed border-gray-100 dark:border-gray-800 rounded-xl">
-                      <p className="text-xs text-gray-400 italic">No pinned notes yet</p>
-                    </div>
-                  )}
-                </div>
-              )}
-
-            </div>
-
-        </div>
-        
-        {/* CENTER CONTAINER */}
-        <div className="w-full flex-1">
-
-          {/* character data and grid display */}
-          <div className="rounded-md shadow-lg p-4 mb-2 bg-gray-100 dark:bg-gray-900 transition duration-300">
-            {/* CHARACTER DATA COMPLETION PROGRESS BAR */}
-            <div className="mb-3">
-              <div className="flex items-center justify-between mb-2">
-                <label className="text-sm font-semibold">Character Profile Completion</label>
-                <span className="text-sm text-gray-500 dark:text-gray-400">{averageCompletion}%</span>
-              </div>
-
-              <div className="w-full h-3 bg-gray-300 dark:bg-gray-700 rounded-full overflow-hidden mb-2">
-                <div
-                  className="h-full bg-gradient-to-r from-cyan-500 to-blue-600"
-                  style={{ width: `${averageCompletion}%` }}
-                />
-              </div>
-
-              <p className="text-xs text-gray-600 dark:text-gray-400">{incompleteCharacters} {incompleteCharacters > 1 ? 'characters' : 'character'} still need schema updates.</p>
-            </div>
-
-            {/* CHARACTER GRID TITLE */}
-            <div>
-              <h3 className="font-semibold mb-1">Character Grid</h3>
-
-              {/* DISPLAY IF CHARACTERS ARE NONE */}
-              {character.length === 0 && (
-              <div className="w-full flex justify-center items-center py-20"> 
-                  <h1 className="text-3xl font-bold text-gray-400 text-center"> 
-                  PLEASE ADD SOME CHARACTERS. IT GETS LONELY SOMETIMES HERE... 
-                  </h1> 
-              </div>
-              )}
-              
-              {/* Display Character Card Block */}
-              <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-3 xl:grid-cols-4 gap-1 p-1">
-                  {currentCharacters.map(char => (
-
-                  // CHARACTER CARDS w/ image... //
-                  <div 
-                    key={char.id} 
-                    title="Open character sheet."
-                    className="
-                      relative flex flex-col items-center justify-center p-2
-                      cursor-pointer bg-white dark:bg-gray-950 shadow-md rounded-2xl
-                      transition-all duration-300
-                      hover:bg-gray-50 dark:hover:bg-gray-900 hover:shadow-xl
-                      group animate-fadeDown border border-gray-100 dark:border-gray-800
-                    "
-                    onClick={() => openEditCharacter(char)}
-                  >
-                    <button
-                      type="button"
-                      title="Set character priority"
-                      className={`absolute right-2 top-2 z-10 inline-flex items-center gap-1 rounded-full border px-2 py-1 text-[10px] font-semibold shadow-sm transition hover:border-amber-500 ${char.priority > 0 ? "border-amber-300 bg-amber-100 text-amber-700 dark:border-amber-500/60 dark:bg-amber-500/10 dark:text-amber-200" : "border-gray-200 bg-white/90 text-gray-500 dark:border-gray-700 dark:bg-gray-900/90 dark:text-gray-300"}`}
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        setPriority(priority === char.id ? null : char.id);
-                      }}
-                    >
-                      <FontAwesomeIcon icon={faStar} className={char.priority > 0 ? "text-amber-400" : "text-gray-400"} />
-                      P{char.priority ?? 0}
-                    </button>
-
-                    {/* priority tool tip */}
-                    {priority === char.id && (
-                      <>
-                        {/* Backdrop: stopPropagation prevents the Card click from firing */}
-                        <div 
-                          className="fixed inset-0 z-10" 
-                          onClick={(e) => {
-                            e.stopPropagation(); 
-                            setPriority(null);
-                          }}
-                        />
-                        
-                        <div 
-                          className="absolute left-12 top-10 z-20 mb-2 w-35 rounded-lg bg-gray-900 p-1 shadow-xl ring-1 ring-white/10 dark:bg-slate-800 animate-in fade-in zoom-in duration-200 origin-bottom"
-                          onClick={(e) => e.stopPropagation()} // Prevents clicking the menu from opening the card
-                        >
-                          <label className="text-xs text-gray-400 p-1">Select priority value:</label>
-                          <div className="flex flex-col gap-0.5">
-                            {Object.entries(characterPriority).map(([value, label]) => {  
-                              const isSelected = char.priority === Number(value);
-                              return (
-                                <button
-                                  key={value}
-                                  type="button"
-                                  title={"Priority value: "+ value}
-                                  className={`flex items-center justify-between rounded px-3 py-1.5 text-left text-[11px] transition-colors hover:bg-white/10 ${
-                                    isSelected ? "text-amber-400 font-bold bg-white/5" : "text-gray-300"
-                                  }`}
-                                  onClick={(e) => {
-                                    e.stopPropagation();
-                                    updateCharacterPriority(char.id, Number(value));
-                                    setPriority(null); // Close after selection
-                                  }}
-                                >
-                                  <span>{label}</span>
-                                  <span className="opacity-50">P{value}</span>
-                                </button>
-                              );
-                            })}
-                          </div>
-
-                          {/* Small arrow/tail */}
-                          <div className="absolute -top-1 left-1/2 h-2 w-2 -translate-x-1/2 rotate-45 bg-gray-900 dark:bg-slate-800" />
-                        </div>
-                      </>
-                    )}
-
-                    {/* IMAGE: Responsive size (smaller on mobile, bigger on tablet+) */}
-                    <div className="relative h-20 w-20 sm:h-24 sm:w-24 shrink-0 overflow-hidden rounded-full border-2 border-white dark:border-gray-800 shadow-sm ring-2 ring-gray-100 dark:ring-gray-900">
-                      <img 
-                        className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-105" 
-                        src={imageMap[char.id]?.find(img => img.isDisplayed)?.url || imageMap[char.id]?.[0]?.url || char_image}
-                        alt={char.name} 
-                      />
-                    </div>
-
-                    {/* TEXT CONTENT */}
-                    <div className="mt-3 flex flex-col items-center w-full text-center"> 
-                      <h3 className="text-xs sm:text-sm font-bold tracking-tight line-clamp-1 text-gray-900 dark:text-gray-100">
-                        {char.name}
-                      </h3>
-                      
-                      <div className="items-center justify-center gap-1 mt-1 text-[9px] sm:text-[10px] uppercase tracking-wider font-semibold text-gray-500">
-                        <span className="line-clamp-2">{char.role || "Unknown"}</span>
-                        <span className={char.status === 'alive' ? 'text-green-600' : 'text-red-700'}>
-                          {upcaseLetter(char.status)} 
-                        </span>
-                      </div>
-                    </div>
-                  </div>
-                  ))}
-              </div>
-
-              {/* // PAGINATION   */}
-              {character.length >= 15 && (
-                  <div className="flex items-center justify-between pb-2 flex-wrap">
-
-                  {/* Previous */}
-                  <button
-                      onClick={() => setCurrentPage(prev => Math.max(prev - 1, 1))}
-                      disabled={currentPage === 1}
-                      className="px-3 py-1 bg-gray-300 dark:bg-gray-500 rounded disabled:opacity-50"
-                  >
-                      Prev
-                  </button>
-
-                  <div className="flex items-center gap-2">
-                      {/* First page shortcut */}
-                      {currentPage > 3 && (
-                      <>
-                          <button
-                          onClick={() => setCurrentPage(1)}
-                          className="px-3 py-1 bg-gray-300 dark:bg-gray-500 rounded"
-                          >
-                          1
-                          </button>
-                          <span>-</span>
-                      </>
-                      )}
-
-                      {/* Page Numbers */}
-                      {getPageNumbers().map(page => (
-                      <button
-                          key={page}
-                          onClick={() => setCurrentPage(page)}
-                          className={`px-3 py-1 rounded ${
-                          currentPage === page
-                              ? "bg-blue-500 text-white"
-                              : "bg-gray-300 dark:bg-gray-500"
-                          }`}
-                      >
-                          {page}
-                      </button>
-                      ))}
-
-                      {/* Last page shortcut */}
-                      {currentPage < totalPages - 2 && (
-                      <>
-                          <span>-</span>
-                          <button
-                          onClick={() => setCurrentPage(totalPages)}
-                          className="px-3 py-1 bg-gray-300 dark:bg-gray-500 rounded"
-                          >
-                          {totalPages}
-                          </button>
-                      </>
-                      )}
-                  </div>
-
-                  {/* Next */}
-                  <button
-                      onClick={() =>
-                      setCurrentPage(prev => Math.min(prev + 1, totalPages))
-                      }
-                      disabled={currentPage === totalPages}
-                      className="px-3 py-1 bg-gray-300 dark:bg-gray-500 rounded disabled:opacity-50"
-                  >
-                      Next
-                  </button>
-
-                  </div>
-              )}
-            </div>
           </div>
+          
+          {/* CENTER CONTAINER */}
+          <div className="w-full flex-1">
 
-          {/* WORLD BUILDING DETAILS */}
-          <div className="rounded-md shadow-lg p-4 mb-2 bg-gray-100 dark:bg-gray-900 transition duration-300">
-            <div className="flex items-center justify-between gap-2">
+            {/* character data and grid display */}
+            <div className="rounded-3xl border border-gray-200 bg-white p-4 shadow-lg transition duration-300 dark:border-gray-800 dark:bg-gray-900">
+              {/* CHARACTER DATA COMPLETION PROGRESS BAR */}
+              <div className="mb-3">
+                <div className="flex items-center justify-between mb-2">
+                  <label className="text-sm font-semibold">Character Profile Completion</label>
+                  <span className="text-sm text-gray-500 dark:text-gray-400">{averageCompletion}%</span>
+                </div>
+
+                <div className="w-full h-3 bg-gray-300 dark:bg-gray-700 rounded-full overflow-hidden mb-2">
+                  <div
+                    className="h-full bg-gradient-to-r from-cyan-500 to-blue-600"
+                    style={{ width: `${averageCompletion}%` }}
+                  />
+                </div>
+
+                <p className="text-xs text-gray-600 dark:text-gray-400">{incompleteCharacters} {incompleteCharacters > 1 ? 'characters' : 'character'} still need schema updates.</p>
+              </div>
+
+              {/* CHARACTER GRID TITLE */}
               <div>
-                <label className="text-sm font-semibold">World Setting</label>
-                <p className="text-xs text-gray-500 dark:text-gray-400">Your story's facts and lore references</p>
-              </div>
-              
-              <div className="flex gap-2">
-                <button
-                  type="button"
-                  className="px-2 py-1 text-xs rounded border border-gray-400 hover:bg-gray-200 dark:hover:bg-gray-700"
-                  onClick={openEditWorldbuildingModal}
-                  disabled={worldbuildingSections.length < 1}
-                >
-                  <FontAwesomeIcon icon={faPen} /> Edit
-                </button>
-
-                <button
-                  type="button"
-                  className="px-2 py-1 text-xs rounded border border-gray-400 hover:bg-gray-200 dark:hover:bg-gray-700"
-                  onClick={openWorldbuildingModal}
-                >
-                  <FontAwesomeIcon icon={faPlus} /> Add
-                </button>
-              </div>
-            </div>
-
-            <div className="mt-3 space-y-2">
-              {worldbuildingSections.map(section => (
-                <div key={section.id} className="rounded border border-gray-300 dark:border-gray-700 bg-white/60 dark:bg-gray-800/60">
+                <div className="mb-3 flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between">
+                  <div>
+                    <h3 className="font-semibold">Character Grid</h3>
+                    <p className="text-xs text-gray-500 dark:text-gray-400">A cleaner cast overview inspired by the updated library cards.</p>
+                  </div>
                   <button
                     type="button"
-                    className="w-full flex items-center justify-between px-3 py-2 text-left"
-                    onClick={() => toggleWorldSection(section.id)}
+                    onClick={addNewcharacter}
+                    className="inline-flex items-center gap-2 self-start rounded-2xl bg-gray-900 px-4 py-2 text-xs font-semibold uppercase tracking-[0.2em] text-white transition hover:bg-gray-700 dark:bg-white dark:text-gray-900 dark:hover:bg-gray-300"
                   >
-                    <span className="text-sm font-medium text-blue-700 dark:text-blue-300">{section.title}</span>
-                    <span className="text-sm font-bold">{openWorldSections[section.id] ? "−" : "+"}</span>
+                    <FontAwesomeIcon icon={faUserPlus} />
+                    Add character
+                  </button>
+                </div>
+
+                {/* DISPLAY IF CHARACTERS ARE NONE */}
+                {character.length === 0 && (
+                  <div className="flex w-full items-center justify-center rounded-3xl border border-dashed border-gray-300 bg-gradient-to-br from-gray-50 to-indigo-50 px-8 py-20 text-center dark:border-gray-700 dark:from-gray-900 dark:to-indigo-950/20"> 
+                    <h1 className="max-w-xl text-3xl font-bold text-gray-400">  
+                      PLEASE ADD SOME CHARACTERS. IT GETS LONELY SOMETIMES HERE... 
+                      </h1> 
+                  </div>
+                )}
+                
+                {/* Display Character Card Block */}
+                <div className="grid grid-cols-2 gap-3 p-1 sm:grid-cols-3 md:grid-cols-3 xl:grid-cols-4">
+                    {currentCharacters.map(char => (
+
+                    // CHARACTER CARDS w/ image... //
+                    <div 
+                      key={char.id} 
+                      title="Open character sheet."
+                      className="group relative flex cursor-pointer flex-col items-center justify-center overflow-hidden rounded-[28px] border border-gray-200 bg-white p-3 shadow-md transition-all duration-300 hover:-translate-y-1 hover:bg-gray-50 hover:shadow-2xl dark:border-gray-800 dark:bg-gray-950 dark:hover:bg-gray-900 animate-fadeDown"
+                      onClick={() => openEditCharacter(char)}
+                    >
+                      <div className="absolute inset-x-0 top-0 h-20 bg-gradient-to-b from-indigo-100/90 via-cyan-50/60 to-transparent dark:from-indigo-900/30 dark:via-cyan-900/10 dark:to-transparent" />
+                      <button
+                        type="button"
+                        title="Set character priority"
+                        className={`absolute right-2 top-2 z-10 inline-flex items-center gap-1 rounded-full border px-2 py-1 text-[10px] font-semibold shadow-sm transition hover:border-amber-500 ${char.priority > 0 ? "border-amber-300 bg-amber-100 text-amber-700 dark:border-amber-500/60 dark:bg-amber-500/10 dark:text-amber-200" : "border-gray-200 bg-white/90 text-gray-500 dark:border-gray-700 dark:bg-gray-900/90 dark:text-gray-300"}`}
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setPriority(priority === char.id ? null : char.id);
+                        }}
+                      >
+                        <FontAwesomeIcon icon={faStar} className={char.priority > 0 ? "text-amber-400" : "text-gray-400"} />
+                        P{char.priority ?? 0}
+                      </button>
+
+                      {/* priority tool tip */}
+                      {priority === char.id && (
+                        <>
+                          {/* Backdrop: stopPropagation prevents the Card click from firing */}
+                          <div 
+                            className="fixed inset-0 z-10" 
+                            onClick={(e) => {
+                              e.stopPropagation(); 
+                              setPriority(null);
+                            }}
+                          />
+                          
+                          <div 
+                            className="absolute left-12 top-10 z-20 mb-2 w-35 rounded-lg bg-gray-900 p-1 shadow-xl ring-1 ring-white/10 dark:bg-slate-800 animate-in fade-in zoom-in duration-200 origin-bottom"
+                            onClick={(e) => e.stopPropagation()} // Prevents clicking the menu from opening the card
+                          >
+                            <label className="text-xs text-gray-400 p-1">Select priority value:</label>
+                            <div className="flex flex-col gap-0.5">
+                              {Object.entries(characterPriority).map(([value, label]) => {  
+                                const isSelected = char.priority === Number(value);
+                                return (
+                                  <button
+                                    key={value}
+                                    type="button"
+                                    title={"Priority value: "+ value}
+                                    className={`flex items-center justify-between rounded px-3 py-1.5 text-left text-[11px] transition-colors hover:bg-white/10 ${
+                                      isSelected ? "text-amber-400 font-bold bg-white/5" : "text-gray-300"
+                                    }`}
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      updateCharacterPriority(char.id, Number(value));
+                                      setPriority(null); // Close after selection
+                                    }}
+                                  >
+                                    <span>{label}</span>
+                                    <span className="opacity-50">P{value}</span>
+                                  </button>
+                                );
+                              })}
+                            </div>
+
+                            {/* Small arrow/tail */}
+                            <div className="absolute -top-1 left-1/2 h-2 w-2 -translate-x-1/2 rotate-45 bg-gray-900 dark:bg-slate-800" />
+                          </div>
+                        </>
+                      )}
+
+                      {/* IMAGE: Responsive size (smaller on mobile, bigger on tablet+) */}
+                      <div className="relative mt-6 h-20 w-20 shrink-0 overflow-hidden rounded-full border-2 border-white shadow-sm ring-4 ring-white dark:border-gray-800 dark:ring-gray-900 sm:h-24 sm:w-24">
+                        <img 
+                          className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-105" 
+                          src={imageMap[char.id]?.find(img => img.isDisplayed)?.url || imageMap[char.id]?.[0]?.url || char_image}
+                          alt={char.name} 
+                        />
+                      </div>
+
+                      {/* TEXT CONTENT */}
+                      <div className="mt-3 flex flex-col items-center w-full text-center"> 
+                        <h3 className="text-xs sm:text-sm font-bold tracking-tight line-clamp-1 text-gray-900 dark:text-gray-100">
+                          {char.name}
+                        </h3>
+                        
+                        <div className="mt-1 items-center justify-center gap-1 text-[9px] font-semibold uppercase tracking-wider text-gray-500 sm:text-[10px]">
+                          <span className="line-clamp-2">{char.role || "Unknown"}</span>
+                          <span className={char.status === 'alive' ? 'text-green-600' : 'text-red-700'}>
+                            {upcaseLetter(char.status)} 
+                          </span>
+                        </div>
+                      </div>
+                    </div>
+                    ))}
+                </div>
+
+                {/* // PAGINATION   */}
+                {character.length >= 15 && (
+                    <div className="flex flex-wrap items-center justify-between gap-2 pb-2 pt-2">
+
+                    {/* Previous */}
+                    <button
+                        onClick={() => setCurrentPage(prev => Math.max(prev - 1, 1))}
+                        disabled={currentPage === 1}
+                        className="rounded-xl bg-gray-200 px-3 py-1.5 text-sm font-medium transition hover:bg-gray-300 disabled:opacity-50 dark:bg-gray-700 dark:hover:bg-gray-600"
+                    >
+                        Prev
+                    </button>
+
+                    <div className="flex items-center gap-2">
+                        {/* First page shortcut */}
+                        {currentPage > 3 && (
+                        <>
+                            <button
+                            onClick={() => setCurrentPage(1)}
+                            className="rounded-xl bg-gray-200 px-3 py-1.5 text-sm font-medium transition hover:bg-gray-300 dark:bg-gray-700 dark:hover:bg-gray-600"
+                            >
+                            1
+                            </button>
+                            <span>-</span>
+                        </>
+                        )}
+
+                        {/* Page Numbers */}
+                        {getPageNumbers().map(page => (
+                        <button
+                            key={page}
+                            onClick={() => setCurrentPage(page)}
+                            className={`rounded-xl px-3 py-1.5 text-sm font-medium transition ${
+                            currentPage === page
+                                ? "bg-blue-500 text-white"
+                                : "bg-gray-200 hover:bg-gray-300 dark:bg-gray-700 dark:hover:bg-gray-600"
+                            }`}
+                        > 
+                            {page}
+                        </button>
+                        ))}
+
+                        {/* Last page shortcut */}
+                        {currentPage < totalPages - 2 && (
+                        <>
+                            <span>-</span>
+                            <button
+                            onClick={() => setCurrentPage(totalPages)}
+                            className="rounded-xl bg-gray-200 px-3 py-1.5 text-sm font-medium transition hover:bg-gray-300 dark:bg-gray-700 dark:hover:bg-gray-600"
+                            >
+                            {totalPages}
+                            </button>
+                        </>
+                        )}
+                    </div>
+
+                    {/* Next */}
+                    <button
+                        onClick={() =>
+                        setCurrentPage(prev => Math.min(prev + 1, totalPages))
+                        }
+                        disabled={currentPage === totalPages}
+                        className="rounded-xl bg-gray-200 px-3 py-1.5 text-sm font-medium transition hover:bg-gray-300 disabled:opacity-50 dark:bg-gray-700 dark:hover:bg-gray-600"
+                    >
+                        Next
+                    </button>
+
+                    </div>
+                )}
+              </div>
+            </div>
+
+            {/* WORLD BUILDING DETAILS */}
+            <div className="rounded-3xl border border-gray-200 bg-white p-4 shadow-lg transition duration-300 dark:border-gray-800 dark:bg-gray-900">
+              <div className="flex items-center justify-between gap-2">
+                <div>
+                  <label className="text-sm font-semibold">World Setting</label>
+                  <p className="text-xs text-gray-500 dark:text-gray-400">Your story's facts and lore references</p>
+                </div>
+                
+                <div className="flex gap-2">
+                  <button
+                    type="button"
+                    className="rounded-xl border border-gray-300 px-3 py-2 text-xs font-semibold uppercase tracking-[0.2em] transition hover:bg-gray-100 dark:border-gray-700 dark:hover:bg-gray-800"
+                    onClick={openEditWorldbuildingModal}
+                    disabled={worldbuildingSections.length < 1}
+                  >
+                    <FontAwesomeIcon icon={faPen} /> Edit
                   </button>
 
-                  {openWorldSections[section.id] && (
-                    <dl className="px-3 pb-3 space-y-2">
-                      {section.entries.map((entry, index) => (
-                        <div key={`${section.id}-${entry.label}-${index}`}>
-                          <dt className="text-[11px] uppercase tracking-wide text-gray-500 dark:text-gray-400">{entry.label}</dt>
-                          <dd className="text-sm text-gray-700 dark:text-gray-200">{entry.value}</dd>
-                        </div>
-                      ))}
-                    </dl>
-                  )}
+                  <button
+                    type="button"
+                    className="rounded-xl border border-gray-300 px-3 py-2 text-xs font-semibold uppercase tracking-[0.2em] transition hover:bg-gray-100 dark:border-gray-700 dark:hover:bg-gray-800"
+                    onClick={openWorldbuildingModal}
+                  >
+                    <FontAwesomeIcon icon={faPlus} /> Add
+                  </button>
                 </div>
-              ))}
+              </div>
 
-              {worldbuildingSections.length < 1 && (
-                <div className="py-8 text-center border-2 border-dashed border-gray-100 dark:border-gray-800 rounded-xl">
-                  <p className="text-xs text-gray-400 italic">No world settings yet</p>
-                </div>
-              )}
+              <div className="mt-3 space-y-2">
+                {worldbuildingSections.map(section => (
+                  <div key={section.id} className="overflow-hidden rounded-2xl border border-gray-200 bg-gray-50/70 dark:border-gray-700 dark:bg-gray-800/60">
+                    <button
+                      type="button"
+                      className="flex w-full items-center justify-between px-4 py-3 text-left transition hover:bg-gray-100/80 dark:hover:bg-gray-800"
+                      onClick={() => toggleWorldSection(section.id)}
+                    >
+                      <span className="text-sm font-semibold text-blue-700 dark:text-blue-300">{section.title}</span>
+                      <span className="text-sm font-bold">{openWorldSections[section.id] ? "−" : "+"}</span>
+                    </button>
+
+                    {openWorldSections[section.id] && (
+                      <dl className="space-y-3 border-t border-gray-200 px-4 pb-4 pt-3 dark:border-gray-700">
+                        {section.entries.map((entry, index) => (
+                          <div key={`${section.id}-${entry.label}-${index}`} className="rounded-2xl bg-white px-3 py-3 shadow-sm dark:bg-gray-900">
+                            <dt className="text-[11px] uppercase tracking-wide text-gray-500 dark:text-gray-400">{entry.label}</dt>
+                            <dd className="mt-1 text-sm text-gray-700 dark:text-gray-200">{entry.value}</dd>
+                          </div>
+                        ))}
+                      </dl>
+                    )}
+                  </div>
+                ))}
+
+                {worldbuildingSections.length < 1 && (
+                  <div className="py-8 text-center border-2 border-dashed border-gray-100 dark:border-gray-800 rounded-xl">
+                    <p className="text-xs text-gray-400 italic">No world settings yet</p>
+                  </div>
+                )}
+              </div>
             </div>
-          </div>
 
+          </div>
         </div>
         
       </div>
