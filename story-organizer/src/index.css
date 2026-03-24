@@ -113,6 +113,231 @@ button:disabled {
   animation: fadeIn 0.2s ease-out forwards;
 }
 
+.particle {
+  position: absolute;
+  bottom: -20px;
+  width: 4px;
+  height: 4px;
+  background: rgba(34, 211, 238, 0.7); /* cyan glow */
+  border-radius: 9999px;
+  filter: blur(3px);
+  opacity: 0.5;
+  animation: floatUp linear infinite;
+}
+
+@keyframes floatUp {
+  0% {
+    transform: translateY(0) scale(0.8);
+    opacity: 0;
+  }
+  10% {
+    opacity: 0.6;
+  }
+  50% {
+    transform: translateY(-50vh) scale(1);
+    opacity: 0.8;
+  }
+  100% {
+    transform: translateY(-110vh) scale(0.6);
+    opacity: 0;
+  }
+}
+
+.stars-layer, .planet, .bigmeteor, .orbit-axis {
+  will-change: transform;
+  transform: translateZ(0); 
+  backface-visibility: hidden;
+}
+
+.stars-layer {
+  position: absolute;
+  /* 1. MAKE IT MASSIVE: -100% on all sides covers the rotation gaps */
+  inset: -100%; 
+  
+  pointer-events: none;
+
+  /* 2. THE MASK: Adjusted so the 'hole' stays relative to the screen center */
+  -webkit-mask-image: radial-gradient(circle, transparent 15%, black 35%);
+  mask-image: radial-gradient(circle, transparent 15%, black 35%);
+  
+  /* 3. SLOWER SPIN: 10s is very fast! Try 120s for a 'universe' feel */
+  animation: universeSpin 12000s linear infinite;
+}
+
+/* ⭐ SMALL STARS */  
+.stars-layer::before {
+  content: "";
+  position: absolute;   
+  inset: 0;
+  background-image: 
+    radial-gradient(1px 1px at 5% 10%, white, transparent),
+    /* ... keep your existing radial gradients here ... */
+    radial-gradient(1px 1px at 85% 95%, #c4b5fd, transparent)
+    radial-gradient(1px 1px at 10% 10%, #fff, transparent),
+    radial-gradient(1px 1px at 20% 40%, #fff, transparent),
+    radial-gradient(2px 2px at 30% 80%, #67e8f9, transparent),
+    radial-gradient(1px 1px at 40% 20%, #fff, transparent),
+    radial-gradient(1px 1px at 50% 50%, #c4b5fd, transparent),
+    radial-gradient(2px 2px at 60% 10%, #fff, transparent),
+    radial-gradient(1px 1px at 70% 90%, #67e8f9, transparent),
+    radial-gradient(1px 1px at 80% 30%, #fff, transparent),
+    radial-gradient(2px 2px at 90% 70%, #c4b5fd, transparent),
+    radial-gradient(2px 2px at 10% 10%, #ffffff 100%, transparent),
+    radial-gradient(1px 1px at 95% 15%, #fff, transparent);
+  background-size: 172px 142px;
+  
+  /* 2. ANIMATION: Subtle twinkle */
+  animation: twinkle 4s ease-in-out infinite alternate;
+}
+
+/* 🌟 MEDIUM STARS */
+.stars-layer::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background-image:
+    radial-gradient(2px 2px at 5% 20%, #fff, transparent),
+    radial-gradient(3px 3px at 95% 30%, #67e8f9, transparent),
+    radial-gradient(2px 2px at 10% 80%, #c084fc, transparent),
+    radial-gradient(3px 3px at 90% 70%, #fff, transparent),
+    radial-gradient(2px 2px at 15% 50%, #67e8f9, transparent);
+  background-size: 162px 321px;
+  
+  /* 3. ANIMATION: Different timing so they don't blink in sync */
+  animation: twinkle 7s ease-in-out infinite alternate-reverse;
+}
+
+/* 4. THE KEYFRAME */
+@keyframes twinkle {
+  0% { opacity: 0.9; transform: scale(0.98); }
+  100% { opacity: 1; transform: scale(1); }
+}
+
+@keyframes universeSpin {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
+}
+
+.meteor {
+  position: absolute;
+  width: 2px;
+  height: 80px;
+  background: linear-gradient(180deg, white, transparent);
+  opacity: 0;
+  transform: rotate(120deg);
+  filter: blur(1px);
+
+  animation: meteorFall 6s linear infinite;
+}
+
+.bigmeteor-diagonal {
+  position: absolute;
+  /* 1. START POSITION: Top Right corner area */
+  top: -10%;
+  right: 10%;
+  
+  width: 6px;
+  height: 100px;
+  /* Gradient: White head at the bottom (225deg), trailing to transparent */
+  background: linear-gradient(30deg, #fff, transparent);
+  opacity: 0;
+  filter: blur(1px);
+  
+  /* 2. GLOW: Makes it look like it's burning up */
+  box-shadow: 0 0 20px rgba(255, 255, 255, 0.4);
+
+  /* 3. ANIMATION: Slower than a small star, faster than a planet */
+  animation: meteorDiagonal 12s linear infinite;
+}
+
+@keyframes meteorFall {
+  0% {
+    transform: translate(0, 0) rotate(130deg);
+    opacity: 0;
+  }
+  10% {
+    opacity: 0.5;
+  }
+  100% {
+    transform: translate(300px, 300px) rotate(130deg);
+    opacity: 0;
+  }
+}
+
+@keyframes meteorDiagonal {
+  0% {
+    /* Starting point: Top right, rotated to face bottom-left (~45deg) */
+    transform: translate(0, 0) rotate(45deg);
+    opacity: 0;
+  }
+  5% {
+    opacity: 0.8; /* Quick fade in */
+  }
+  100% {
+    /* Ending point: Far Left (-X) and Far Down (+Y) */
+    transform: translate(-1200px, 1200px) rotate(45deg);
+    opacity: 0;
+  }
+}
+
+.orbit-axis {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  border-radius: 50%;
+  pointer-events: none;
+}
+
+/* 3. Planet 1: Large Orbit (Slow) */
+.orbit-1 {
+  width: 20vw; 
+  height: 40vw;
+  margin-top: -10vw;
+  margin-left: 50vw;
+  animation: orbit-spin 120s linear infinite;
+}
+
+/* 4. Planet 2: Smaller Orbit (Faster) */
+.orbit-2 {
+  width: 50vw;
+  height: 50vw;
+  margin-top: -30vw;
+  margin-left: -54vw;
+  animation: orbit-spin 160s linear infinite reverse; /* Moves opposite way */
+}
+
+/* The Planet Styles */
+.planet {
+  position: absolute;
+  border-radius: 50%;
+  filter: blur(1px);
+  opacity: 0.25;
+}
+
+.planet-1 {
+  width: 180px;
+  height: 180px;
+  top: 0;
+  left: 50%;
+  background: radial-gradient(circle at 30% 30%, #67e8f9, #1e293b);
+  /* Counter-rotate so the gradient/shading stays fixed */
+  animation: orbit-spin 120s linear infinite reverse;
+}
+
+.planet-2 {
+  width: 120px;
+  height: 120px;
+  bottom: 0;
+  left: 50%;
+  background: radial-gradient(circle at 30% 30%, #c084fc, #1e1b4b);
+  animation: orbit-spin 60s linear infinite;
+}
+
+@keyframes orbit-spin {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
+}
+
 
 /* NEWEST BROWSERS SCROLLBAR SET */
 /* .notes-scroll {

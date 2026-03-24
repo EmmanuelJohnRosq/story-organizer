@@ -9,7 +9,12 @@ import { useGoogleAuth, type GoogleUser } from "../context/GoogleAuthContext";
 import { signOut } from "../services/googleAuth";
 import { downloadDriveFile, listManualBackupFiles, listRestoreBackupFiles, type DriveBackupFile, uploadManualBackup, upsertAutoBackup } from "../services/driveService";
 
-export default function Header() {
+interface HeaderProps {
+  showGalaxy: boolean;
+  onToggle: () => void;
+}
+
+export default function Header({ showGalaxy, onToggle }: HeaderProps) {
     const navigate = useNavigate();
 
     const { currentBookId, characterSlug } = useParams();
@@ -724,6 +729,18 @@ export default function Header() {
                                 </span>
                             </button>
                         </div>
+
+                        {/* The Toggle animation */}
+                        <button 
+                            onClick={onToggle}
+                            className="flex items-center gap-2 px-3 py-1.5 rounded-full border border-white/20 bg-white/5 hover:bg-white/10 transition-all group"
+                            title="background animation toggle"
+                        >
+                            <div className={`w-3 h-3 rounded-full transition-all ${showGalaxy ? 'bg-cyan-400 shadow-[0_0_8px_#22d3ee]' : 'bg-slate-500'}`} />
+                            <span className="text-xs font-medium text-slate-300 group-hover:text-white">
+                            {showGalaxy ? "Animations ON" : "Animations OFF"}
+                            </span>
+                        </button>
 
                         {/* CONNECT GOOGLE ACCOUNT FOR BACKUP SAVE */}
                         {googleUser ? (

@@ -1816,7 +1816,7 @@ export default function ExperimentPage() {
                                   <div className="flex items-center gap-1.5">
                                     <span className="h-1.5 w-1.5 rounded-full bg-emerald-500 shadow-[0_0_8px_rgba(16,185,129,0.5)]"></span>
                                     <span className="text-sm font-semibold text-neutral-700 dark:text-neutral-200">
-                                      {upcaseLetter(bookStatus) || "In Progress"}
+                                      {upcaseLetter(bookStatus) || "Unknown"}
                                     </span>
                                   </div>
                                 </div>
@@ -2628,9 +2628,11 @@ export default function ExperimentPage() {
         {/* world atlas slide bar */}
         {isWorldAtlasMounted && (
           <div
-            className={`fixed inset-0 z-50 backdrop-blur-[2px] transition-all duration-300 ease-out ${
-              isWorldAtlasVisible ? "bg-slate-950/55 opacity-100" : "bg-slate-950/0 opacity-0"
-            }`}
+            className={`fixed inset-0 z-50 transition-all duration-500 ease-out
+              ${isWorldAtlasVisible 
+                ? "bg-slate-950/70 backdrop-blur-md opacity-100" 
+                : "bg-slate-950/0 backdrop-blur-0 opacity-0"}
+              `}  
             onMouseDown={(e) => {
               if (e.target === e.currentTarget) {
                 closeWorldAtlas();
@@ -2638,17 +2640,46 @@ export default function ExperimentPage() {
             }}
           >
             <div
-              className={`h-full w-full max-w-[92vw] sm:max-w-[70vw] lg:max-w-[52vw] xl:max-w-[42vw] rounded-r-3xl border-r border-white/10 bg-gradient-to-b from-slate-950 via-slate-900 to-[#081224] text-white shadow-2xl transition-transform duration-600 ease-out will-change-transform ${
-                isWorldAtlasVisible ? "translate-x-0" : "-translate-x-full"
-              }`}
+              className={`relative h-full w-full max-w-[92vw] sm:max-w-[70vw] lg:max-w-[52vw] xl:max-w-[42vw]
+              rounded-r-3xl border-r border-white/10
+              bg-gradient-to-b from-[#020617] via-[#020617] to-[#0a1628]
+              text-white shadow-[0_0_80px_rgba(34,211,238,0.08)]
+              transition-all duration-500 ease-[cubic-bezier(0.22,1,0.36,1)]
+              will-change-transform
+              ${isWorldAtlasVisible 
+                ? "translate-x-0 opacity-100 scale-100" 
+                : "-translate-x-full opacity-0 scale-[0.98]"}
+              `}
               onMouseDown={(e) => e.stopPropagation()}
             >
+
+              <div className="absolute inset-0 pointer-events-none overflow-hidden z-0">
+                {[...Array(18)].map((_, i) => (
+                  <span
+                    key={i}
+                    className="particle"
+                    style={{
+                      left: `${Math.random() * 100}%`,
+                      animationDuration: `${12 + Math.random() * 10}s`,
+                      animationDelay: `${Math.random() * 5}s`,
+                      background: Math.random() > 0.5
+                        ? "rgba(34, 211, 238, 0.7)"
+                        : "rgba(168, 85, 247, 0.6)",
+                    }}
+                  />
+                ))}
+              </div>
+              
+              <div className="absolute top-0 right-0 h-full w-[2.5px] bg-gradient-to-b from-transparent via-cyan-400/40 to-transparent blur-[1px]" />
+              
               <div className="flex h-full flex-col overflow-hidden">
                 <div className="border-b border-white/10 px-5 py-4">
                   <div className="flex items-start justify-between gap-3">
                     <div>
-                      <p className="text-[11px] uppercase tracking-[0.35em] text-cyan-300/75">Archive of Worlds</p>
-                      <h2 className="mt-1 text-2xl font-semibold">The living codex of {currentBook?.title || "your story"}</h2>
+                      <p className="text-[11px] uppercase tracking-[0.45em] text-cyan-300/60">Archive of Worlds</p>
+                      <h2 className="mt-2 text-2xl font-semibold bg-gradient-to-r from-white via-cyan-100 to-slate-400 bg-clip-text text-transparent">
+                        {currentBook?.title || "Your Story"} — Atlas
+                      </h2>
                       <p className="mt-2 max-w-2xl text-sm text-slate-300">
                         Reveal your setting like a guided discovery: regions, rules, legends, factions, religions, magic systems, and hidden truths.
                       </p>
@@ -2666,14 +2697,20 @@ export default function ExperimentPage() {
                   <div className="mt-4 flex flex-wrap gap-2">
                     <button
                       type="button"
-                      className="rounded-full border border-cyan-400/30 bg-cyan-400/10 px-3 py-1 text-xs font-medium text-cyan-100 transition hover:bg-cyan-400/20"
+                      className="group rounded-full border border-cyan-400/30 
+                        bg-cyan-400/10 px-3 py-1 text-xs font-medium text-cyan-100 
+                        transition-all duration-300 
+                        hover:bg-cyan-400/20 hover:shadow-[0_0_12px_rgba(34,211,238,0.4)]"
                       onClick={openWorldbuildingModal}
                     >
                       <FontAwesomeIcon icon={faPlus} /> Add lore section
                     </button>
                     <button
                       type="button"
-                      className="rounded-full border border-white/15 px-3 py-1 text-xs font-medium text-slate-100 transition hover:bg-white/10 disabled:opacity-40"
+                      className="group rounded-full border border-cyan-400/30 
+                        bg-cyan-400/10 px-3 py-1 text-xs font-medium text-cyan-100 
+                        transition-all duration-300 
+                        hover:bg-cyan-400/20 hover:shadow-[0_0_12px_rgba(34,211,238,0.4)]"
                       onClick={openEditWorldbuildingModal}
                       disabled={worldbuildingSections.length < 1}
                     >
@@ -2692,20 +2729,22 @@ export default function ExperimentPage() {
                             key={`atlas-section-${section.id}`}
                             type="button"
                             onClick={() => setActiveWorldSectionId(section.id)}
-                            className={`w-full rounded-2xl border px-4 py-4 text-left transition ${
-                              activeWorldSectionId === section.id
-                                ? "border-cyan-300/70 bg-cyan-300/12 shadow-lg shadow-cyan-950/30"
-                                : "border-white/10 bg-white/5 hover:bg-white/10"
-                            }`}
+                            className={`group relative w-full rounded-2xl border px-4 py-4 text-left transition-all duration-300
+                              ${activeWorldSectionId === section.id
+                                  ? "border-cyan-300/60 bg-gradient-to-br from-cyan-400/10 to-transparent shadow-[0_0_25px_rgba(34,211,238,0.15)]"
+                                  : "border-white/10 bg-white/5 hover:bg-white/10 hover:border-cyan-400/30"
+                              }`}
                           >
-                            <span className="text-[10px] uppercase tracking-[0.35em] text-slate-400">Fragment {String(index + 1).padStart(2, "0")}</span>
+                            <div className="absolute inset-0 rounded-2xl opacity-0 group-hover:opacity-100 transition
+                                bg-gradient-to-r from-cyan-400/10 via-transparent to-transparent pointer-events-none" />
+                            <span className="text-[10px] uppercase tracking-[0.35em] text-slate-400">Archive {String(index + 1).padStart(2, "0")}</span>
                             <h3 className="mt-2 text-base font-semibold text-white">{section.title}</h3>
                             <p className="mt-2 text-sm text-slate-300 line-clamp-3">
                               {section.entries[0]?.value || "Add a first lore detail to begin this chapter of your world."}
                             </p>
                             <div className="mt-3 flex items-center justify-between text-xs text-slate-400">
                               <span>{section.entries.length} lore note{section.entries.length === 1 ? "" : "s"}</span>
-                              <span>{activeWorldSectionId === section.id ? "Opened" : "Reveal"}</span>
+                              <span>{activeWorldSectionId === section.id ? "Opened" : "Enter"}</span>
                             </div>
                           </button>
                         ))}
@@ -2715,7 +2754,10 @@ export default function ExperimentPage() {
                     <div className="overflow-y-auto p-5 notes-scroll">
                       {activeWorldSection && (
                         <div className="space-y-5">
-                          <div className="rounded-3xl border border-cyan-300/15 bg-white/[0.03] p-5">
+                          <div className="relative rounded-3xl border border-cyan-300/20 
+                              bg-gradient-to-br from-white/[0.04] to-transparent 
+                              p-6 shadow-[0_0_40px_rgba(34,211,238,0.08)] overflow-hidden">
+                            <div className="absolute inset-0 bg-[radial-gradient(circle_at_top,rgba(34,211,238,0.15),transparent_60%)] pointer-events-none" />
                             <p className="text-[11px] uppercase tracking-[0.35em] text-cyan-300/70">Selected entry</p>
                             <h3 className="mt-2 text-3xl font-semibold text-white">{activeWorldSection.title}</h3>
                             <p className="mt-3 text-sm leading-6 text-slate-300">
@@ -2727,8 +2769,13 @@ export default function ExperimentPage() {
                             {activeWorldSection.entries.map((entry, index) => (
                               <article
                                 key={`atlas-entry-${activeWorldSection.id}-${entry.label}-${index}`}
-                                className="rounded-2xl border border-white/10 bg-gradient-to-br from-white/8 to-transparent p-4 shadow-lg shadow-slate-950/20"
+                                className="group relative rounded-2xl border border-white/10 
+                                  bg-gradient-to-br from-white/[0.06] to-transparent 
+                                  p-4 transition-all duration-300
+                                  hover:border-cyan-400/40 hover:shadow-[0_0_20px_rgba(34,211,238,0.15)]"
                               >
+                                <div className="absolute inset-0 opacity-0 group-hover:opacity-100 transition
+                                  bg-gradient-to-r from-transparent via-white/10 to-transparent blur-xl" />
                                 <div className="flex items-start justify-between gap-3">
                                   <div>
                                     <p className="text-[11px] uppercase tracking-[0.28em] text-cyan-300/70">{entry.label}</p>
@@ -2749,7 +2796,7 @@ export default function ExperimentPage() {
                   <div className="flex flex-1 items-center justify-center p-6">
                     <div className="max-w-md rounded-3xl border border-dashed border-cyan-300/25 bg-white/[0.03] p-8 text-center">
                       <p className="text-[11px] uppercase tracking-[0.35em] text-cyan-300/70">Blank map</p>
-                      <h3 className="mt-3 text-2xl font-semibold">Your world has not been charted yet.</h3>
+                      <h3 className="mt-3 text-2xl font-semibold bg-gradient-to-r from-cyan-200 to-slate-400 bg-clip-text text-transparent">Your world has not been charted yet.</h3>
                       <p className="mt-3 text-sm leading-6 text-slate-300">
                         Start with broad categories like Kingdoms, Magic Rules, Religions, Timeline, Factions, or Landmarks. Then let each section unfold the book's world in layers.
                       </p>

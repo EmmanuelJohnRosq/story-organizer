@@ -705,7 +705,7 @@ export default function UserPage() {
     
         {/* LEFT SIDE CONTAINER */}
         <aside className="hidden lg:block lg:w-[320px] xl:w-[360px]">
-            <div className="sticky top-15.5 space-y-3">
+            <div className="sticky top-15 space-y-3">
 
                 {/* 1st section dashcard */}
                 <section className="overflow-hidden rounded-3xl border border-violet-800/70 bg-gradient-to-br from-violet-900/50 via-indigo-900 to-cyan-950 p-5 text-white shadow-2xl">
@@ -956,7 +956,7 @@ export default function UserPage() {
         {/* CENTER CONTAINER */}
         <main className="min-w-0 flex-1">
             {/* center section header web app details */}
-            <section className="rounded-3xl border border-gray-200 p-4 shadow-lg bg-gradient-to-br from-slate-900 via-blue-900/30 to-cyan-950 border border-indigo-500/30">
+            <section className="rounded-3xl border border-gray-200 p-4 shadow-lg bg-gradient-to-br from-slate-500 dark:from-slate-900 via-blue-900/30 to-cyan-950 border border-indigo-500/30">
                 <div className="flex flex-col gap-4 justify-between">
                     <div>
                         <p className="text-xs uppercase tracking-[0.3em] text-indigo-200">Your library</p>
@@ -964,19 +964,19 @@ export default function UserPage() {
                         <p className="mt-2 max-w-2xl text-sm text-gray-500 dark:text-gray-300">Inspired by modern writing dashboards, this layout gives each project a stronger identity with cover art, quick metadata, and a clearer path back into your workspace.</p>
                     </div>
                     <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
-                        <div className="rounded-2xl shadow-xl g-gray-50 px-4 py-3 text-center dark:bg-gray-800/70">
+                        <div className="rounded-2xl shadow-xl g-gray-50 px-4 py-3 text-center bg-white dark:bg-gray-800/70">
                             <p className="text-xs uppercase tracking-[0.2em] text-gray-400">Books</p>
                             <p className="mt-1 text-xl font-bold">{books.length}</p>
                         </div>
-                        <div className="rounded-2xl shadow-xl bg-gray-50 px-4 py-3 text-center dark:bg-gray-800/70">
+                        <div className="rounded-2xl shadow-xl bg-gray-50 px-4 py-3 text-center bg-white dark:bg-gray-800/70">
                             <p className="text-xs uppercase tracking-[0.2em] text-gray-400">Ongoing</p>
                             <p className="mt-1 text-xl font-bold">{ongoingBooks}</p>
                         </div>
-                        <div className="rounded-2xl shadow-xl bg-gray-50 px-4 py-3 text-center dark:bg-gray-800/70">
+                        <div className="rounded-2xl shadow-xl bg-gray-50 px-4 py-3 text-center bg-white dark:bg-gray-800/70">
                             <p className="text-xs uppercase tracking-[0.2em] text-gray-400">Notes</p>
                             <p className="mt-1 text-xl font-bold">{userNotes.length}</p>
                         </div>
-                        <div className="rounded-2xl shadow-xl bg-gray-50 px-4 py-3 text-center dark:bg-gray-800/70">
+                        <div className="rounded-2xl shadow-xl bg-gray-50 px-4 py-3 text-center bg-white dark:bg-gray-800/70">
                             <p className="text-xs uppercase tracking-[0.2em] text-gray-400">Covers</p>
                             <p className="mt-1 text-xl font-bold">{Object.keys(bookCoverMap).length}</p>
                         </div>
@@ -1208,7 +1208,7 @@ export default function UserPage() {
 
         {/* RIGHT CONTAINER */}
         <aside className="hidden xl:block xl:w-[280px]">
-            <div className="sticky top-18 space-y-3">
+            <div className="sticky top-15 space-y-3">
                 <div className="rounded-3xl border border-emerald-300 bg-emerald-50/80 p-4 shadow-lg dark:border-emerald-700 dark:bg-emerald-900/20">
                     <p className="text-xs font-semibold uppercase tracking-[0.2em] text-emerald-700 dark:text-emerald-300">Creative prompt</p>
                     <p className="mt-2 text-sm leading-6">{dashboardTips[tipIndex]}</p>
