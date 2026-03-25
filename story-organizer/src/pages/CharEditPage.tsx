@@ -1,6 +1,14 @@
 import { useEffect, useMemo, useRef, useState } from "react";
-import { useNavigate, useParams } from "react-router-dom";
-import { db, type Book, type Character, type CharacterDescription, type CharImage } from "../db";
+import { useLocation, useNavigate, useParams } from "react-router-dom";
+import { db, type Book, type Character, type CharacterDescription, type CharImage, type Notes, type WorldbuildingEntry, type WorldbuildingSection } from "../db";
+import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
+import { faFile, faFileLines, faGlobe, faHouse, faImages, faMinus, faPlus, faProjectDiagram, faTableColumns, faWandMagicSparkles } from "@fortawesome/free-solid-svg-icons";
+import { faMagicWandSparkles } from "@fortawesome/free-solid-svg-icons/faMagicWandSparkles";
+import { createPortal } from "react-dom";
+import type { EditableNote } from "../components/NotesCollection";
+import NotesCollection from "../components/NotesCollection";
+import type { NavbarAction } from "../components/Navbar";
+import Navbar from "../components/Navbar";
 
 type EditTab = "profile" | "lore" | "abilities" | "appearance" | "relationships" | "meta";
 
@@ -9,7 +17,14 @@ type ChipEditorProps = {
   items: string[];
   onChange: (items: string[]) => void;
   placeholder: string;
+  disabled?: boolean;
 };
+
+type TimeStampProps = {
+  label: string;
+  date: string;
+  type: 'created' | 'modified';
+}
 
 const TAG_OPTIONS = [
   "Protagonist",
@@ -28,7 +43,7 @@ function normalizeWhitespace(text: string) {
   return text.trim().replace(/\s+/g, " ");
 }
 
-function ChipEditor({ label, items, onChange, placeholder }: ChipEditorProps) {
+function ChipEditor({ label, items, onChange, placeholder, disabled = false }: ChipEditorProps) {
   const [draft, setDraft] = useState("");
 
   function addItem() {
@@ -47,39 +62,50 @@ function ChipEditor({ label, items, onChange, placeholder }: ChipEditorProps) {
       <p className="text-sm font-semibold text-gray-600 dark:text-gray-300">{label}</p>
       <div className="flex flex-wrap gap-2">
         {items.length === 0 && <span className="text-xs text-gray-400">No items yet</span>}
-        {items.map((item) => (
-          <button
-            type="button"
-            key={item}
-            onClick={() => removeItem(item)}
-            className="rounded-full bg-gray-200 px-3 py-1 text-sm text-gray-700 transition hover:bg-red-100 dark:bg-gray-700 dark:text-gray-200 dark:hover:bg-red-900/60"
-          >
-            {item} ×
-          </button>
-        ))}
+        {items.map((item) =>
+          disabled ? (
+            <span
+              key={item}
+              className="rounded-full bg-gray-200 px-3 py-1 text-sm text-gray-700 dark:bg-gray-700 dark:text-gray-200"
+            >
+              {item}
+            </span>
+          ) : (
+            <button
+              type="button"
+              key={item}
+              onClick={() => removeItem(item)}
+              className="rounded-full bg-gray-200 px-3 py-1 text-sm text-gray-700 transition hover:bg-red-100 dark:bg-gray-700 dark:text-gray-200 dark:hover:bg-red-900/60"
+            >
+              {item} ×
+            </button>
+          )
+        )}
       </div>
 
-      <div className="flex gap-2">
-        <input
-          value={draft}
-          onChange={(event) => setDraft(event.target.value)}
-          onKeyDown={(event) => {
-            if (event.key === "Enter") {
-              event.preventDefault();
-              addItem();
-            }
-          }}
-          placeholder={placeholder}
-          className="w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm dark:border-gray-600 dark:bg-gray-800"
-        />
-        <button
-          type="button"
-          onClick={addItem}
-          className="rounded-lg bg-indigo-600 px-3 py-2 text-sm font-semibold text-white hover:bg-indigo-700"
-        >
-          Add
-        </button>
-      </div>
+      {!disabled && (
+        <div className="flex gap-2">
+          <input
+            value={draft}
+            onChange={(event) => setDraft(event.target.value)}
+            onKeyDown={(event) => {
+              if (event.key === "Enter") {
+                event.preventDefault();
+                addItem();
+              }
+            }}
+            placeholder={placeholder}
+            className="w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm dark:border-gray-600 dark:bg-gray-800"
+          />
+          <button
+            type="button"
+            onClick={addItem}
+            className="rounded-lg bg-indigo-600 px-3 py-2 text-sm font-semibold text-white hover:bg-indigo-700"
+          >
+            Add
+          </button>
+        </div>
+      )}
     </div>
   );
 }
@@ -87,7 +113,8 @@ function ChipEditor({ label, items, onChange, placeholder }: ChipEditorProps) {
 export default function CharEditPage() {
   const { currentBookId, characterSlug } = useParams();
   const navigate = useNavigate();
-  const selectedCharacterId = Number(characterSlug?.split("-")[0]);
+  const { pathname } = useLocation();
+  const [selectedCharacterId, setSelectedCharId] = useState(Number(characterSlug?.split("-")[0]));
 
   const [activeTab, setActiveTab] = useState<EditTab>("profile");
   const [book, setBook] = useState<Book | null>(null);
@@ -111,7 +138,48 @@ export default function CharEditPage() {
   const [imageActionError, setImageActionError] = useState(""); 
   const [pendingImageId, setPendingImageId] = useState("");
 
-  const isEditPage = location.pathname.endsWith("/edit");
+  const startsInEditMode = pathname.endsWith("/edit");
+  const [isEditMode, setIsEditMode] = useState(startsInEditMode);
+
+  const [imageMap, setImageMap] = useState<Record<string, CharImage[]>>({});
+
+  // NOTES SET STATE/VARIABLES
+  const [charNotes, setCharNotes] = useState<Notes[]>([]);
+
+  // NOTES MOBILE MODAL
+  const [isNotesDrawerMounted, setIsNotesDrawerMounted] = useState(false);
+  const [isNotesDrawerVisible, setIsNotesDrawerVisible] = useState(false);
+
+  const notesDrawerTimeoutRef = useRef<number | null>(null);
+  const notesFabRef = useRef<HTMLButtonElement | null>(null);
+  const notesDrawerPanelRef = useRef<HTMLDivElement | null>(null);
+  const [notesShowState, setNotesShowState] = useState(false);
+
+  const [hideSave, setHideSave] = useState(false);
+  const [onFocusId, setOnFocusId] = useState("");
+  const [noteContent ,setNoteContent] = useState("");
+
+  // POP UP VARIABLES
+  const [showUndoPopup, setShowUndoPopup] = useState(false);
+  const [showStatePopup, setStatePopup] = useState(false);
+
+  const [deletedNote, setDeletedNote] = useState<Notes | null>(null);
+  const [noteToDelete, setNoteToDelete] = useState<Notes | null>(null);
+  const deleteTimeoutRef = useRef<number | null>(null);
+
+  // DRAFT NOTE/ Blank note for adding new notes
+  const [draftNote, setDraftNote] = useState<EditableNote | null>(null);
+  const [draftNoteState, setDraftstate] = useState(false);
+
+  // WORLD BUILDING SETSTATES
+  const [worldbuildingSections, setWorldbuildingSections] = useState<WorldbuildingSection[]>([]);
+  const [showWorldbuildingModal, setShowWorldbuildingModal] = useState(false);
+  const [openWorldSections, setOpenWorldSections] = useState<Record<string, boolean>>({});
+  
+  const [worldSectionTitle, setWorldSectionTitle] = useState("");
+  const [worldDraftEntries, setWorldDraftEntries] = useState<WorldbuildingEntry[]>([{ label: "", value: "" }]);
+
+  const [abilityTooltip, setAbilityTooltip] = useState<number | null>(null);
 
   useEffect(() => {
     const loadData = async () => {
@@ -135,6 +203,8 @@ export default function CharEditPage() {
       setEditingCharacter(loadedCharacter);
       setOriginalCharacter(loadedCharacter);
       setAllCharacters(loadedCharacters);
+      loadImages(loadedCharacters);
+      loadCharNotes(selectedCharacterId);
       setTagOptions(Array.from(new Set([...TAG_OPTIONS, ...loadedCharacter.tags])));
     };
 
@@ -168,7 +238,58 @@ export default function CharEditPage() {
       } else {
         setSelectedImageId("");
       }
-    };
+  };
+
+  // LOAD IMAGES FROM DB, fetch and put on a setState for display
+  const loadImages = async (chars: any) => {
+    if (!chars.length) return;
+
+    const charIds = chars.map((c: { id: any; }) => c.id);
+
+    const images = await db.images
+      .where("charId")
+      .anyOf(charIds)
+      .toArray();
+    
+    images.sort((a, b) => b.createdAt - a.createdAt);
+
+    const newMap: Record<string, CharImage[]> = {};
+
+    images.forEach((img) => {
+      const url = URL.createObjectURL(img.imageBlob);
+      const id = img.charId.toString(); // Convert to string for the key
+
+      if (!newMap[id]) {
+        newMap[id] = [];
+      }
+
+      newMap[id].push({
+        url: url,
+        imageId: img.imageId,
+        isDisplayed: img.isDisplayed,
+        createdAt: img.createdAt,
+      });
+    });
+
+    setImageMap(newMap);
+  };
+
+  // FILTERS USER NOTES FOR CHARACTER PAGE
+  const loadCharNotes = async (charId: number) => {
+    const notes = await db.notes
+      .where("charId")
+      .equals(charId)
+      .toArray();
+
+    notes.sort((a, b) => b.createdAt - a.createdAt);
+    setCharNotes(notes);
+  };
+
+  function normalizeWhitespace(text: string) {
+    return text
+      .trim()                // remove start/end spaces
+      .replace(/\s+/g, " "); // collapse multiple spaces into one
+  }
 
   useEffect(() => {
     void loadCharacterImages();
@@ -180,10 +301,55 @@ export default function CharEditPage() {
         URL.revokeObjectURL(image.url);
       });
     };
-  }, [isEditPage]);
+  }, [characterImages]);
+
+  useEffect(() => {
+    setIsEditMode(pathname.endsWith("/edit"));
+  }, [pathname]);
+
+  useEffect(() => {
+    return () => {
+      if (notesDrawerTimeoutRef.current) {
+        clearTimeout(notesDrawerTimeoutRef.current);
+      }
+    };
+  }, []);
 
   const selectedCharacterImage =
     characterImages.find((image) => image.imageId === selectedImageId)?.url || charImage;
+
+  // DEFAULT CHAR IMAGE FORMAT
+  const [char_image] = useState("/textures/char_images/default_char.jpg");
+
+  async function openCharacterRel(id: any) {
+    const relatedCharacter = allCharacters.find(char => char.id === id);
+    
+    if (relatedCharacter) {
+      openEditCharacter(relatedCharacter);
+    } else {
+      setSelectedCharId(id);
+    }
+  }
+
+  // open edit Char Modal
+  function openEditCharacter(characters: Character) {
+
+    const selectedCharacter = { ...characters } as Character;
+    
+    setEditingCharacter({ ...selectedCharacter });
+
+    setOriginalCharacter({ ...selectedCharacter });
+
+    setSelectedCharId(characters.id);
+    const charName = characters.name
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/(^-|-$)/g, "");
+
+    const slug = upcaseLetter(charName);
+
+    navigate(`/book/${currentBookId}/${characters.id}-${slug}`);
+  }
 
   async function setDisplayImage(imageId: string) {
     if (!selectedCharacterId) return;
@@ -249,12 +415,12 @@ export default function CharEditPage() {
   if (pendingImageId === imageId) {
     setPendingImageId("");
   }
-}
+  }
 
-async function confirmDisplayImage() {
-  if (!pendingImageId) return;
-  await setDisplayImage(pendingImageId);
-}
+  async function confirmDisplayImage() {
+    if (!pendingImageId) return;
+    await setDisplayImage(pendingImageId);
+  }
 
   async function saveImageBlob(blob: Blob) {
     const newImageId = crypto.randomUUID();
@@ -480,6 +646,168 @@ async function confirmDisplayImage() {
     onChange([...list, value]);
   }
 
+  const openNotesDrawer = () => {
+    if (notesDrawerTimeoutRef.current) {
+      clearTimeout(notesDrawerTimeoutRef.current);
+      notesDrawerTimeoutRef.current = null;
+    }
+
+    setIsNotesDrawerMounted(true);
+    setNotesShowState(true);
+    addDraftNotes();
+
+    requestAnimationFrame(() => {
+      setIsNotesDrawerVisible(true);
+    });
+  };
+
+  const closeNotesDrawer = () => {
+    setIsNotesDrawerVisible(false);
+    setNotesShowState(false);
+    setDraftNote(null)
+
+    notesDrawerTimeoutRef.current = window.setTimeout(() => {
+      setIsNotesDrawerMounted(false);
+      notesDrawerTimeoutRef.current = null;
+    }, 300);
+  };
+  
+  // SHOW/HIDE NOTES DISPLAY
+  const displayNotes = () => {
+      if (notesShowState) {
+      closeNotesDrawer();
+      return;
+    }
+
+    openNotesDrawer();
+  };
+
+  // COLOR PICKER
+  const stickyColors = [
+    "yellow",
+    "pink",
+    "green",
+    "sky",
+    "purple",
+    "gray",
+  ];
+    
+  const notesSubject = "";
+  const notesContent = "";
+
+  async function addDraftNotes() {
+    if (draftNote) return;
+    if (!selectedCharacterId) return;
+    
+    const randomColor =
+      stickyColors[Math.floor(Math.random() * stickyColors.length)];
+
+    const newNotes = {
+        notesId: crypto.randomUUID(),
+        subject: notesSubject,
+        content: notesContent,
+        createdAt: Date.now(),
+        color: randomColor,
+        isDraft: true,
+        bookId: currentBookId ? currentBookId : "",
+        charId: selectedCharacterId ? selectedCharacterId : null,
+      };
+
+    // Update React state
+    setDraftNote(newNotes);
+    setDraftstate(true);
+  }
+
+  // SAVE NOTE AFTER UPDATING DRAFT NOTE TO DB
+  async function saveNote(note: any) {
+    if (!note.content.trim()) return;
+
+    // GOES HERE IF THE NOTE IS A NEW NOTE
+    if (note.isDraft) {
+      // first time saving
+      const { isDraft, ...noteData } = note;
+
+      const dbId = await db.notes.add(noteData);
+      
+      setCharNotes(prev => [
+        { ...noteData, id: dbId }, ...prev
+      ]);
+
+      setDraftNote(null);
+      setDraftstate(false);
+      setHideSave(false);
+    } else {
+      // update existing note
+      await db.notes.update(note.id, {
+        content: note.content,
+      });
+
+      setAlert("Changes Saved");
+      setStatePopup(true);
+      setHideSave(false);
+      setTimeout(() => {
+        setStatePopup(false);
+        setAlert("");
+      }, 2000);
+    }
+  }
+
+  // DELETE NOTES/DRAFT
+  async function deleteNotes(id: number) {
+    if(!id) return;
+    
+    await db.notes.delete(id);
+  }
+  
+  function handleDeleteNote(note: Notes) {
+    if (draftNote && note.id === draftNote.id) {
+      setNoteToDelete(null)
+      setDraftNote(null);
+      
+    } else {
+      // Save to temporary deleted state
+      setDeletedNote(note);
+      
+      setNoteToDelete(null);
+      // Show undo popup
+      setShowUndoPopup(true);
+
+      // Remove from UI immediately
+      setCharNotes(prev => prev.filter(notes => notes.id !== note.id));
+      
+      // Clear any previous timeout (important if deleting fast)
+      if (deleteTimeoutRef.current) {
+        clearTimeout(deleteTimeoutRef.current);
+      }
+
+      deleteTimeoutRef.current = window.setTimeout(() => {
+        deleteNotes(note.id!);
+        setDeletedNote(null);
+        setShowUndoPopup(false);
+        deleteTimeoutRef.current = null;
+      }, 2000);
+    }
+  }
+
+  function handleUndo() {
+    if (!deletedNote) return;
+
+    // Restore note
+    setCharNotes(prev => [deletedNote!, ...prev]);
+
+    // Cancel scheduled deletion
+    if (deleteTimeoutRef.current) {
+      clearTimeout(deleteTimeoutRef.current);
+      deleteTimeoutRef.current = null;
+    }
+
+    // Hide popup
+    setShowUndoPopup(false);
+
+    // Cancel the permanent deletion
+    setDeletedNote(null);
+  }
+
   const tabs: { key: EditTab; label: string }[] = [
     { key: "profile", label: "Profile" },
     { key: "lore", label: "Lore" },
@@ -494,42 +822,293 @@ async function confirmDisplayImage() {
     document.body.classList.toggle('overflow-hidden', state);
   }
 
+  const upcaseLetter = (word: string) => {
+    if (!word) return "";
+    return word.charAt(0).toUpperCase() + word.slice(1);
+  }
+
+  const Badge = ({ children, color }: { children: React.ReactNode, color: 'emerald' | 'sky' | 'slate' }) => {
+    const colors = {
+      emerald: "bg-emerald-500/10 text-emerald-400 border-emerald-500/20",
+      sky: "bg-sky-500/10 text-sky-400 border-sky-500/20",
+      slate: "bg-slate-500/10 text-slate-300 border-slate-500/20",
+    };
+    return (
+      <span className={`rounded-full border px-3 py-0.5 text-[10px] font-bold uppercase tracking-wider ${colors[color]}`}>
+        {children}
+      </span>
+    );
+  };
+
+  const StatTag = ({ children }: { children: React.ReactNode }) => (
+    <span className="rounded-md bg-indigo-500/10 px-2.5 py-1 text-black dark:text-indigo-200 border border-indigo-500/20 text-sm font-medium">
+      {children} 
+    </span>
+  );
+
+  const TimeCard = ({ label, date, type }: TimeStampProps) => (
+    <div className="group relative flex items-center gap-3 rounded-xl border border-white/5 bg-white/[0.02] p-3 transition-all hover:bg-white/[0.05] hover:border-indigo-500/30">
+      {/* Visual Icon with Glow */}
+      <div className={`flex h-8 w-8 items-center justify-center rounded-lg border shadow-inner ${
+        type === 'created' 
+          ? 'border-emerald-500/20 bg-emerald-500/10 text-emerald-400' 
+          : 'border-amber-500/20 bg-amber-500/10 text-amber-400'
+      }`}>
+        {type === 'created' ? (
+          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 4v16m8-8H4" /></svg>
+        ) : (
+          <div className="relative">
+            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" /></svg>
+            {/* Breathing "Live" Indicator for Modified */}
+            <span className="absolute -right-1 -top-1 flex h-2 w-2">
+              <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-amber-400 opacity-75"></span>
+              <span className="relative inline-flex rounded-full h-2 w-2 bg-amber-500"></span>
+            </span>
+          </div>
+        )}
+      </div>
+
+      {/* Text Data */}
+      <div className="flex flex-col">
+        <span className="text-[10px] font-bold uppercase tracking-widest text-slate-500 group-hover:text-slate-300 transition-colors">
+          {label}
+        </span>
+        <span className="text-xs font-mono font-medium text-black dark:text-slate-300">
+          {/* Replace with your actual date formatting logic */}
+          {date || "Unknown"}
+        </span>
+      </div>
+
+      {/* Hover "Full Date" Tooltip Style */}
+      <div className="absolute -bottom-8 left-0 hidden rounded bg-slate-900 px-2 py-1 text-[10px] text-slate-400 shadow-xl group-hover:block border border-white/10 z-10">
+        Full ISO: {new Date().toISOString().split('T')[0]}
+      </div>
+    </div>
+  );
+
+  // date format change
+  const formatDate = (dateInput: any) => {
+    if (!dateInput) return "Unknown";
+    
+    const d = new Date(dateInput);
+    
+    // Check if date is actually valid to prevent "Invalid Date" showing up
+    if (isNaN(d.getTime())) return "Format Error";
+
+    return new Intl.DateTimeFormat('en-US', {
+      month: 'short',
+      day: 'numeric',
+      year: 'numeric'
+    }).format(d);
+  };
+
+  // time format change
+  const getRelativeTime = (dateInput: any) => {
+    const d = new Date(dateInput);
+    const now = new Date();
+    const diffInSeconds = Math.floor((now.getTime() - d.getTime()) / 1000);
+
+    if (diffInSeconds < 60) return 'Just now';
+    if (diffInSeconds < 3600) return `${Math.floor(diffInSeconds / 60)}m ago`;
+    if (diffInSeconds < 86400) return `${Math.floor(diffInSeconds / 3600)}h ago`;
+    
+    return formatDate(dateInput); // Fallback to normal date if > 1 day
+  };
+
+  const openWorldbuildingModal = () => {
+    setWorldSectionTitle("");
+    setWorldDraftEntries([{ label: "", value: "" }]);
+    setShowWorldbuildingModal(true);
+  };
+
+  const addWorldDraftEntry = () => {
+    setWorldDraftEntries(prev => [...prev, { label: "", value: "" }]);
+  };
+
+  const updateWorldDraftEntry = (index: number, key: "label" | "value", newValue: string) => {
+    setWorldDraftEntries(prev => prev.map((entry, i) => (
+      i === index ? { ...entry, [key]: newValue } : entry
+    )));
+  };
+
+  const removeWorldDraftEntry = (index: number) => {
+    setWorldDraftEntries(prev => {
+      if (prev.length === 1) return prev;
+      return prev.filter((_, i) => i !== index);
+    });
+  };
+
+  const saveWorldbuildingSection = () => {
+    const normalizedTitle = normalizeWhitespace(worldSectionTitle);
+    const cleanEntries = worldDraftEntries
+      .map(entry => ({
+        label: normalizeWhitespace(entry.label),
+        value: entry.value.trim().replace(/\s+/g, " "),
+      }))
+      .filter(entry => entry.label && entry.value);
+
+    if (!normalizedTitle || cleanEntries.length === 0) {
+      return;
+    }
+
+    const sectionId = `${normalizedTitle.toLowerCase().replace(/[^a-z0-9]+/g, "-")}-${Date.now()}`;
+
+    setWorldbuildingSections(prev => [
+      ...prev,
+      {
+        id: sectionId,
+        bookId: String(currentBookId),
+        title: normalizedTitle,
+        entries: cleanEntries,
+      },
+    ]);
+
+    setOpenWorldSections(prev => ({ ...prev, [sectionId]: true }));
+    setShowWorldbuildingModal(false);
+  };
+
+  const toggleWorldSection = (sectionId: string) => {
+    setOpenWorldSections(prev => ({ ...prev, [sectionId]: !prev[sectionId] }));
+  };
+
+  // navbar pass actions and logic
+  const navbarActions: NavbarAction[] = [
+    {
+      id: "home",
+      label: "Home",
+      icon: faHouse,
+      onClick: () => navigate("/"),
+      title: "Back to library",
+    },
+    {
+      id: "world-building",
+      label: "World",
+      icon: faGlobe,
+      onClick: () => window.alert("Currently, in development..."),
+      title: "Open world atlas",
+    },
+    {
+      id: "dashboard",
+      label: "Dashboard",
+      icon: faTableColumns,
+      onClick: () => window.alert("Currently, in development..."),
+      badge: "Soon",
+      title: "Dashboard",
+    },
+    {
+      id: "ai-assist",
+      label: "AI",
+      icon: faWandMagicSparkles,
+      onClick: () => window.alert("Currently, in development..."),
+      badge: "Soon",
+      title: "AI-assist",
+    },
+    {
+      id: "character-graph",
+      label: "Graph",
+      icon: faProjectDiagram,
+      onClick: () => window.alert("Currently, in development..."),
+      badge: "Soon",
+      title: "Characters map graph",
+    },
+    {
+      id: "chapter-prep",
+      label: "Prepare",
+      icon: faFileLines,
+      onClick: () => window.alert("Currently, in development..."),
+      badge: "Soon",
+      title: "Chapter Preparation workspace",
+    },
+  ];
+
   return (
     // MAIN EDIT PAGE CONTAINER
     <div className="mx-auto w-full max-w-full xxs:max-w-6xl p-4 md:p-6 mt-11">
+      <Navbar actions={navbarActions} />
 
       {/* HERO CARD HEADER OF EDIT PAGE */}
-      <div className="rounded-2xl border border-indigo-200/20 bg-gradient-to-br from-indigo-900/20 to-slate-900 px-5 py-2 text-white shadow-lg">
-        <div className="flex flex-wrap items-center justify-between gap-4">
-          <div className="flex items-center gap-3">
+      <div className="relative overflow-hidden rounded-3xl border border-white/10 dark:bg-slate-900/50 p-6 text-white shadow-2xl backdrop-blur-xl">
+    
+        {/* Decorative Background Element */}
+        <div className="absolute -right-20 -top-20 h-64 w-64 rounded-full bg-indigo-600/20 blur-[100px]" />
+        <div className="absolute -left-20 -bottom-20 h-64 w-64 rounded-full bg-emerald-600/10 blur-[100px]" />
+
+        <div className="relative flex flex-col gap-8 lg:flex-row lg:items-center lg:justify-between">
+          
+          {/* Left Section: Avatar & Identity */}
+          <div className="flex flex-col gap-6 sm:flex-row items-center">
+            
+            {/* Enhanced Avatar with Ring Effect */}
             <button
               type="button"
-              title="Change character image"
-              onClick={() => showImageModal(true)}
-              className="group relative h-24 w-20 overflow-hidden rounded-xl border border-slate-700 shadow-lg"
+              title={isEditMode ? "Change character image" : "Enable editing to change image"}
+              onClick={() => isEditMode && showImageModal(true)}
+              disabled={!isEditMode}
+              className="disabled:cursor-not-allowed disabled:opacity-80 group relative h-45 w-38 flex-shrink-0 overflow-hidden rounded-2xl border-2 border-slate-700/50 shadow-2xl transition-all hover:border-indigo-500/50"
             >
               <img
                 src={selectedCharacterImage}
                 alt={editingCharacter.name}
-                className="h-full w-full object-cover"
+                className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-110"
               />
 
-              <div className="absolute inset-0 flex items-center justify-center bg-black/30 opacity-100 transition group-hover:bg-black/60">
-                <span className="rounded-lg bg-white/15 px-2 py-1 text-2xl font-bold text-gray-300 pb-2 group-hover:bg-white/40 group-hover:text-white">+</span>
+              <div className="absolute inset-0 flex items-center justify-center bg-black/0 transition-all group-hover:bg-black/40">
+                <div className="items-center translate-y-3 opacity-0 transition-all group-hover:translate-y-0 group-hover:opacity-100">
+                  <span className="rounded-lg bg-gray-100/20 p-3">
+                    <FontAwesomeIcon icon={faImages} size="lg"/>
+                  </span>
+                </div>
               </div>
             </button>
 
-            <div>
-              <p className="text-sm text-indigo-200">Character Builder</p>
-              <h1 className="text-3xl font-bold">{editingCharacter.name || "Unnamed Character"}</h1>
-              <p className="text-sm text-indigo-100">{editingCharacter.role || "Role not set"}</p>
+            {/* Identity Details */}
+            <div className="space-y-3">
+              <div className="space-y-1 place-items-center text-center sm:place-items-start sm:text-start">
+                <span className={`text-[10px] font-black uppercase tracking-[0.2em] ${isEditMode ? "text-indigo-400" : "text-green-500"}`}>Character Profile · {isEditMode ? "Editing Mode" : "Viewing Only Mode"}</span>
+                <h1 className="text-3xl text-gray-800 dark:text-gray-200 font-black tracking-tight">
+                  {editingCharacter.name || "Unnamed Character"}
+                </h1>
+                <p className="text-lg font-medium text-slate-400 italic">
+                  — {editingCharacter.role || "Role not defined"}
+                </p>
+              </div>
+
+              <div className="flex flex-wrap gap-2">
+                <Badge color="emerald">{editingCharacter.status || "Active"}</Badge>
+                <Badge color="sky">{editingCharacter.importance || "Core"}</Badge>
+                <Badge color="slate">{upcaseLetter(editingCharacter.setRace[0] || "Unknown")}</Badge>
+              </div>
             </div>
           </div>
 
-          <div className="grid grid-cols-2 gap-3 text-sm md:grid-cols-3">
-            <div className="rounded-xl bg-white/10 px-3 py-2">Status: {editingCharacter.status || "unknown"}</div>
-            <div className="rounded-xl bg-white/10 px-3 py-2">Importance: {editingCharacter.importance || "unknown"}</div>
-            <div className="rounded-xl bg-white/10 px-3 py-2">Power: {editingCharacter.powerLevel || "n/a"}</div>
+          {/* Right Section: Stats & Metadata */}
+          <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:flex lg:gap-12 lg:place-items-center">
+            
+            {/* Quick Info Grid */}
+            <div className="space-y-3">
+              <h4 className="text-[10px] font-bold uppercase tracking-widest text-slate-500">Attributes</h4>
+              <div className="flex flex-wrap gap-2 max-w-[300px]">
+                {editingCharacter.powerLevel && <StatTag>{editingCharacter.powerLevel}</StatTag>}
+                {editingCharacter.occupation && <StatTag>{editingCharacter.occupation}</StatTag>}
+                {editingCharacter.titles?.map((t, i) => <StatTag key={i}>{t}</StatTag>)}
+              </div>
+            </div>
+
+            {/* Dynamic Action Buttons */}
+            <div className="flex flex-col gap-3 w-full lg:w-fit">
+
+              <button
+                type="button"
+                className={`rounded-lg px-3 py-2 text-sm font-semibold ${isEditMode ? "border border-indigo-300 text-indigo-700 hover:bg-purple-200 dark:border-indigo-700 dark:text-purple-300 dark:hover:bg-indigo-900/20" : "bg-emerald-600 text-white hover:bg-emerald-700"}`}
+                onClick={() => setIsEditMode((prev) => !prev)}
+              > <FontAwesomeIcon icon={faMagicWandSparkles} />
+                {isEditMode ? " Switch to View Mode" : " Enable Editing Mode"}
+              </button>
+
+              <TimeCard label="System Entry" date={formatDate(editingCharacter.createdAt)} type="created" />
+              <TimeCard label="Last Synced" date={getRelativeTime(editingCharacter.updatedAt)} type="modified" />
+            </div>
+
           </div>
         </div>
       </div>
@@ -558,32 +1137,32 @@ async function confirmDisplayImage() {
           <div className="rounded-xl border border-gray-200 bg-white p-4 shadow-sm dark:border-gray-700 dark:bg-gray-900">
             {activeTab === "profile" && (
               <div className="grid gap-3 md:grid-cols-2">
-                <input className="rounded-lg border p-2 dark:bg-gray-800" placeholder="Name" value={editingCharacter.name} onChange={(e) => setEditingCharacter({ ...editingCharacter, name: e.target.value })} />
-                <input className="rounded-lg border p-2 dark:bg-gray-800" placeholder="Role" value={editingCharacter.role} onChange={(e) => setEditingCharacter({ ...editingCharacter, role: e.target.value })} />
-                <input className="rounded-lg border p-2 dark:bg-gray-800" placeholder="Status" value={editingCharacter.status} onChange={(e) => setEditingCharacter({ ...editingCharacter, status: e.target.value })} />
-                <input className="rounded-lg border p-2 dark:bg-gray-800" placeholder="Importance" value={editingCharacter.importance} onChange={(e) => setEditingCharacter({ ...editingCharacter, importance: e.target.value })} />
-                <input className="rounded-lg border p-2 dark:bg-gray-800" placeholder="Occupation" value={editingCharacter.occupation} onChange={(e) => setEditingCharacter({ ...editingCharacter, occupation: e.target.value })} />
-                <input className="rounded-lg border p-2 dark:bg-gray-800" placeholder="Power Level" value={editingCharacter.powerLevel} onChange={(e) => setEditingCharacter({ ...editingCharacter, powerLevel: e.target.value })} />
-                <input className="rounded-lg border p-2 dark:bg-gray-800" placeholder="Net Worth" value={editingCharacter.netWorth} onChange={(e) => setEditingCharacter({ ...editingCharacter, netWorth: e.target.value })} />
-                <input className="rounded-lg border p-2 dark:bg-gray-800" placeholder="First chapter appearance" value={editingCharacter.chapters} onChange={(e) => setEditingCharacter({ ...editingCharacter, chapters: e.target.value })} />
+                <label className="space-y-1 text-sm"><span className="font-medium text-gray-600 dark:text-gray-500">Role</span><input className="w-full rounded-lg border p-2 dark:bg-gray-800 disabled:opacity-80" placeholder="Role" value={editingCharacter.role} disabled={!isEditMode} onChange={(e) => setEditingCharacter({ ...editingCharacter, role: e.target.value })} /></label>
+                <label className="space-y-1 text-sm"><span className="font-medium text-gray-600 dark:text-gray-500">Name</span><input className="w-full rounded-lg border p-2 dark:bg-gray-800 disabled:opacity-80" placeholder="Name" value={editingCharacter.name} disabled={!isEditMode} onChange={(e) => setEditingCharacter({ ...editingCharacter, name: e.target.value })} /></label>
+                <label className="space-y-1 text-sm"><span className="font-medium text-gray-600 dark:text-gray-500">Status</span><input className="w-full rounded-lg border p-2 dark:bg-gray-800 disabled:opacity-80" placeholder="Status" value={editingCharacter.status} disabled={!isEditMode} onChange={(e) => setEditingCharacter({ ...editingCharacter, status: e.target.value })} /></label>
+                <label className="space-y-1 text-sm"><span className="font-medium text-gray-600 dark:text-gray-500">Importance</span><input className="w-full rounded-lg border p-2 dark:bg-gray-800 disabled:opacity-80" placeholder="Importance" value={editingCharacter.importance} disabled={!isEditMode} onChange={(e) => setEditingCharacter({ ...editingCharacter, importance: e.target.value })} /></label>
+                <label className="space-y-1 text-sm"><span className="font-medium text-gray-600 dark:text-gray-500">Occupation</span><input className="w-full rounded-lg border p-2 dark:bg-gray-800 disabled:opacity-80" placeholder="Occupation" value={editingCharacter.occupation} disabled={!isEditMode} onChange={(e) => setEditingCharacter({ ...editingCharacter, occupation: e.target.value })} /></label>
+                <label className="space-y-1 text-sm"><span className="font-medium text-gray-600 dark:text-gray-500">Power Level</span><input className="w-full rounded-lg border p-2 dark:bg-gray-800 disabled:opacity-80" placeholder="Power Level" value={editingCharacter.powerLevel} disabled={!isEditMode} onChange={(e) => setEditingCharacter({ ...editingCharacter, powerLevel: e.target.value })} /></label>
+                <label className="space-y-1 text-sm"><span className="font-medium text-gray-600 dark:text-gray-500">Net Worth</span><input className="w-full rounded-lg border p-2 dark:bg-gray-800 disabled:opacity-80" placeholder="Net Worth" value={editingCharacter.netWorth} disabled={!isEditMode} onChange={(e) => setEditingCharacter({ ...editingCharacter, netWorth: e.target.value })} /></label>
+                <label className="space-y-1 text-sm"><span className="font-medium text-gray-600 dark:text-gray-500">First Chapter Appearance</span><input className="w-full rounded-lg border p-2 dark:bg-gray-800 disabled:opacity-80" placeholder="First chapter appearance" value={editingCharacter.chapters} disabled={!isEditMode} onChange={(e) => setEditingCharacter({ ...editingCharacter, chapters: e.target.value })} /></label>
 
                 <div className="md:col-span-2">
-                  <ChipEditor label="Titles" items={editingCharacter.titles} onChange={(titles) => setEditingCharacter({ ...editingCharacter, titles })} placeholder="Add title" />
+                  <ChipEditor disabled={!isEditMode} label="Titles" items={editingCharacter.titles} onChange={(titles) => setEditingCharacter({ ...editingCharacter, titles })} placeholder="Add title" />
                 </div>
                 <div className="md:col-span-2">
-                  <ChipEditor label="Personality traits" items={editingCharacter.personalityTraits} onChange={(personalityTraits) => setEditingCharacter({ ...editingCharacter, personalityTraits })} placeholder="Add trait" />
+                  <ChipEditor disabled={!isEditMode} label="Personality traits" items={editingCharacter.personalityTraits} onChange={(personalityTraits) => setEditingCharacter({ ...editingCharacter, personalityTraits })} placeholder="Add trait" />
                 </div>
                 <div className="md:col-span-2">
-                  <ChipEditor label="Chapter appearances" items={editingCharacter.chapterAppearances} onChange={(chapterAppearances) => setEditingCharacter({ ...editingCharacter, chapterAppearances })} placeholder="e.g. Ch. 8" />
+                  <ChipEditor disabled={!isEditMode} label="Chapter appearances" items={editingCharacter.chapterAppearances} onChange={(chapterAppearances) => setEditingCharacter({ ...editingCharacter, chapterAppearances })} placeholder="e.g. Ch. 8" />
                 </div>
               </div>
             )}
 
             {activeTab === "lore" && (
               <div className="space-y-3">
-                <textarea rows={6} className="w-full rounded-lg border p-2 dark:bg-gray-800" placeholder="Backstory notes" value={editingCharacter.notes} onChange={(e) => setEditingCharacter({ ...editingCharacter, notes: e.target.value })} />
-                <textarea rows={4} className="w-full rounded-lg border p-2 dark:bg-gray-800" placeholder="Future notes" value={editingCharacter.futureNotes} onChange={(e) => setEditingCharacter({ ...editingCharacter, futureNotes: e.target.value })} />
-                <textarea rows={5} className="w-full rounded-lg border p-2 dark:bg-gray-800" placeholder="Character arc" value={editingCharacter.characterArc} onChange={(e) => setEditingCharacter({ ...editingCharacter, characterArc: e.target.value })} />
+                <label className="space-y-1 text-sm block"><span className="font-medium text-gray-600 dark:text-gray-300">Backstory Notes</span><textarea rows={6} className="w-full rounded-lg border p-2 dark:bg-gray-800 disabled:opacity-80" placeholder="Backstory notes" value={editingCharacter.notes} disabled={!isEditMode} onChange={(e) => setEditingCharacter({ ...editingCharacter, notes: e.target.value })} /></label>
+                <label className="space-y-1 text-sm block"><span className="font-medium text-gray-600 dark:text-gray-300">Future Notes</span><textarea rows={4} className="w-full rounded-lg border p-2 dark:bg-gray-800 disabled:opacity-80" placeholder="Future notes" value={editingCharacter.futureNotes} disabled={!isEditMode} onChange={(e) => setEditingCharacter({ ...editingCharacter, futureNotes: e.target.value })} /></label>
+                <label className="space-y-1 text-sm block"><span className="font-medium text-gray-600 dark:text-gray-300">Character Arc</span><textarea rows={5} className="w-full rounded-lg border p-2 dark:bg-gray-800 disabled:opacity-80" placeholder="Character arc" value={editingCharacter.characterArc} disabled={!isEditMode} onChange={(e) => setEditingCharacter({ ...editingCharacter, characterArc: e.target.value })} /></label>
               </div>
             )}
 
@@ -596,18 +1175,22 @@ async function confirmDisplayImage() {
                         const next = [...editingCharacter.abilities];
                         next[index] = { ...next[index], ability: event.target.value };
                         setEditingCharacter({ ...editingCharacter, abilities: next });
-                      }} />
+                      }} 
+                        disabled={!isEditMode}
+                      />
                       <textarea className="w-full rounded-lg border p-2 dark:bg-gray-800" rows={2} value={ability.description} placeholder="Ability description" onChange={(event) => {
                         const next = [...editingCharacter.abilities];
                         next[index] = { ...next[index], description: event.target.value };
                         setEditingCharacter({ ...editingCharacter, abilities: next });
-                      }} />
-                      <button type="button" className="rounded-lg bg-red-500 px-3 py-2 text-white" onClick={() => setEditingCharacter({ ...editingCharacter, abilities: editingCharacter.abilities.filter((_, itemIndex) => itemIndex !== index) })}>Remove</button>
+                      }} 
+                        disabled={!isEditMode}
+                      />
+                      <button type="button" disabled={!isEditMode} className="rounded-lg bg-red-500 px-3 py-2 text-white disabled:cursor-not-allowed disabled:opacity-50" onClick={() => setEditingCharacter({ ...editingCharacter, abilities: editingCharacter.abilities.filter((_, itemIndex) => itemIndex !== index) })}>Remove</button>
                     </div>
                   </div>
                 ))}
 
-                <button type="button" className="rounded-lg bg-indigo-600 px-3 py-2 text-sm font-semibold text-white" onClick={() => setEditingCharacter({ ...editingCharacter, abilities: [...editingCharacter.abilities, { ability: "", description: "" }] })}>+ Add Ability</button>
+                <button type="button" disabled={!isEditMode} className="rounded-lg bg-indigo-600 px-3 py-2 text-sm font-semibold text-white disabled:cursor-not-allowed disabled:opacity-50" onClick={() => setEditingCharacter({ ...editingCharacter, abilities: [...editingCharacter.abilities, { ability: "", description: "" }] })}>+ Add Ability</button>
               </div>
             )}
 
@@ -618,13 +1201,16 @@ async function confirmDisplayImage() {
                     <h3 className="mb-2 text-sm font-bold uppercase tracking-wide text-gray-500">{section}</h3>
                     <div className="grid gap-2 md:grid-cols-2">
                       {Object.entries(values).map(([key, value]) => (
-                        <input
-                          key={key}
-                          className="rounded-lg border p-2 dark:bg-gray-800"
-                          placeholder={key}
-                          value={value}
-                          onChange={(event) => updateDescription(section as keyof CharacterDescription, key, event.target.value)}
-                        />
+                        <label key={key} className="space-y-1 text-sm">
+                          <span className="block font-medium text-gray-600 capitalize dark:text-gray-300">{key.replace(/([A-Z])/g, " $1")}</span>
+                          <input
+                            className="w-full rounded-lg border p-2 dark:bg-gray-800 disabled:opacity-80"
+                            placeholder={key}
+                            value={value}
+                            disabled={!isEditMode}
+                            onChange={(event) => updateDescription(section as keyof CharacterDescription, key, event.target.value)}
+                          />
+                        </label>
                       ))}
                     </div>
                   </div>
@@ -636,14 +1222,21 @@ async function confirmDisplayImage() {
               <div className="space-y-3">
                 <div className="rounded-lg border border-gray-200 p-3 dark:border-gray-700">
                   <div className="grid gap-2 md:grid-cols-[1fr_1fr_auto]">
-                    <select className="rounded-lg border p-2 dark:bg-gray-800" value={relationshipDraft.charId} onChange={(event) => setRelationshipDraft({ ...relationshipDraft, charId: Number(event.target.value) })}>
-                      <option value={0}>Select character</option>
-                      {allCharacters.filter((char) => char.id !== editingCharacter.id).map((char) => (
-                        <option key={char.id} value={char.id}>{char.name}</option>
-                      ))}
-                    </select>
-                    <input className="rounded-lg border p-2 dark:bg-gray-800" placeholder="relationship type" value={relationshipDraft.type} onChange={(event) => setRelationshipDraft({ ...relationshipDraft, type: event.target.value })} />
-                    <button type="button" className="rounded-lg bg-indigo-600 px-3 py-2 text-sm font-semibold text-white" onClick={() => {
+                    <label className="space-y-1 text-sm">
+                      <span className="block font-medium text-gray-600 dark:text-gray-300">Character</span>
+                      <select className="w-full rounded-lg border p-2 dark:bg-gray-800 disabled:opacity-80" disabled={!isEditMode} value={relationshipDraft.charId} onChange={(event) => setRelationshipDraft({ ...relationshipDraft, charId: Number(event.target.value) })}>
+                        <option value={0}>Select character</option>
+                        {allCharacters.filter((char) => char.id !== editingCharacter.id).map((char) => (
+                          <option key={char.id} value={char.id}>{char.name}</option>
+                        ))}
+                      </select>
+                    </label>
+
+                    <label className="space-y-1 text-sm">
+                    <span className="block font-medium text-gray-600 dark:text-gray-300">Relationship Type</span>
+                    <input className="w-full rounded-lg border p-2 dark:bg-gray-800 disabled:opacity-80" placeholder="relationship type" disabled={!isEditMode} value={relationshipDraft.type} onChange={(event) => setRelationshipDraft({ ...relationshipDraft, type: event.target.value })} />
+                    </label>
+                    <button type="button" disabled={!isEditMode} className="rounded-lg bg-indigo-600 px-3 py-2 text-sm font-semibold text-white disabled:cursor-not-allowed disabled:opacity-50" onClick={() => {
                       if (!relationshipDraft.charId) return;
                       setEditingCharacter({ ...editingCharacter, relationships: [...editingCharacter.relationships, relationshipDraft] });
                       setRelationshipDraft({ charId: 0, type: "ally" });
@@ -657,7 +1250,7 @@ async function confirmDisplayImage() {
                     return (
                       <div key={`${relationship.charId}-${index}`} className="flex items-center justify-between rounded-lg bg-gray-100 px-3 py-2 dark:bg-gray-800">
                         <span>{relatedName} · <strong>{relationship.type}</strong></span>
-                        <button type="button" className="text-sm text-red-500" onClick={() => setEditingCharacter({ ...editingCharacter, relationships: editingCharacter.relationships.filter((_, itemIndex) => itemIndex !== index) })}>Remove</button>
+                        <button type="button" disabled={!isEditMode} className="text-sm text-red-500 disabled:cursor-not-allowed disabled:opacity-50" onClick={() => setEditingCharacter({ ...editingCharacter, relationships: editingCharacter.relationships.filter((_, itemIndex) => itemIndex !== index) })}>Remove</button>
                       </div>
                     );
                   })}
@@ -673,17 +1266,18 @@ async function confirmDisplayImage() {
                     {tagOptions.map((option) => (
                       <button
                         type="button"
+                        disabled={!isEditMode}
                         key={option}
                         onClick={() => toggleChecklist(option, editingCharacter.tags, (tags) => setEditingCharacter({ ...editingCharacter, tags }))}
-                        className={`rounded-full border px-3 py-1 text-sm ${editingCharacter.tags.includes(option) ? "border-emerald-500 bg-emerald-100 text-emerald-800 dark:bg-emerald-900/40 dark:text-emerald-300" : "border-gray-300 bg-white text-gray-700 dark:border-gray-600 dark:bg-gray-800 dark:text-gray-200"}`}
+                        className={`rounded-full border px-3 py-1 text-sm disabled:cursor-not-allowed disabled:opacity-70 ${editingCharacter.tags.includes(option) ? "border-emerald-500 bg-emerald-100 text-emerald-800 dark:bg-emerald-900/40 dark:text-emerald-300" : "border-gray-300 bg-white text-gray-700 dark:border-gray-600 dark:bg-gray-800 dark:text-gray-200"}`}
                       >
                         {editingCharacter.tags.includes(option) ? "✓ " : ""}{option}
                       </button>
                     ))}
                   </div>
                   <div className="mt-2 flex gap-2">
-                    <input className="w-full rounded-lg border p-2 dark:bg-gray-800" value={customTagDraft} onChange={(event) => setCustomTagDraft(event.target.value)} placeholder="Add custom tag option" />
-                    <button type="button" className="rounded-lg bg-indigo-600 px-3 py-2 text-sm font-semibold text-white" onClick={() => {
+                    <input className="w-full rounded-lg border p-2 dark:bg-gray-800 disabled:opacity-80" disabled={!isEditMode} value={customTagDraft} onChange={(event) => setCustomTagDraft(event.target.value)} placeholder="Add custom tag option" />
+                    <button type="button" disabled={!isEditMode} className="rounded-lg bg-indigo-600 px-3 py-2 text-sm font-semibold text-white disabled:cursor-not-allowed disabled:opacity-50" onClick={() => {
                       const cleaned = normalizeWhitespace(customTagDraft);
                       if (!cleaned) return;
                       setTagOptions((prev) => Array.from(new Set([...prev, cleaned])));
@@ -692,14 +1286,14 @@ async function confirmDisplayImage() {
                   </div>
                 </div>
 
-                <ChipEditor label="Races" items={editingCharacter.setRace} onChange={(setRace) => setEditingCharacter({ ...editingCharacter, setRace })} placeholder="Add race" />
+                <ChipEditor disabled={!isEditMode} label="Races" items={editingCharacter.setRace} onChange={(setRace) => setEditingCharacter({ ...editingCharacter, setRace })} placeholder="Add race" />
               </div>
             )}
           </div>
         </div>
 
         {/* BUILD SUMMARY CARD */}
-        <div className="lg:sticky lg:top-15 h-fit">
+        <div className="lg:sticky lg:top-15 h-fit space-y-2">
 
           {alert && 
             <p className="mb-1 text-center rounded-lg bg-red-100 px-2 py-1 text-base font-semibold text-red-700 dark:bg-red-900/40 dark:text-red-200">{alert}</p>
@@ -709,8 +1303,57 @@ async function confirmDisplayImage() {
             <p className="mb-1 text-center rounded-lg bg-emerald-100 px-2 py-1 text-base font-semibold text-emerald-700 dark:bg-emerald-900/40 dark:text-emerald-200">{success}</p>
           }
 
-          <aside className=" space-y-3 rounded-xl border border-gray-200 bg-white p-4 shadow-sm dark:border-gray-700 dark:bg-gray-900 ">
-            <h2 className="text-lg font-bold">Build Summary</h2>
+          {/* RELATIONSHIP SIDEBAR*/}
+          {editingCharacter.relationships?.length >= 1 && !isEditMode && (
+            <div className="space-y-3 rounded-xl border border-gray-200 bg-white p-4 shadow-sm dark:border-gray-700 dark:bg-gray-900">
+              <div className="text-lg font-bold mb-1">
+                Related Characters
+              </div>
+
+              <div className="flex grid grid-cols-4 lg:grid-cols-3 gap-3 p-2 notes-scroll">
+                {editingCharacter.relationships?.slice(0,6).map((rel, i) => (
+                  <div
+                    key={i}
+                    className="group relative grid place-items-center"
+                  >
+                    <div 
+                      className="h-20 w-20 lg:w-18 lg:h-18 rounded-full overflow-hidden shadow-lg border-2 border-slate-700 group-hover:scale-110 group-hover:border-indigo-400 transition-all duration-200 cursor-pointer"
+                      onClick={() => openCharacterRel(rel.charId)}
+                    >
+                      <img
+                        src={imageMap[rel.charId]?.find(img => img.isDisplayed)?.url ||
+                            imageMap[rel.charId]?.[0]?.url ||
+                            char_image}
+                        className="w-full h-full object-cover"
+                        alt="relationship"
+                      />
+                    </div>
+                    {/* Tooltip on hover */}
+                    <div className="absolute left-0 -bottom-2 scale-0 group-hover:scale-100 transition-all bg-indigo-900 text-white text-[10px] py-1 px-2 rounded-md z-50 whitespace-nowrap shadow-xl">
+                      <span>
+                        {upcaseLetter(rel.type || "unknown")}
+                      </span>
+                    </div>
+                  </div>
+                  
+                ))}
+              </div> 
+            </div>
+          )}
+
+          <aside className="space-y-3 rounded-xl border border-gray-200 bg-white p-4 shadow-sm dark:border-gray-700 dark:bg-gray-900 ">
+            <div className="flex justify-between">
+              <h2 className="text-lg font-bold">Build Summary</h2>
+              <button
+                type="button"
+                className={`rounded-lg px-3 py-2 text-sm font-semibold ${isEditMode ? "border border-indigo-300 text-indigo-700 hover:bg-purple-200 dark:border-indigo-700 dark:text-purple-300 dark:hover:bg-indigo-900/20" : "bg-emerald-600 text-white hover:bg-emerald-700"}`}
+                onClick={() => setIsEditMode((prev) => !prev)}
+              > <FontAwesomeIcon icon={faMagicWandSparkles} />
+                {isEditMode ? " View" : " Edit"}
+              </button>
+            </div>
+
+            
             <p className="text-sm text-gray-500 dark:text-gray-300">Progression completion</p>
             <div className="h-2 w-full overflow-hidden rounded-full bg-gray-200 dark:bg-gray-700">
               <div className="h-full rounded-full bg-indigo-600 transition-all" style={{ width: `${completion}%` }} />
@@ -743,13 +1386,34 @@ async function confirmDisplayImage() {
               <p><strong>Tags:</strong> {editingCharacter.tags.length > 0 ? editingCharacter.tags.join(", ") : "None"}</p>
             </div>
 
-            <div className="flex flex-col gap-2 pt-1">
-              <button type="button" className="rounded-lg bg-indigo-600 px-3 py-2 text-sm font-semibold text-white hover:bg-indigo-700" onClick={() => void saveCharacter()}>Save Build</button>
-              <button type="button" className="rounded-lg border border-gray-300 px-3 py-2 text-sm dark:border-gray-600" onClick={() => navigate(`/book/${currentBookId}/${editingCharacter.id}-${editingCharacter.name.toLowerCase().replace(/[^a-z0-9]+/g, "-")}`)}>Back to Character</button>
-              
-              <span className="border-t-1 text-xs text-gray-500 mt-3 pb-3"></span>
-              <button type="button" className="rounded-lg bg-red-700 px-3 py-2 text-sm font-semibold text-white hover:bg-red-600 w-full" onClick={() => void deleteCharacter(editingCharacter.id)}>Delete Character</button>
+            {isEditMode && (
+            <div>
+              <div className="flex flex-col gap-2 pt-1">
+                <button
+                  type="button"
+                  className={`w-full rounded-lg px-3 py-2 text-sm font-semibold text-white ${isEditMode ? "bg-indigo-600 hover:bg-indigo-700" : "bg-indigo-400 disabled:opacity-50 cursor-not-allowed"}`}
+                  disabled={!isEditMode}
+                  onClick={() => void saveCharacter()}
+                >
+                  Save Build
+                </button>
+                
+                <span className="border-t-1 text-xs text-gray-500 mt-3 pb-3"></span>
+              </div>
+
+              <div className="flex">
+                <button
+                  type="button"
+                  disabled={!isEditMode}
+                  className="rounded-lg bg-red-700/50 px-1.5 py-2 text-[12px] font-semibold text-white hover:bg-red-700/60 disabled:cursor-not-allowed disabled:opacity-50"
+                  onClick={() => void deleteCharacter(editingCharacter.id)}
+                >
+                  Delete Character
+                </button>
+              </div>
             </div>
+            )}
+            
           </aside>
 
         </div>
@@ -876,6 +1540,191 @@ async function confirmDisplayImage() {
               >
                 Confirm Selection
               </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* MOBILE NOTES */}
+      {createPortal(
+        <>
+          {/* MOBILE NOTES TOGGLE */}
+          <button
+              ref={notesFabRef}
+              onClick={displayNotes}
+              className={`
+                fixed bottom-5 right-5 z-50
+                bg-blue-600 hover:bg-blue-700
+                border border-blue-600 hover:border-blue-400
+                text-white rounded-full
+                px-4 py-3.5 shadow-xl
+                transition-transform duration-600 
+                ${notesShowState ? "hidden" : "none"}
+              `}
+              title={notesShowState ? "Close notes" : "Open notes"}
+            >
+              <FontAwesomeIcon icon={notesShowState ? faMinus : faPlus}/>
+            </button>
+
+            {/* Collapsible notes drawer*/}
+            {isNotesDrawerMounted && (
+              <div
+                className={`text-black dark:text-white fixed inset-0 z-40 transition-opacity duration-300 justify-items-center ${isNotesDrawerVisible ? "opacity-100" : "opacity-0"}`}
+                role="dialog"
+                aria-modal="true"
+              >
+                <button
+                  className="absolute inset-0 bg-black/50"
+                  aria-label="Close notes drawer"
+                  onClick={closeNotesDrawer}
+                />
+
+              {/* notes content */}
+                <div
+                  ref={notesDrawerPanelRef}
+                  className={`
+                    absolute bottom-0 xxs:right-15
+                    bg-gray-100 dark:bg-gray-800
+                    shadow-2xl p-3
+                    w-full max-w-[60vh] max-h-[90vh]
+                    transition-all duration-500
+                    ${isNotesDrawerVisible ? "translate-y-0" : "translate-y-full"}
+                  `}
+                >
+                
+                <NotesCollection
+                  title="Character Notes"
+                  notes={charNotes}
+                  draftNote={draftNote}
+                  draftNoteState={draftNoteState}
+                  noteToDelete={noteToDelete}
+                  hideSave={hideSave}
+                  onFocusId={onFocusId}
+                  noteContent={noteContent}
+                  emptyMessage="Add notes, references, future scenarios, book plans, etc..."
+                  contentClassName="mt-2 h-[calc(75vh-3.5rem)] xxs:h-[calc(85vh-3.5rem)] overflow-y-auto overflow-x-hidden notes-scroll overflow-contain"
+                  onAddDraft={addDraftNotes}
+                  onCloseDraft={closeNotesDrawer}
+                  onChangeDraft={(content) => setDraftNote(prev => (prev ? { ...prev, content } : prev))}
+                  onChangeNote={(noteId, content) => setCharNotes(prev => prev.map(note => note.id === noteId ? { ...note, content } : note))}
+                  onSaveNote={saveNote}
+                  onDeleteRequest={setNoteToDelete}
+                  onDeleteConfirm={handleDeleteNote}
+                  onDeleteCancel={() => setNoteToDelete(null)}
+                  onFocusNote={(note) => {
+                    setOnFocusId(String(note.id ?? ""));
+                    setNoteContent(note.content);
+                    setHideSave(true);
+                    setDraftstate(!note.id);
+                  }}
+                  onCancelEditing={() => { setHideSave(false); setDraftNote(null); }}
+                />
+
+              </div>
+
+            </div>
+          )}
+        </>,
+        document.body
+      )}
+
+      {/* WORLD BUILDING INPUT MODAL */}
+      {showWorldbuildingModal && (
+        <div
+          className="fixed inset-0 z-50 bg-black/50 flex items-center justify-center p-3"
+          onMouseDown={(e) => {
+            if (e.target === e.currentTarget) {
+              setShowWorldbuildingModal(false);
+            }
+          }}
+        >
+          <div className="w-full max-w-2xl max-h-[90vh] overflow-y-auto rounded-md bg-white dark:bg-gray-900 p-4 shadow-2xl notes-scroll" onMouseDown={(e) => e.stopPropagation()}>
+            <div className="flex items-start justify-between gap-3">
+              <div>
+                <h2 className="text-lg font-semibold">Add Worldbuilding Section</h2>
+                <p className="text-xs text-gray-500 dark:text-gray-400">Add a title, then as many label/value facts as you need.</p>
+              </div>
+              <button
+                type="button"
+                className="px-2 py-1 rounded border border-gray-400 hover:bg-gray-200 dark:hover:bg-gray-700"
+                onClick={() => setShowWorldbuildingModal(false)}
+              >
+                Close
+              </button>
+            </div>
+
+            <div className="mt-4 space-y-3">
+              <div>
+                <label className="text-sm font-medium">Section Title</label>
+                <input
+                  type="text"
+                  className="mt-1 w-full rounded border border-gray-300 dark:border-gray-700 px-3 py-2 bg-transparent"
+                  placeholder="ex: Economy, Politics, Religion..."
+                  value={worldSectionTitle}
+                  onChange={(e) => setWorldSectionTitle(e.target.value)}
+                />
+              </div>
+
+              <div className="space-y-2">
+                <div className="flex items-center justify-between">
+                  <label className="text-sm font-medium">Entries (Label + Value)</label>
+                  <button
+                    type="button"
+                    className="text-xs px-2 py-1 rounded border border-gray-400 hover:bg-gray-200 dark:hover:bg-gray-700"
+                    onClick={addWorldDraftEntry}
+                  >
+                    <FontAwesomeIcon icon={faPlus} /> Add entry
+                  </button>
+                </div>
+
+                {worldDraftEntries.map((entry, index) => (
+                  <div key={`draft-entry-${index}`} className="rounded border border-gray-300 dark:border-gray-700 p-2 space-y-2">
+                    <div className="flex items-center justify-between">
+                      <span className="text-xs text-gray-500">Entry #{index + 1}</span>
+                      <button
+                        type="button"
+                        className="text-xs text-red-500 disabled:opacity-40"
+                        onClick={() => removeWorldDraftEntry(index)}
+                        disabled={worldDraftEntries.length === 1}
+                      >
+                        Remove
+                      </button>
+                    </div>
+
+                    <input
+                      type="text"
+                      className="w-full rounded border border-gray-300 dark:border-gray-700 px-2 py-1 bg-transparent"
+                      placeholder="Label (ex: Cost, Rule, Limitation)"
+                      value={entry.label}
+                      onChange={(e) => updateWorldDraftEntry(index, "label", e.target.value)}
+                    />
+                    <textarea
+                      rows={2}
+                      className="w-full rounded border border-gray-300 dark:border-gray-700 px-2 py-1 bg-transparent"
+                      placeholder="Value / detail"
+                      value={entry.value}
+                      onChange={(e) => updateWorldDraftEntry(index, "value", e.target.value)}
+                    />
+                  </div>
+                ))}
+              </div>
+
+              <div className="flex justify-end gap-2 pt-1">
+                <button
+                  type="button"
+                  className="px-3 py-1 rounded bg-gray-500 text-white hover:bg-gray-600"
+                  onClick={() => setShowWorldbuildingModal(false)}
+                >
+                  Cancel
+                </button>
+                <button
+                  type="button"
+                  className="px-3 py-1 rounded bg-blue-600 text-white hover:bg-blue-700"
+                  onClick={saveWorldbuildingSection}
+                >
+                  Save Section
+                </button>
+              </div>
             </div>
           </div>
         </div>

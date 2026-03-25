@@ -2,7 +2,6 @@ import { Routes, Route, useLocation } from "react-router-dom";
 import Layout from "./components/Layout";
 
 import UserPage from "./pages/UserPage";
-import BookPage from "./pages/BookPage";
 import ExperimentPage from "./pages/ExperimentPage";
 import { useEffect } from "react";
 
@@ -42,20 +41,16 @@ useEffect(() => {
           element={<UserPage />} 
         />
         <Route 
-          path="/library/:currentBookId/"
-          element={<BookPage/>}
-        />
-        <Route 
           path="book/:currentBookId/" 
           element={<ExperimentPage />} 
         />
         <Route
           path="book/:currentBookId/:characterSlug"
-          element={<CharacterPageCopy />}
+          element={<CharEditPage />}
         />
         <Route
-          path="book/:currentBookId/:characterSlug/edit"
-          element={<CharEditPage />}
+          path="book/:currentBookId/:characterSlug/copy"
+          element={<CharacterPageCopy />}
         />
       </Route>
     </Routes>

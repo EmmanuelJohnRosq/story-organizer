@@ -286,31 +286,31 @@ const [charDescription, setCharDescription] = useState<CharacterDescription>({
   const notesDrawerPanelRef = useRef<HTMLDivElement | null>(null);
   const [notesShowState, setNotesShowState] = useState(false);
 
-    const openNotesDrawer = () => {
-      if (notesDrawerTimeoutRef.current) {
-        clearTimeout(notesDrawerTimeoutRef.current);
-        notesDrawerTimeoutRef.current = null;
-      }
+  const openNotesDrawer = () => {
+    if (notesDrawerTimeoutRef.current) {
+      clearTimeout(notesDrawerTimeoutRef.current);
+      notesDrawerTimeoutRef.current = null;
+    }
 
-      setIsNotesDrawerMounted(true);
-      setNotesShowState(true);
-      addDraftNotes();
+    setIsNotesDrawerMounted(true);
+    setNotesShowState(true);
+    addDraftNotes();
 
-      requestAnimationFrame(() => {
-        setIsNotesDrawerVisible(true);
-      });
-    };
+    requestAnimationFrame(() => {
+      setIsNotesDrawerVisible(true);
+    });
+  };
 
-    const closeNotesDrawer = () => {
-      setIsNotesDrawerVisible(false);
-      setNotesShowState(false);
-      setDraftNote(null)
+  const closeNotesDrawer = () => {
+    setIsNotesDrawerVisible(false);
+    setNotesShowState(false);
+    setDraftNote(null)
 
-      notesDrawerTimeoutRef.current = window.setTimeout(() => {
-        setIsNotesDrawerMounted(false);
-        notesDrawerTimeoutRef.current = null;
-      }, 300);
-    };
+    notesDrawerTimeoutRef.current = window.setTimeout(() => {
+      setIsNotesDrawerMounted(false);
+      notesDrawerTimeoutRef.current = null;
+    }, 300);
+  };
   
     // SHOW/HIDE NOTES DISPLAY
     const displayNotes = () => {
@@ -835,74 +835,7 @@ const [charDescription, setCharDescription] = useState<CharacterDescription>({
     }
   }
 
-  const sampleWorldWiki: WorldbuildingSection[] = [
-    {
-      id: "Rules",
-      title: "World Rules",
-      bookId: "",
-      entries: [
-        { label: "Year", value: "Aster Cycle 472" },
-        { label: "Travel", value: "Gateways open only during moonrise tides." },
-        { label: "Law", value: "Memory-forging magic is forbidden in all Free Cities." },
-      ],
-    },
-    {
-      id: "Power System",
-      title: "Power System",
-      bookId: "",
-      entries: [
-        { label: "Source", value: "Aether Threads woven through the sky." },
-        { label: "Cost", value: "Every cast consumes heat from the body and short-term memory." },
-        { label: "Ranks", value: "Sparkborn → Channeler → Warden → Astral" },
-      ],
-    },
-    {
-      id: "Factions",
-      title: "Factions & Culture",
-      bookId: "",
-      entries: [
-        { label: "Dominant Faction", value: "The Cartographer Guild controls map-gates and sea routes." },
-        { label: "Religion", value: "The Nine Lantern rites guide mourning, naming, and oath-binding." },
-        { label: "Current Conflict", value: "A civil split over opening the sealed northern ruins." },
-      ],
-    },
-    {
-      id: "Hooks",
-      title: "Story Hooks",
-      bookId: "",
-      entries: [
-        { label: "Secret", value: "The protagonist's bloodline can restore dead gateways." },
-        { label: "Foreshadow", value: "Black snow appears one day before a realm fracture." },
-      ],
-    },
-    {
-      id: "Source",
-      title: "Power Source",
-      bookId: "",
-      entries: [
-        { label: "Mana", value: "Mana is the Universe's General Energy." },
-        { label: "Divine power", value: "Divine Power is an energy level higher than Mana." },
-        { label: "Bloodline", value: "Beasts, Demons, and Hell Spawns have bloodline powers, advantage of some other races unlike humans." },
-      ],
-    },
-    {
-      id: "Level",
-      title: "Power Level",
-      bookId: "",
-      entries: [
-        { label: "Tier 0", value: "Mortal/Human/Animals/Items" },
-        { label: "Tier 1", value: "Awakener/Knight and Mage Apprentice/Beast/Items" },
-        { label: "Tier 2", value: "Knight/Mage/Beast" },
-        { label: "Tier 3", value: "GrandKnight/GrandMage/Magic Beast" },
-        { label: "Tier 4", value: "Supreme Mage/Knight" },
-        { label: "Tier 5", value: "Saint Domain" },
-        { label: "Tier 6", value: "Demigod" },
-        { label: "Tier 7", value: "Godhood" },
-      ],
-    },
-  ];
-
-  const [worldbuildingSections, setWorldbuildingSections] = useState<WorldbuildingSection[]>(sampleWorldWiki);
+  const [worldbuildingSections, setWorldbuildingSections] = useState<WorldbuildingSection[]>([]);
   const [showWorldbuildingModal, setShowWorldbuildingModal] = useState(false);
   const [openWorldSections, setOpenWorldSections] = useState<Record<string, boolean>>({});
   

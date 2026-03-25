@@ -519,6 +519,7 @@ export default function Header({ showGalaxy, onToggle }: HeaderProps) {
 
     const [autoBackupState, setAutoBackupState] = useState(false)
 
+    // original auto backup
     useEffect(() => {
         if (!googleUser) return;
 
@@ -1012,7 +1013,7 @@ export default function Header({ showGalaxy, onToggle }: HeaderProps) {
             {/* DISPLAYS THE MODAL FOR CONFIRMING THE SAVING OF A BACKUP DATA IN GDRIVE */}
             {showGoogleSaveModal && googleUser &&(
             <div 
-                className="fixed inset-0 flex items-center justify-center bg-black/50 z-50"
+                className="fixed inset-0 flex items-center justify-center bg-black/50 z-60"
                 onMouseDown={(e) => {
                     if (isGoogleSaving === true) return;
                     if (e.target === e.currentTarget) {
