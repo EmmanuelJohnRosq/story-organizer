@@ -4,14 +4,11 @@ import Layout from "./components/Layout";
 import UserPage from "./pages/UserPage";
 import BookPage from "./pages/BookPage";
 import ExperimentPage from "./pages/ExperimentPage";
-import CharacterPage from "./pages/CharacterPage";
 import { useEffect } from "react";
 
 import { useGoogleAuth} from "./context/GoogleAuthContext";
 import CharEditPage from "./pages/CharEditPage";
 import CharacterPageCopy from "./pages/CharacterPageCopy";
-import Library from "./pages/Library";
-import UserPageUpdatedBook from "./pages/UserPageUpdatedBook";
 
 export default function StoryOrganizer() {
 

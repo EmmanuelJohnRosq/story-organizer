@@ -8,7 +8,6 @@ import { useDropzone } from "react-dropzone";
 import { useGoogleAuth, type GoogleUser } from "../context/GoogleAuthContext";
 import { signOut } from "../services/googleAuth";
 import { downloadDriveFile, listManualBackupFiles, listRestoreBackupFiles, type DriveBackupFile, uploadManualBackup, upsertAutoBackup, isTokenActive } from "../services/driveService";
-import { IoMdReturnLeft } from "react-icons/io";
 
 interface HeaderProps {
   showGalaxy: boolean;
@@ -264,6 +263,7 @@ export default function Header({ showGalaxy, onToggle }: HeaderProps) {
         imageRecords.map(async (img) => ({
             imageId: img.imageId,
             charId: img.charId,
+            bookId: img.bookId,
             createdAt: img.createdAt,
             base64: await blobToBase64(img.imageBlob),
             isDisplayed: img.isDisplayed,
@@ -537,9 +537,6 @@ export default function Header({ showGalaxy, onToggle }: HeaderProps) {
                 await upsertAutoBackup(data, token);
                 console.log("upload backup automatically");
                 setAutoBackupState(true);
-                setTimeout(() => {
-                    setAutoBackupState(false);
-                }, 3000);
                 if (!cancelled) {
                     setDisplayExpiringAuth(false);
                 }
@@ -865,7 +862,7 @@ export default function Header({ showGalaxy, onToggle }: HeaderProps) {
                                 </button>
 
                                 {/* THIS IS FOR SAVING TO GOOGLE DRIVE */}
-                                {!displayExpiringAuth ? (
+                                {!displayExpiringAuth && googleUser ? (
                                 <>
                                     <button
                                         title="Create/Save a backup data to Gdrive"
@@ -891,7 +888,7 @@ export default function Header({ showGalaxy, onToggle }: HeaderProps) {
                                     <button
                                         title="Re-authenticate Google connection to backup/restore data"
                                         onClick={() => logIn()}
-                                        className="w-full text-left px-2 py-1 rounded hover:bg-green-100 dark:hover:bg-gray-700"
+                                        className={`${googleUser ? "" : "hidden"} w-full text-left px-2 py-1 rounded hover:bg-green-100 dark:hover:bg-gray-700`}
                                     >
                                         <FontAwesomeIcon icon={faLink} className="mr-2"/>Re-authenticate Google
                                     </button>

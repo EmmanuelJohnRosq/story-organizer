@@ -4,11 +4,12 @@ import { useState, useEffect, useCallback, useRef } from "react";
 import { db, type Character, type EditableCharacter, type Notes, type CharacterDescription, type CharImage, type WorldbuildingSection, type WorldbuildingEntry } from "../db";
 
 import { FontAwesomeIcon} from "@fortawesome/react-fontawesome";
-import {faCheck, faPlus, faMinus, faHouse, faUserPlus, faGlobe, faTableColumns, faWandMagicSparkles, faProjectDiagram, faFileLines } from "@fortawesome/free-solid-svg-icons";
-import { useDropzone } from "react-dropzone";
-
+import type { IconDefinition } from "@fortawesome/fontawesome-svg-core";
+import {faCheck, faPlus, faMinus, faHouse, faUserPlus, faGlobe, faTableColumns, faWandMagicSparkles, faProjectDiagram, faFileLines, faStar, faUser, faLink, faPalette } from "@fortawesome/free-solid-svg-icons";
 import { FiEdit2, FiX } from "react-icons/fi"; // example pencil icon from react
 import { faPenToSquare } from "@fortawesome/free-regular-svg-icons";
+
+import { useDropzone } from "react-dropzone";
 import { createPortal } from "react-dom";
 
 import NotesCollection, { type EditableNote } from "../components/NotesCollection";
@@ -154,11 +155,11 @@ const [charDescription, setCharDescription] = useState<CharacterDescription>({
 
   const currentBook = async () => await db.books.get(currentBookId);
 
-  const characterDetailTabs: { key: CharacterDetailTab; label: string }[] = [
-    { key: "overview", label: "Overview" },
-    { key: "profile", label: "Profile" },
-    { key: "relationships", label: "Relationships" },
-    { key: "appearance", label: "Appearance" },
+  const characterDetailTabs: { key: CharacterDetailTab; label: string; icon: IconDefinition }[] = [
+    { key: "overview", label: "Overview", icon: faStar },
+    { key: "profile", label: "Profile", icon: faUser },
+    { key: "relationships", label: "Relationships", icon: faLink },
+    { key: "appearance", label: "Appearance", icon: faPalette },
   ];
 
   const loadChars = async (bookId : string) => {
@@ -1022,7 +1023,8 @@ const [charDescription, setCharDescription] = useState<CharacterDescription>({
       <Navbar actions={navbarActions} />
       
       {/* CONTENT CONTAINER */}
-      <div className="mt-12 xxs:mt-8.5 grid gap-3 xxs:grid-cols-[0.9fr_1.5fr]">
+      <div className="relative mt-12 xxs:mt-8.5 grid gap-3 xxs:grid-cols-[0.9fr_1.5fr]">
+        <div className="pointer-events-none absolute -top-3 left-0 right-0 h-28 rounded-2xl bg-gradient-to-r from-indigo-500/10 via-cyan-500/10 to-fuchsia-500/10 blur-xl" />
 
         {/* LEFT CENTER CONTAINER */}
         <div className="flex-1">
@@ -1030,7 +1032,7 @@ const [charDescription, setCharDescription] = useState<CharacterDescription>({
           {/* CHARACTER CARD CONTAINER */}
           {originalCharacter && (
             <div
-              className={`${originalCharacter.relationships?.length >= 1 ? "xxs:grid xxs:grid-cols-[auto_1fr]" : "block"} notes-scroll max-h-[calc(100vh-5.5rem)] overflow-auto sticky xxs:top-14.5 h-fit shadow-xl backdrop-blur-sm rounded-md border border-indigo-800/30`}
+              className={`${originalCharacter.relationships?.length >= 1 ? "xxs:grid xxs:grid-cols-[auto_1fr]" : "block"} relative notes-scroll max-h-[calc(100vh-5.5rem)] overflow-auto sticky xxs:top-14.5 h-fit rounded-2xl border border-indigo-800/30 bg-white/70 shadow-[0_20px_45px_-20px_rgba(67,56,202,0.45)] backdrop-blur-sm dark:bg-slate-950/60`}
             >
               
               {/* RELATIONSHIP SIDEBAR*/}
@@ -1071,7 +1073,7 @@ const [charDescription, setCharDescription] = useState<CharacterDescription>({
               )}
 
               {/* MAIN CHARACTER DETAILS */}
-              <div className="rounded-r-md dark:bg-gradient-to-br dark:from-indigo-800/10 dark:to-gray-900 overflow-y-auto notes-scroll">
+              <div className="rounded-r-2xl bg-gradient-to-b from-indigo-500/[0.06] via-transparent to-transparent overflow-y-auto notes-scroll dark:bg-gradient-to-br dark:from-indigo-800/10 dark:to-gray-900">
                 <div className="px-4 py-6">
                   {/* IMAGE */}
                   <div className="flex flex-col items-center">
@@ -1138,7 +1140,7 @@ const [charDescription, setCharDescription] = useState<CharacterDescription>({
                     </div>
                   </div>
 
-                  <div className="my-4 border-t border-slate-700/50 mx-2" />
+                  <div className="my-4 border-t border-slate-700/30 mx-2" />
 
                   {/* QUICK INFO */}
                   <div className="px-2">
@@ -1185,7 +1187,7 @@ const [charDescription, setCharDescription] = useState<CharacterDescription>({
 
           {/* CHARACTER DATA PAGE / EDIT CHAR DETAILS */}
           { originalCharacter && editingCharacter && (
-            <div className="mb-3 rounded-md border border-slate-200/70 bg-white/90 pt-3 shadow-xl backdrop-blur-sm dark:border-slate-800 dark:bg-gray-900/90">
+            <div className="mb-3 rounded-2xl border border-slate-200/70 bg-white/90 pt-3 shadow-[0_20px_45px_-20px_rgba(67,56,202,0.45)] backdrop-blur-sm dark:border-slate-800 dark:bg-gray-900/90">
 
               {/* CHARACTER CARD AND IMAGE FORMAT */}
               <div
@@ -1199,8 +1201,19 @@ const [charDescription, setCharDescription] = useState<CharacterDescription>({
                 }}
               >
 
+                <div className="mx-4 mb-1 flex items-center justify-between">
+                  <div>
+                    <p className="text-[11px] font-semibold uppercase tracking-[0.2em] text-indigo-500/80 dark:text-indigo-300/80">
+                      Character Dossier
+                    </p>
+                    <p className="text-xs text-slate-500 dark:text-slate-400">
+                      Organized to match your experiment flow and reference-first writing process.
+                    </p>
+                  </div>
+                </div>
+
                 <div className="mx-4 flex items-start justify-between gap-2 border-b border-gray-300 pb-3 dark:border-gray-700">
-                  <div className="flex flex-wrap gap-2">
+                  <div className="flex flex-wrap gap-2 rounded-2xl border border-indigo-200/80 bg-gradient-to-r from-indigo-100/80 to-sky-100/70 p-1.5 dark:border-indigo-700/40 dark:from-indigo-900/40 dark:to-slate-900/60">
                     {characterDetailTabs.map(tab => (
                       <button
                         key={tab.key}
@@ -1208,10 +1221,13 @@ const [charDescription, setCharDescription] = useState<CharacterDescription>({
                         className={`rounded-full px-4 py-1.5 text-sm font-medium transition ${
                           activeCharacterTab === tab.key
                             ? "bg-gradient-to-r from-indigo-600 to-blue-600 text-white shadow-md"
-                            : "bg-slate-200 text-slate-700 hover:bg-slate-300 dark:bg-gray-800 dark:text-gray-300 dark:hover:bg-gray-700"
+                            : "bg-white/90 text-slate-700 hover:bg-white dark:bg-gray-800 dark:text-gray-300 dark:hover:bg-gray-700"
                         }`}
                       >
-                        {tab.label}
+                        <span className="inline-flex items-center gap-1.5">
+                          <FontAwesomeIcon icon={tab.icon} className="text-[11px]" />
+                          {tab.label}
+                        </span>
                       </button>
                     ))}
                   </div>
@@ -1234,7 +1250,7 @@ const [charDescription, setCharDescription] = useState<CharacterDescription>({
                     <div className="space-y-2">
 
                       {/* BACKGROUND */}
-                      <div className="rounded-xl border border-slate-200 bg-white p-3 shadow-sm dark:border-slate-700 dark:bg-slate-900/70">
+                      <div className="rounded-xl border border-slate-200 bg-gradient-to-br from-white to-indigo-50/30 p-3 shadow-sm dark:border-slate-700 dark:bg-slate-900/70">
                         <label className="text-sm font-semibold text-gray-500 dark:text-gray-300">Background</label>
                         <p className="mt-1 text-sm text-gray-700 dark:text-gray-300">
                           {originalCharacter.notes
@@ -1244,7 +1260,7 @@ const [charDescription, setCharDescription] = useState<CharacterDescription>({
                       </div>
 
                       {/* PERSONALITY TRAITS */}
-                      <div className="rounded-xl border border-slate-200 bg-white p-3 shadow-sm dark:border-slate-700 dark:bg-slate-900/70">
+                      <div className="rounded-xl border border-slate-200 bg-gradient-to-br from-white to-indigo-50/30 p-3 shadow-sm dark:border-slate-700 dark:bg-slate-900/70">
                         <label className="text-sm font-semibold text-gray-500 dark:text-gray-300">Personality Traits</label>
                         <p className="mt-1 text-sm text-gray-700 dark:text-gray-300">
                           {originalCharacter.personalityTraits?.length > 0
@@ -1254,7 +1270,7 @@ const [charDescription, setCharDescription] = useState<CharacterDescription>({
                       </div>
 
                       {/* CORE MOTIVATION */}
-                      <div className="rounded-xl border border-slate-200 bg-white p-3 shadow-sm dark:border-slate-700 dark:bg-slate-900/70">
+                      <div className="rounded-xl border border-slate-200 bg-gradient-to-br from-white to-indigo-50/30 p-3 shadow-sm dark:border-slate-700 dark:bg-slate-900/70">
                         <label className="text-sm font-semibold text-gray-500 dark:text-gray-300">Core Motivation</label>
                         <p className="mt-1 text-sm text-gray-700 dark:text-gray-300">
                           {originalCharacter.futureNotes || "No core motivation added yet."}
@@ -1262,7 +1278,7 @@ const [charDescription, setCharDescription] = useState<CharacterDescription>({
                       </div>
 
                       {/* SUMMARY */}
-                      <div className="rounded-xl border border-slate-200 bg-white p-3 shadow-sm dark:border-slate-700 dark:bg-slate-900/70">
+                      <div className="rounded-xl border border-slate-200 bg-gradient-to-br from-white to-indigo-50/30 p-3 shadow-sm dark:border-slate-700 dark:bg-slate-900/70">
                         <label className="text-sm font-semibold text-gray-500 dark:text-gray-300">Character Arc Summary</label>
                         <p className="mt-1 text-sm text-gray-700 dark:text-gray-300">
                           {originalCharacter.characterArc || "No character arc summary added."}
@@ -1274,7 +1290,7 @@ const [charDescription, setCharDescription] = useState<CharacterDescription>({
                   {activeCharacterTab === "profile" && (
                     <div className="space-y-2">
                       {/* RACE */}
-                      <div className="rounded-xl border border-slate-200 bg-white p-3 shadow-sm dark:border-slate-700 dark:bg-slate-900/70">
+                      <div className="rounded-xl border border-slate-200 bg-gradient-to-br from-white to-sky-50/40 p-3 shadow-sm dark:border-slate-700 dark:bg-slate-900/70">
                         <label className="text-sm font-semibold text-gray-500 dark:text-gray-300">Race</label>
 
                         <div className="flex flex-wrap gap-2 mt-1">
@@ -1291,7 +1307,7 @@ const [charDescription, setCharDescription] = useState<CharacterDescription>({
                       </div>
 
                       {/* ABILITIES */}
-                      <div className="rounded-xl border border-slate-200 bg-white p-3 shadow-sm dark:border-slate-700 dark:bg-slate-900/70">
+                      <div className="rounded-xl border border-slate-200 bg-gradient-to-br from-white to-sky-50/40 p-3 shadow-sm dark:border-slate-700 dark:bg-slate-900/70">
                         <label className="text-sm font-semibold text-gray-500 dark:text-gray-300">Abilities/Skills</label>
                         <div className="flex flex-wrap gap-2 pt-1">
                           {originalCharacter.abilities && originalCharacter.abilities.length > 0 ? (
@@ -1336,7 +1352,7 @@ const [charDescription, setCharDescription] = useState<CharacterDescription>({
                       </div>
 
                       {/* POWER LEVEL */}
-                      <div className="rounded-xl border border-slate-200 bg-white p-3 shadow-sm dark:border-slate-700 dark:bg-slate-900/70">
+                      <div className="rounded-xl border border-slate-200 bg-gradient-to-br from-white to-sky-50/40 p-3 shadow-sm dark:border-slate-700 dark:bg-slate-900/70">
                         <label className="text-sm font-semibold text-gray-500 dark:text-gray-300">Power System / Power Level</label>
                         <p className="mt-1 text-sm text-gray-700 dark:text-gray-300">
                           {originalCharacter.powerLevel || "No power system details added."}
@@ -1344,7 +1360,7 @@ const [charDescription, setCharDescription] = useState<CharacterDescription>({
                       </div>
                         
                       {/* NET WORTH */}
-                      <div className="rounded-xl border border-slate-200 bg-white p-3 shadow-sm dark:border-slate-700 dark:bg-slate-900/70">
+                      <div className="rounded-xl border border-slate-200 bg-gradient-to-br from-white to-sky-50/40 p-3 shadow-sm dark:border-slate-700 dark:bg-slate-900/70">
                         <label className="text-sm font-semibold text-gray-500 dark:text-gray-300">Net Worth</label>
                         <p className="mt-1 text-sm text-gray-700 dark:text-gray-300">
                           {originalCharacter.netWorth || "The char is poor."}
@@ -1352,7 +1368,7 @@ const [charDescription, setCharDescription] = useState<CharacterDescription>({
                       </div>
 
                       {/* TAGS */}
-                      <div className="rounded-xl border border-slate-200 bg-white p-3 shadow-sm dark:border-slate-700 dark:bg-slate-900/70">
+                      <div className="rounded-xl border border-slate-200 bg-gradient-to-br from-white to-sky-50/40 p-3 shadow-sm dark:border-slate-700 dark:bg-slate-900/70">
                         <label className="text-sm font-semibold text-gray-500 dark:text-gray-300">Character Tags</label>
                         <p className="mt-1 text-sm text-gray-700 dark:text-gray-300">
                           {originalCharacter.tags?.length > 0
@@ -1362,7 +1378,7 @@ const [charDescription, setCharDescription] = useState<CharacterDescription>({
                       </div>
 
                       {/* TITLES */}
-                      <div className="rounded-xl border border-slate-200 bg-white p-3 shadow-sm dark:border-slate-700 dark:bg-slate-900/70">
+                      <div className="rounded-xl border border-slate-200 bg-gradient-to-br from-white to-sky-50/40 p-3 shadow-sm dark:border-slate-700 dark:bg-slate-900/70">
                         <label className="text-sm font-semibold text-gray-500 dark:text-gray-300">Titles</label>
                         <p className="mt-1 text-sm text-gray-700 dark:text-gray-300">
                           {originalCharacter.titles?.length > 0
@@ -1372,7 +1388,7 @@ const [charDescription, setCharDescription] = useState<CharacterDescription>({
                       </div>
 
                       {/* APPEARANCE */}
-                      <div className="rounded-xl border border-slate-200 bg-white p-3 shadow-sm dark:border-slate-700 dark:bg-slate-900/70">
+                      <div className="rounded-xl border border-slate-200 bg-gradient-to-br from-white to-sky-50/40 p-3 shadow-sm dark:border-slate-700 dark:bg-slate-900/70">
                         <label className="text-sm font-semibold text-gray-500 dark:text-gray-300">Chapter Appearances</label>
                         <p className="mt-1 text-sm text-gray-700 dark:text-gray-300">
                           {originalCharacter.chapterAppearances?.length > 0
@@ -1384,7 +1400,7 @@ const [charDescription, setCharDescription] = useState<CharacterDescription>({
                   )}
 
                   {activeCharacterTab === "relationships" && (
-                    <div className="space-y-2 rounded-xl border border-slate-200 bg-white p-3 shadow-sm dark:border-slate-700 dark:bg-slate-900/70">
+                    <div className="space-y-2 rounded-xl border border-slate-200 bg-gradient-to-br from-white to-fuchsia-50/30 p-3 shadow-sm dark:border-slate-700 dark:bg-slate-900/70">
                       <div className="flex items-center gap-2">
                         <label className="text-sm font-medium text-gray-500 dark:text-gray-400">Filter by type</label>
                         <select
@@ -1435,7 +1451,7 @@ const [charDescription, setCharDescription] = useState<CharacterDescription>({
                   )}
 
                   {activeCharacterTab === "appearance" && (
-                    <div className="space-y-2 shadow-sm dark:border-slate-700 dark:bg-slate-900/70">
+                    <div className="space-y-2 rounded-xl border border-slate-200 bg-gradient-to-br from-white to-amber-50/40 p-3 shadow-sm dark:border-slate-700 dark:bg-slate-900/70">
                       {([
                         ["basic", originalCharacter.description?.basic],
                         ["face", originalCharacter.description?.face],

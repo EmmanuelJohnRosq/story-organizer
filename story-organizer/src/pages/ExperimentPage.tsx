@@ -6,10 +6,12 @@ import Navbar, { type NavbarAction } from "../components/Navbar";
 import { db, type Book, type Character, type EditableCharacter, type Notes, type CharacterDescription, type CharImage, type WorldbuildingSection, type WorldbuildingEntry } from "../db";
 
 import { FontAwesomeIcon} from "@fortawesome/react-fontawesome";
-import { faCheck, faPlus, faMinus, faEllipsis, faUserPlus, faTableColumns, faWandMagicSparkles, faProjectDiagram, faGlobe, faPenToSquare, faFileLines, faHouse, faStar, faPen, faArrowLeft } from "@fortawesome/free-solid-svg-icons";
+import { faCheck, faPlus, faMinus, faEllipsis, faUserPlus, faTableColumns, faWandMagicSparkles, faProjectDiagram, faGlobe, faPenToSquare, faFileLines, faHouse, faStar, faPen, faArrowLeft, faUpload } from "@fortawesome/free-solid-svg-icons";
 import { createPortal } from "react-dom";
+import Cropper, { type Area, type Point } from "react-easy-crop";
 
 import NotesCollection, { type EditableNote } from "../components/NotesCollection";
+import getCroppedImg from "../components/cropImage";
 
 export default function ExperimentPage() {
   const { currentBookId } = useParams();
@@ -476,11 +478,34 @@ export default function ExperimentPage() {
       };
 
       await db.books.update(currentBookId, updatedBook);
+
+      if (draftBookCoverFile) {
+        const existing = await db.images.where("bookId").equals(currentBookId).toArray();
+        await Promise.all(existing.map(image => db.images.update(image.imageId, { isDisplayed: false })));
+
+        await db.images.add({
+          imageId: crypto.randomUUID(),
+          charId: 0,
+          bookId: currentBookId,
+          createdAt: Date.now(),
+          imageBlob: draftBookCoverFile,
+          isDisplayed: true,
+        });
+
+        await loadBookCover(currentBookId);
+        setDraftBookCoverFile(null);
+        setBookCoverDraftUrl(prev => {
+          if (prev) URL.revokeObjectURL(prev);
+          return null;
+        });
+      }
+
       setCurrentBook(prev => (prev ? { ...prev, ...updatedBook } : prev));
 
       setAlert("Changes Saved");
       setStatePopup(true);
       setTimeout(() => { setStatePopup(false); setAlert(""); }, 2000);
+      resetBookCoverCropState();
       setEditBookContent(false);
     }
 
@@ -494,6 +519,17 @@ export default function ExperimentPage() {
         setBookChapterCount(currentBook.chapterCount ?? 0);
         setBookGenre([...(currentBook.genre ?? [])]);
         setBookTags([...(currentBook.tags ?? [])]);
+      }
+
+      resetBookCoverCropState();
+      setDraftBookCoverFile(null);
+      setBookCoverDraftUrl(prev => {
+        if (prev) URL.revokeObjectURL(prev);
+        return null;
+      });
+
+      if (currentBook?.id) {
+        void loadBookCover(currentBook.id);
       }
 
       setEditBookContent(false);
@@ -531,27 +567,69 @@ export default function ExperimentPage() {
       });
     };
 
+    function resetBookCoverCropState() {
+      setBookCoverImageSrc(null);
+      setBookCoverCrop({ x: 0, y: 0 });
+      setBookCoverZoom(1);
+      setBookCoverCroppedAreaPixels(null);
+      setShowBookCoverCropper(false);
+
+      if (bookCoverInputRef.current) {
+        bookCoverInputRef.current.value = "";
+      }
+    }
+
     const uploadBookCover = async (event: React.ChangeEvent<HTMLInputElement>) => {
-      const file = event.target.files?.[0];
-      if (!file || !currentBookId) return;
+      const file = event.target.files?.[0] ?? null;
 
-      const existing = await db.images.where("bookId").equals(currentBookId).toArray();
-      await Promise.all(existing.map(image => db.images.update(image.imageId, { isDisplayed: false })));
+      if (!file) {
+        return;
+      }
 
-      await db.images.add({
-        imageId: crypto.randomUUID(),
-        charId: 0,
-        bookId: currentBookId,
-        createdAt: Date.now(),
-        imageBlob: file,
-        isDisplayed: true,
-      });
+      const reader = new FileReader();
+      reader.onload = () => {
+        const result = reader.result;
 
-      await loadBookCover(currentBookId);
-      setAlert("Cover Updated");
-      setStatePopup(true);
-      setTimeout(() => { setStatePopup(false); setAlert(""); }, 2000);
-      event.target.value = "";
+        if (typeof result !== "string") {
+          alert("Could not read that image file.");
+          return;
+        }
+
+        setBookCoverImageSrc(result);
+        setBookCoverCrop({ x: 0, y: 0 });
+        setBookCoverZoom(1);
+        setBookCoverCroppedAreaPixels(null);
+        setShowBookCoverCropper(true);
+      };
+      reader.readAsDataURL(file);
+    };
+
+    const onBookCoverCropComplete = (_croppedArea: Area, croppedPixels: Area) => {
+      setBookCoverCroppedAreaPixels(croppedPixels);
+    };
+
+    const handleBookCoverCropSave = async () => {
+      if (!bookCoverImageSrc || !bookCoverCroppedAreaPixels) return;
+
+      try {
+        const croppedFile = await getCroppedImg(
+          bookCoverImageSrc,
+          bookCoverCroppedAreaPixels,
+          `${normalizeWhitespace(titleDraft || currentBook?.title || "book-cover") || "book-cover"}.jpg`,
+        );
+
+        setDraftBookCoverFile(croppedFile);
+
+        setBookCoverDraftUrl(prev => {
+          if (prev) URL.revokeObjectURL(prev);
+          return URL.createObjectURL(croppedFile);
+        });
+
+        resetBookCoverCropState();
+      } catch (error) {
+        console.error("Failed to crop book cover", error);
+        alert("We couldn't crop that image. Please try another image.");
+      }
     };
 
   
@@ -695,6 +773,14 @@ export default function ExperimentPage() {
     const [showSettingsMenu, setShowSettingsMenu] = useState(false);
     const [editBookContent, setEditBookContent] = useState(false);
     const [bookCoverUrl, setBookCoverUrl] = useState<string | null>(null);
+
+    const [draftBookCoverFile, setDraftBookCoverFile] = useState<File | null>(null);
+    const [bookCoverDraftUrl, setBookCoverDraftUrl] = useState<string | null>(null);
+    const [bookCoverImageSrc, setBookCoverImageSrc] = useState<string | null>(null);
+    const [bookCoverCrop, setBookCoverCrop] = useState<Point>({ x: 0, y: 0 });
+    const [bookCoverZoom, setBookCoverZoom] = useState(1);
+    const [bookCoverCroppedAreaPixels, setBookCoverCroppedAreaPixels] = useState<Area | null>(null);
+    const [showBookCoverCropper, setShowBookCoverCropper] = useState(false);
 
     const [showPinnedNotes, setShowPinnedNotes] = useState(true);
  
@@ -1302,8 +1388,9 @@ export default function ExperimentPage() {
     useEffect(() => {
       return () => {
         if (bookCoverUrl) URL.revokeObjectURL(bookCoverUrl);
+        if (bookCoverDraftUrl) URL.revokeObjectURL(bookCoverDraftUrl);
       };
-    }, [bookCoverUrl]);
+    }, [bookCoverUrl, bookCoverDraftUrl]);
 
     const goToTop = () => {
       window.scrollTo({
@@ -1331,6 +1418,8 @@ export default function ExperimentPage() {
 
       {/* CONTENT CONTAINER */}
       <div className="mt-12 space-y-3 xxs:mt-13">
+
+        {/* hero section card */}
         <section className="overflow-hidden rounded-3xl border border-gray-200 bg-white shadow-lg dark:border-gray-800 dark:bg-gray-900">
           <div className="grid gap-0 lg:grid-cols-[1.4fr_0.9fr]">
             <div className={`relative overflow-hidden bg-gradient-to-br ${statusTone} p-6 text-white sm:p-8`}>
@@ -1382,7 +1471,7 @@ export default function ExperimentPage() {
 
         <div className="grid gap-3 xxs:grid-cols-[1.2fr_1.5fr]">
           {/* LEFT SIDE CONTAINER */}
-          <div className="flex-1">
+          <div className="flex-1 space-y-2">
 
               {/* BOOK AND CHARACTER FORMS LEFT PANEL */}
               <div className="w-full">
@@ -1518,11 +1607,12 @@ export default function ExperimentPage() {
                       </div>
 
                       <div className="space-y-5 my-2">
+
                         {/* Title Input */}
                         <div>
                           <label className="block text-xs font-semibold uppercase tracking-wider text-gray-500 mb-1 ml-1">Book Title</label>
                           <input
-                            className="rounded-lg border border-gray-300 dark:border-gray-700 p-2.5 dark:bg-gray-800 w-full focus:ring-2 focus:ring-blue-500 outline-none transition"
+                            className="rounded-2xl border border-gray-300 dark:border-gray-700 p-2.5 dark:bg-gray-800 w-full focus:ring-2 focus:ring-blue-500 outline-none transition"
                             placeholder="Enter book title"
                             value={titleDraft}
                             onChange={e => setTitleDraft(e.target.value)}
@@ -1537,7 +1627,7 @@ export default function ExperimentPage() {
                             <input
                               type="number"
                               min={0}
-                              className="rounded-lg border border-gray-300 dark:border-gray-700 p-2.5 dark:bg-gray-800 w-full focus:ring-2 focus:ring-blue-500 outline-none transition"
+                              className="rounded-2xl border border-gray-300 dark:border-gray-700 p-2.5 dark:bg-gray-800 w-full focus:ring-2 focus:ring-blue-500 outline-none transition"
                               placeholder="e.g. 1"
                               value={bookVolume}
                               onChange={e => setBookVolume(e.target.value)}
@@ -1548,7 +1638,7 @@ export default function ExperimentPage() {
                           <div>
                             <label className="block text-xs font-semibold uppercase tracking-wider text-gray-500 mb-1 ml-1">Volume Name</label>
                             <input
-                              className="rounded-lg border border-gray-300 dark:border-gray-700 p-2.5 dark:bg-gray-800 w-full focus:ring-2 focus:ring-blue-500 outline-none transition"
+                              className="rounded-2xl border border-gray-300 dark:border-gray-700 p-2.5 dark:bg-gray-800 w-full focus:ring-2 focus:ring-blue-500 outline-none transition"
                               placeholder="e.g. Dawn of Ashes"
                               value={bookVolName}
                               onChange={e => setbookVolName(e.target.value)}
@@ -1561,7 +1651,7 @@ export default function ExperimentPage() {
                           <div>
                             <label className="block text-xs font-semibold uppercase tracking-wider text-gray-500 mb-1 ml-1">Status</label>
                             <select 
-                              className="rounded-lg border border-gray-300 dark:border-gray-700 p-2.5 dark:bg-gray-800 w-full focus:ring-2 focus:ring-blue-500 outline-none transition appearance-none cursor-pointer"
+                              className="rounded-2xl border border-gray-300 dark:border-gray-700 p-2.5 dark:bg-gray-800 w-full focus:ring-2 focus:ring-blue-500 outline-none transition appearance-none cursor-pointer"
                               value={bookStatus}
                               onChange={e => setBookStatus(e.target.value)}
                               required
@@ -1579,7 +1669,7 @@ export default function ExperimentPage() {
                             <input
                               type="number"
                               min={0}
-                              className="rounded-lg border border-gray-300 dark:border-gray-700 p-2.5 dark:bg-gray-800 w-full focus:ring-2 focus:ring-blue-500 outline-none transition"
+                              className="rounded-2xl border border-gray-300 dark:border-gray-700 p-2.5 dark:bg-gray-800 w-full focus:ring-2 focus:ring-blue-500 outline-none transition"
                               placeholder="0"
                               value={bookChapterCount}
                               onChange={e => setBookChapterCount(Number(e.target.value))}
@@ -1593,7 +1683,7 @@ export default function ExperimentPage() {
                           <label className="block text-xs font-semibold uppercase tracking-wider text-gray-500 mb-1 ml-1">Summary</label>
                           <textarea
                             rows={8}
-                            className="rounded-lg border border-gray-300 dark:border-gray-700 p-2.5 dark:bg-gray-800 w-full focus:ring-2 focus:ring-blue-500 outline-none transition resize-y notes-scroll"
+                            className="rounded-2xl border border-gray-300 dark:border-gray-700 p-2.5 dark:bg-gray-800 w-full focus:ring-2 focus:ring-blue-500 outline-none transition resize-y notes-scroll"
                             placeholder="Write book summary"
                             value={bookSummary}
                             onChange={e => setBookSummary(e.target.value)}
@@ -1603,7 +1693,7 @@ export default function ExperimentPage() {
                         {/* Genre check list */}
                         <div>
                           <label className="block text-xs font-semibold uppercase tracking-wider text-gray-500 mb-1 ml-1">Genre</label>
-                          <div className="grid grid-cols-2 gap-x-10 gap-y-1 overflow-y-auto rounded-lg border border-gray-200 dark:border-gray-700 p-3">
+                          <div className="grid grid-cols-2 gap-x-10 gap-y-1 overflow-y-auto rounded-2xl border border-gray-200 dark:border-gray-700 p-3">
                             {genreOptions.map(option => (
                               <label key={option} className="flex items-center gap-2 text-sm text-gray-700 dark:text-gray-200">
                                 <input
@@ -1622,7 +1712,7 @@ export default function ExperimentPage() {
                         <div>
                           <label className="block text-xs font-semibold uppercase tracking-wider text-gray-500 mb-1 ml-1">Tags</label>
                           <select
-                            className="rounded-lg border border-gray-300 dark:border-gray-700 p-2.5 dark:bg-gray-800 w-full focus:ring-2 focus:ring-blue-500 outline-none transition"
+                            className="rounded-2xl border border-gray-300 dark:border-gray-700 p-2.5 dark:bg-gray-800 w-full focus:ring-2 focus:ring-blue-500 outline-none transition"
                             value=""
                             onChange={e => {
                               if (!e.target.value) return;
@@ -1658,18 +1748,50 @@ export default function ExperimentPage() {
                           </div>
                         </div>
 
+                        {/* upload book cover */}
+                        <div>
+                          <label className="block text-xs font-semibold uppercase tracking-wider text-gray-500 mb-1 ml-1">Book Cover</label>
+                          <label className="flex cursor-pointer items-center justify-center gap-3 rounded-2xl border border-dashed border-gray-300 bg-gray-50 px-4 py-4 text-sm text-gray-600 transition hover:border-blue-400 hover:text-blue-600 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-300">
+                            <FontAwesomeIcon icon={faUpload} />
+                            <span>{draftBookCoverFile ? draftBookCoverFile.name : "Upload new book cover"}</span>
+                            <input
+                              ref={bookCoverInputRef}
+                              type="file"
+                              accept="image/*"
+                              className="hidden"
+                              onChange={uploadBookCover}
+                            />
+                          </label>
+
+                          {(bookCoverDraftUrl || bookCoverUrl) && (
+                            <div className="mt-3 rounded-2xl place-items-center">
+                              <div className="h-60 w-45 overflow-hidden border border-gray-200 dark:border-gray-700">
+                                <img
+                                  src={bookCoverDraftUrl || bookCoverUrl || undefined}
+                                  alt={`${currentBook?.title || "Book"} cover preview`}
+                                  className="h-full w-full object-cover"
+                                />
+                              </div>
+                            </div>
+                          )}
+
+                          <p className="mt-2 text-xs text-gray-500 dark:text-gray-400">
+                            Choose the exact part of the image you want displayed on your book cards before saving.
+                          </p>
+                        </div>
+
                       </div>
 
                       <button
                         type="submit"
-                        className="w-full mt-6 bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 rounded-lg shadow-lg hover:shadow-blue-500/30 transform hover:-translate-y-0.5 transition-all active:scale-95"
+                        className="w-full mt-6 bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 rounded-2xl shadow-lg hover:shadow-blue-500/30 transform hover:-translate-y-0.5 transition-all active:scale-95"
                       >
                         Save book details
                       </button>
 
                       <button
                         type="button"
-                        className="w-full my-3 bg-gray-600 hover:bg-gray-700 text-white font-bold py-3 rounded-lg shadow-lg hover:shadow-gray-700/30 transform transition-all5"
+                        className="w-full my-3 bg-gray-600 hover:bg-gray-700 text-white font-bold py-3 rounded-2xl shadow-lg hover:shadow-gray-700/30 transform transition-all5"
                         onClick={cancelBookDetailsEdit}
                       >
                         Cancel
@@ -1686,13 +1808,6 @@ export default function ExperimentPage() {
 
                             {/* Summary */}
                             <div>
-
-                              {/* book title and settings dropdown */}
-                              {bookCoverUrl && !showBookContent && (
-                                    <div className="mb-4 overflow-hidden rounded-[24px] border border-gray-200 dark:border-gray-700">
-                                      <img src={bookCoverUrl} alt={`${currentBook?.title || "Book"} cover`} className="h-40 w-full object-cover" />
-                                    </div>
-                                  )}
                               <div className="flex items-start justify-between gap-3">
                                 <div className="min-w-0">
                                   <p className="text-xs uppercase tracking-[0.28em] text-indigo-500">Book profile</p>
@@ -1741,17 +1856,6 @@ export default function ExperimentPage() {
                                         Edit book details
                                       </button>
 
-                                      {/* upload book cover */}
-                                      <button
-                                        className="w-full text-left px-3 py-2 rounded hover:bg-gray-200 dark:hover:bg-gray-700"
-                                        onClick={() => {
-                                          bookCoverInputRef.current?.click();
-                                          setShowSettingsMenu(false);
-                                        }}
-                                      >
-                                        Upload book cover
-                                      </button>
-
                                       {/* open add new character */}
                                       <button
                                         className="w-full text-left px-3 py-2 rounded hover:bg-gray-200 dark:hover:bg-gray-700"
@@ -1783,8 +1887,6 @@ export default function ExperimentPage() {
                                   {titleDraft || currentBook?.title || "Book Content"}
                                 </label>
                               </div>
-
-                              <input ref={bookCoverInputRef} type="file" accept="image/*" className="hidden" onChange={uploadBookCover} />
                               
                               {/* quick details */}
                               <div className="mt-2 grid grid-cols-2 gap-2 shadow-sm">
@@ -1833,13 +1935,13 @@ export default function ExperimentPage() {
                               </div>
 
                               <textarea
-                                  rows={bookSummary ? 12 : 1}
-                                  className={`${showBookContent ? "hidden" : ""} mt-4 min-h-[180px] w-full rounded-2xl border border-gray-200 bg-gray-50 px-4 py-4 font-serif text-sm leading-7 text-gray-700 transition-all duration-300 placeholder:text-center placeholder:text-lg placeholder-gray-400 focus:outline-none dark:border-gray-800 dark:bg-gray-950/60 dark:text-gray-200 dark:placeholder-gray-600 text-area-scroll resize-none`}
-                                  placeholder="Update book summary"
-                                  value={bookSummary}
-                                  onFocus={(e) => autoResize(e)}
-                                  onBlur={(e) => { e.currentTarget.style.height = "auto";}}
-                                  readOnly
+                                rows={bookSummary ? 12 : 1}
+                                className={`${showBookContent ? "hidden" : ""} mt-4 min-h-[180px] w-full rounded-2xl border border-gray-200 bg-gray-50 px-4 py-4 font-serif text-sm leading-7 text-gray-700 transition-all duration-300 placeholder:text-center placeholder:text-lg placeholder-gray-400 focus:outline-none dark:border-gray-800 dark:bg-gray-950/60 dark:text-gray-200 dark:placeholder-gray-600 text-area-scroll resize-none`}
+                                placeholder="Update book summary"
+                                value={bookSummary}
+                                onFocus={(e) => autoResize(e)}
+                                onBlur={(e) => { e.currentTarget.style.height = "auto";}}
+                                readOnly
                               />
                             </div>
                         </div>
@@ -1964,7 +2066,7 @@ export default function ExperimentPage() {
           </div>
           
           {/* CENTER CONTAINER */}
-          <div className="w-full flex-1">
+          <div className="w-full flex-1 space-y-2">
 
             {/* character data and grid display */}
             <div className="rounded-3xl border border-gray-200 bg-white p-4 shadow-lg transition duration-300 dark:border-gray-800 dark:bg-gray-900">
@@ -2652,7 +2754,7 @@ export default function ExperimentPage() {
             }}
           >
             <div
-              className={`relative h-full w-full max-w-[92vw] sm:max-w-[70vw] lg:max-w-[52vw] xl:max-w-[42vw]
+              className={`relative h-full w-full max-w-full sm:max-w-[55vw]
               rounded-r-3xl border-r border-white/10
               bg-gradient-to-b from-[#020617] via-[#020617] to-[#0a1628]
               text-white shadow-[0_0_80px_rgba(34,211,238,0.08)]
@@ -2732,52 +2834,47 @@ export default function ExperimentPage() {
                 </div>
 
                 {worldbuildingSections.length > 0 ? (
-                  <div className="grid min-h-0 flex-1 lg:grid-cols-[0.9fr_1.4fr]">
-                    <div className="overflow-y-auto border-b border-white/10 p-4 lg:border-b-0 lg:border-r notes-scroll">
-                      <p className="mb-3 text-xs uppercase tracking-[0.3em] text-slate-400">Lore paths</p>
-                      <div className="space-y-3">
-                        {worldbuildingSections.map((section, index) => (
+                  <div className="grid min-h-0 flex-1 lg:grid-cols-[0.6fr_1.4fr]">
+                    <div className="overflow-y-auto border-b border-white/10 lg:border-b-0 lg:border-r notes-scroll">
+                      <p className="p-2 text-xs uppercase tracking-[0.3em] text-slate-400">Lore paths</p>
+                      <div className="">
+                        {worldbuildingSections.map((section) => (
                           <button
                             key={`atlas-section-${section.id}`}
                             type="button"
                             onClick={() => setActiveWorldSectionId(section.id)}
-                            className={`group relative w-full rounded-2xl border px-4 py-4 text-left transition-all duration-300
+                            className={`group relative w-full border-y px-2 py-1 text-left transition-all duration-300
                               ${activeWorldSectionId === section.id
                                   ? "border-cyan-300/60 bg-gradient-to-br from-cyan-400/10 to-transparent shadow-[0_0_25px_rgba(34,211,238,0.15)]"
-                                  : "border-white/10 bg-white/5 hover:bg-white/10 hover:border-cyan-400/30"
+                                  : "border-white/10 bg-white/1 hover:bg-white/10 hover:border-cyan-400/30"
                               }`}
                           >
-                            <div className="absolute inset-0 rounded-2xl opacity-0 group-hover:opacity-100 transition
+                            <div className="absolute inset-0 opacity-0 group-hover:opacity-100 transition
                                 bg-gradient-to-r from-cyan-400/10 via-transparent to-transparent pointer-events-none" />
-                            <span className="text-[10px] uppercase tracking-[0.35em] text-slate-400">Archive {String(index + 1).padStart(2, "0")}</span>
-                            <h3 className="mt-2 text-base font-semibold text-white">{section.title}</h3>
-                            <p className="mt-2 text-sm text-slate-300 line-clamp-3">
-                              {section.entries[0]?.value || "Add a first lore detail to begin this chapter of your world."}
-                            </p>
-                            <div className="mt-3 flex items-center justify-between text-xs text-slate-400">
-                              <span>{section.entries.length} lore note{section.entries.length === 1 ? "" : "s"}</span>
-                              <span>{activeWorldSectionId === section.id ? "Opened" : "Enter"}</span>
-                            </div>
+                            <div className="flex items-center">
+                              <span className="mr-3 group-hover:bg-cyan-500/80 rounded-full py-1 px-1 bg-cyan-500/30 pointer-events-none"/>
+                              <div className="w-full">
+                                <h3 className="text-base font-semibold text-white line-clamp-2">{section.title}</h3>
+                                <div className="flex items-center justify-between text-xs text-slate-400">
+                                  <span>{section.entries.length} lore note{section.entries.length === 1 ? "" : "s"}</span>
+                                  <span>{activeWorldSectionId === section.id ? "Opened" : "Enter"}</span>
+                                </div>
+                              </div>
+                            </div> 
                           </button>
                         ))}
                       </div>
                     </div>
 
-                    <div className="overflow-y-auto p-5 notes-scroll">
+                    <div className="overflow-y-auto notes-scroll">
                       {activeWorldSection && (
-                        <div className="space-y-5">
-                          <div className="relative rounded-3xl border border-cyan-300/20 
-                              bg-gradient-to-br from-white/[0.04] to-transparent 
-                              p-6 shadow-[0_0_40px_rgba(34,211,238,0.08)] overflow-hidden">
-                            <div className="absolute inset-0 bg-[radial-gradient(circle_at_top,rgba(34,211,238,0.15),transparent_60%)] pointer-events-none" />
-                            <p className="text-[11px] uppercase tracking-[0.35em] text-cyan-300/70">Selected entry</p>
-                            <h3 className="mt-2 text-3xl font-semibold text-white">{activeWorldSection.title}</h3>
-                            <p className="mt-3 text-sm leading-6 text-slate-300">
-                              Think of this panel like a story guidebook page. Keep each label short, then make the value vivid: not just facts, but mood, danger, beauty, ritual, memory, and consequence.
-                            </p>
+                        <div className="">
+                          <div className="relative text-center">
+                            <div className="absolute inset-0 bg-[radial-gradient(circle_at_top,rgba(34,211,238,0.15),transparent_80%)] pointer-events-none" />
+                            <h3 className="text-3xl font-semibold text-cyan-100/70 py-2">{activeWorldSection.title}</h3>
                           </div>
 
-                          <div className="grid gap-3">
+                          <div className="grid gap-1.5 pb-2 px-2">
                             {activeWorldSection.entries.map((entry, index) => (
                               <article
                                 key={`atlas-entry-${activeWorldSection.id}-${entry.label}-${index}`}
@@ -2825,6 +2922,64 @@ export default function ExperimentPage() {
               </div>
             </div>
           </div>
+        )}
+
+        {/* book cover cropper */}
+        {showBookCoverCropper && bookCoverImageSrc && createPortal(
+          <div className="fixed inset-0 z-[70] flex items-center justify-center bg-black/70 px-4">
+            <div className="w-full max-w-lg rounded-3xl bg-white p-4 shadow-2xl dark:bg-gray-900">
+              <div className="text-gray-500 dark:text-gray-200">
+                  <h3 className="text-lg font-semibold">Crop book cover</h3>
+                  <p className="mt-1 text-sm">
+                      Select the part of the image that should appear on your book cards.
+                  </p>
+              </div>
+
+              <div className="relative mt-4 h-96 w-full overflow-hidden rounded-2xl bg-gray-950">
+                <Cropper
+                  image={bookCoverImageSrc}
+                  crop={bookCoverCrop}
+                  zoom={bookCoverZoom}
+                  aspect={3 / 4}
+                  objectFit="cover"
+                  onCropChange={setBookCoverCrop}
+                  onZoomChange={setBookCoverZoom}
+                  onCropComplete={onBookCoverCropComplete}
+                />
+              </div>
+
+              <div className="mt-4">
+                <label className="mb-2 block text-sm font-medium dark:text-white">Zoom</label>
+                <input
+                  type="range"
+                  min={0.5}
+                  max={3}
+                  step={0.05}
+                  value={bookCoverZoom}
+                  onChange={(e) => setBookCoverZoom(Number(e.target.value))}
+                  className="w-full"
+                />
+              </div>
+
+              <div className="mt-5 flex justify-end gap-3">
+                <button
+                  type="button"
+                  onClick={resetBookCoverCropState}
+                  className="rounded-xl border border-gray-300 px-4 py-2 text-sm font-medium transition text-gray-500 dark:text-gray-200 hover:bg-gray-100 dark:border-gray-700 dark:hover:bg-gray-800"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="button"
+                  onClick={handleBookCoverCropSave}
+                  className="rounded-xl bg-blue-600 px-4 py-2 text-sm font-semibold text-white transition hover:bg-blue-500"
+                >
+                  Use this crop
+                </button>
+              </div>
+            </div>
+          </div>,
+          document.body
         )}
 
     {/* MAIN PARENT CONTAINER DIV CLOSER */}
