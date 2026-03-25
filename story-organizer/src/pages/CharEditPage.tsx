@@ -2,7 +2,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { useLocation, useNavigate, useParams } from "react-router-dom";
 import { db, type Book, type Character, type CharacterDescription, type CharImage, type Notes, type WorldbuildingEntry, type WorldbuildingSection } from "../db";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
-import { faFile, faFileLines, faGlobe, faHouse, faImages, faMinus, faPlus, faProjectDiagram, faTableColumns, faWandMagicSparkles } from "@fortawesome/free-solid-svg-icons";
+import { faEdit, faEye, faFile, faFileLines, faGlobe, faHouse, faImages, faMinus, faPlus, faProjectDiagram, faTableColumns, faWandMagicSparkles } from "@fortawesome/free-solid-svg-icons";
 import { faMagicWandSparkles } from "@fortawesome/free-solid-svg-icons/faMagicWandSparkles";
 import { createPortal } from "react-dom";
 import type { EditableNote } from "../components/NotesCollection";
@@ -178,8 +178,6 @@ export default function CharEditPage() {
   
   const [worldSectionTitle, setWorldSectionTitle] = useState("");
   const [worldDraftEntries, setWorldDraftEntries] = useState<WorldbuildingEntry[]>([{ label: "", value: "" }]);
-
-  const [abilityTooltip, setAbilityTooltip] = useState<number | null>(null);
 
   useEffect(() => {
     const loadData = async () => {
@@ -841,7 +839,7 @@ export default function CharEditPage() {
   };
 
   const StatTag = ({ children }: { children: React.ReactNode }) => (
-    <span className="rounded-md bg-indigo-500/10 px-2.5 py-1 text-black dark:text-indigo-200 border border-indigo-500/20 text-sm font-medium">
+    <span className="rounded-md bg-indigo-500/10 px-2.5 py-1 text-black dark:text-gray-200 border border-indigo-500/20 text-sm font-medium">
       {children} 
     </span>
   );
@@ -971,6 +969,10 @@ export default function CharEditPage() {
     setOpenWorldSections(prev => ({ ...prev, [sectionId]: !prev[sectionId] }));
   };
 
+  const editModeSwitch = () => {
+    setIsEditMode(!isEditMode);
+  };
+
   // navbar pass actions and logic
   const navbarActions: NavbarAction[] = [
     {
@@ -979,6 +981,13 @@ export default function CharEditPage() {
       icon: faHouse,
       onClick: () => navigate("/"),
       title: "Back to library",
+    },
+    {
+      id: "edit-mode",
+      label: isEditMode ? "Edit" : "View",
+      icon: faEdit,
+      onClick: editModeSwitch,
+      title: "Switch edit mode",
     },
     {
       id: "world-building",
@@ -1023,93 +1032,113 @@ export default function CharEditPage() {
 
   return (
     // MAIN EDIT PAGE CONTAINER
-    <div className="mx-auto w-full max-w-full xxs:max-w-6xl p-4 md:p-6 mt-11">
+    <div className="mx-auto w-full max-w-full xxs:max-w-6xl p-4 md:p-6 mt-9 xxs:pl-20">
       <Navbar actions={navbarActions} />
 
-      {/* HERO CARD HEADER OF EDIT PAGE */}
-      <div className="relative overflow-hidden rounded-3xl border border-white/10 dark:bg-slate-900/50 p-6 text-white shadow-2xl backdrop-blur-xl">
-    
-        {/* Decorative Background Element */}
-        <div className="absolute -right-20 -top-20 h-64 w-64 rounded-full bg-indigo-600/20 blur-[100px]" />
-        <div className="absolute -left-20 -bottom-20 h-64 w-64 rounded-full bg-emerald-600/10 blur-[100px]" />
+      {/* HERO CARD HEADER */}
+      <div className="relative isolate overflow-hidden rounded-3xl border border-white/10 bg-slate-900/40 p-6 shadow-2xl backdrop-blur-md ring-1 ring-white/5">
+        
+        {/* Modern Gradient Orbs */}
+        <div className="absolute -right-16 -top-16 -z-10 h-64 w-64 rounded-full bg-indigo-500/10 blur-[80px]" />
+        <div className="absolute -left-16 -bottom-16 -z-10 h-64 w-64 rounded-full bg-emerald-500/10 blur-[80px]" />
 
-        <div className="relative flex flex-col gap-8 lg:flex-row lg:items-center lg:justify-between">
+        <div className="relative flex flex-col gap-8 lg:flex-row lg:items-start lg:justify-between">
           
-          {/* Left Section: Avatar & Identity */}
-          <div className="flex flex-col gap-6 sm:flex-row items-center">
-            
-            {/* Enhanced Avatar with Ring Effect */}
-            <button
-              type="button"
-              title={isEditMode ? "Change character image" : "Enable editing to change image"}
-              onClick={() => isEditMode && showImageModal(true)}
-              disabled={!isEditMode}
-              className="disabled:cursor-not-allowed disabled:opacity-80 group relative h-45 w-38 flex-shrink-0 overflow-hidden rounded-2xl border-2 border-slate-700/50 shadow-2xl transition-all hover:border-indigo-500/50"
-            >
-              <img
-                src={selectedCharacterImage}
-                alt={editingCharacter.name}
-                className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-110"
-              />
-
-              <div className="absolute inset-0 flex items-center justify-center bg-black/0 transition-all group-hover:bg-black/40">
-                <div className="items-center translate-y-3 opacity-0 transition-all group-hover:translate-y-0 group-hover:opacity-100">
-                  <span className="rounded-lg bg-gray-100/20 p-3">
-                    <FontAwesomeIcon icon={faImages} size="lg"/>
-                  </span>
-                </div>
-              </div>
-            </button>
-
-            {/* Identity Details */}
-            <div className="space-y-3">
-              <div className="space-y-1 place-items-center text-center sm:place-items-start sm:text-start">
-                <span className={`text-[10px] font-black uppercase tracking-[0.2em] ${isEditMode ? "text-indigo-400" : "text-green-500"}`}>Character Profile · {isEditMode ? "Editing Mode" : "Viewing Only Mode"}</span>
-                <h1 className="text-3xl text-gray-800 dark:text-gray-200 font-black tracking-tight">
-                  {editingCharacter.name || "Unnamed Character"}
-                </h1>
-                <p className="text-lg font-medium text-slate-400 italic">
-                  — {editingCharacter.role || "Role not defined"}
-                </p>
-              </div>
-
-              <div className="flex flex-wrap gap-2">
-                <Badge color="emerald">{editingCharacter.status || "Active"}</Badge>
-                <Badge color="sky">{editingCharacter.importance || "Core"}</Badge>
-                <Badge color="slate">{upcaseLetter(editingCharacter.setRace[0] || "Unknown")}</Badge>
-              </div>
-            </div>
-          </div>
-
-          {/* Right Section: Stats & Metadata */}
-          <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:flex lg:gap-12 lg:place-items-center">
-            
-            {/* Quick Info Grid */}
-            <div className="space-y-3">
-              <h4 className="text-[10px] font-bold uppercase tracking-widest text-slate-500">Attributes</h4>
-              <div className="flex flex-wrap gap-2 max-w-[300px]">
-                {editingCharacter.powerLevel && <StatTag>{editingCharacter.powerLevel}</StatTag>}
-                {editingCharacter.occupation && <StatTag>{editingCharacter.occupation}</StatTag>}
-                {editingCharacter.titles?.map((t, i) => <StatTag key={i}>{t}</StatTag>)}
-              </div>
-            </div>
-
-            {/* Dynamic Action Buttons */}
-            <div className="flex flex-col gap-3 w-full lg:w-fit">
-
+          {/* Left Side: Identity */}
+          <div className="flex flex-1 flex-col sm:flex-row items-start gap-6">
+            {/* Avatar with Glass Border */}
+            <div className="flex w-full justify-center sm:w-fit sm:justify-start">
               <button
                 type="button"
-                className={`rounded-lg px-3 py-2 text-sm font-semibold ${isEditMode ? "border border-indigo-300 text-indigo-700 hover:bg-purple-200 dark:border-indigo-700 dark:text-purple-300 dark:hover:bg-indigo-900/20" : "bg-emerald-600 text-white hover:bg-emerald-700"}`}
-                onClick={() => setIsEditMode((prev) => !prev)}
-              > <FontAwesomeIcon icon={faMagicWandSparkles} />
-                {isEditMode ? " Switch to View Mode" : " Enable Editing Mode"}
+                onClick={() => isEditMode && showImageModal(true)}
+                disabled={!isEditMode}
+                className="group relative h-44 w-32 flex-shrink-0 overflow-hidden rounded-2xl border border-white/10 bg-slate-800 shadow-2xl transition-all duration-300 hover:border-indigo-500/50 disabled:cursor-default"
+              >
+                <img
+                  src={selectedCharacterImage}
+                  alt={editingCharacter.name}
+                  className="h-full w-full object-cover transition-transform duration-700 group-hover:scale-110"
+                />
+                {isEditMode && (
+                  <div className="absolute inset-0 flex items-center justify-center bg-indigo-900/40 opacity-0 backdrop-blur-[2px] transition-opacity group-hover:opacity-100">
+                    <FontAwesomeIcon icon={faImages} className="text-white text-xl" />
+                  </div>
+                )}
               </button>
-
-              <TimeCard label="System Entry" date={formatDate(editingCharacter.createdAt)} type="created" />
-              <TimeCard label="Last Synced" date={getRelativeTime(editingCharacter.updatedAt)} type="modified" />
             </div>
 
+            {/* Identity Info */}
+            <div className="flex-1 py-1">
+              <div className="w-full place-items-center sm:w-fit sm:place-items-start">
+                <div className="flex items-center gap-2 mb-1">
+                  <div className={`h-1.5 w-1.5 rounded-full animate-pulse ${isEditMode ? "bg-indigo-400" : "bg-emerald-400"}`} />
+                  <span className={`text-[12px] font-bold uppercase tracking-[0.2em] ${isEditMode ? "text-indigo-400" : "text-emerald-400"}`}>
+                    Character Profile · {isEditMode ? "Editing Mode" : "Viewing Mode"}
+                  </span>
+                </div>
+                <h1 className="text-3xl font-black tracking-tight text-white sm:text-4xl">
+                  {editingCharacter.name || "Unnamed Character"}
+                </h1>
+                <div className="flex items-center gap-2">
+                  <p className="mt-1 text-lg font-medium text-slate-200/70 italic">
+                    {editingCharacter.role || "Role not defined"}
+                  </p>
+                  <div className="border-l border-gray-500 pl-2 mt-1 flex flex-wrap gap-2">
+                    <Badge color="emerald">{editingCharacter.status || "Unknown"}</Badge>
+                    <Badge color="sky">{editingCharacter.importance || "Unknown"}</Badge>
+                    <Badge color="slate">{upcaseLetter(editingCharacter.setRace[0] || "Unknown")}</Badge>
+                  </div>
+                </div>
+              </div>
+
+              <div className="">
+                <span className="text-[9px] font-bold uppercase tracking-tighter text-slate-500">Stats:</span>
+                <div className="flex gap-2 w-fit">
+                  <div className="flex flex-wrap gap-2">
+                    {editingCharacter.powerLevel && <StatTag>{editingCharacter.powerLevel}</StatTag>}
+                    {editingCharacter.occupation && <StatTag>{editingCharacter.occupation}</StatTag>}
+                    {editingCharacter.titles?.slice(0, 2).map((t, i) => (
+                      <StatTag key={i}>{t}</StatTag>
+                    ))}
+
+                    {editingCharacter.titles.length > 2 && (
+                      <StatTag>+{editingCharacter.titles.length - 2}</StatTag>
+                    )}
+
+                    {!editingCharacter.powerLevel && !editingCharacter.occupation && editingCharacter.titles?.length < 1 && (
+                      <StatTag>{"No stats yet"}</StatTag>
+                    )}
+                  </div>
+                </div>
+              </div>
+            </div>
           </div>
+
+          {/* Right Side: System Metadata (1/8th style sidebar) */}
+          <div className="flex flex-col gap-3 lg:w-64">
+            <button
+              type="button"
+              onClick={() => setIsEditMode((prev) => !prev)}
+              className={`flex items-center justify-center gap-2 rounded-xl px-4 py-2.5 text-xs font-bold uppercase tracking-widest transition-all duration-300 ${
+                isEditMode 
+                ? "bg-indigo-500 text-white shadow-lg shadow-indigo-500/25 hover:bg-indigo-400" 
+                : "bg-emerald-700 text-slate-300 border border-white/10 hover:bg-slate-700"
+              }`}
+            >
+              <FontAwesomeIcon icon={!isEditMode ? faMagicWandSparkles : faEye} />
+              {isEditMode ? " Switch to View Mode" : " Enable Editing Mode"}
+            </button>
+
+            <div className="p-1 space-y-1">
+              <div className="flex flex-col gap-1">
+                <TimeCard label="System Entry" date={formatDate(editingCharacter.createdAt)} type="created" />
+              </div>
+              <div className="flex flex-col gap-1">
+                <TimeCard label="Last Synced" date={getRelativeTime(editingCharacter.updatedAt)} type="modified" />
+              </div>
+            </div>
+          </div>
+
         </div>
       </div>
 

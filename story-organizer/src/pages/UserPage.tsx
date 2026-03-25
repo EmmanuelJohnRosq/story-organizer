@@ -885,32 +885,6 @@ export default function UserPage() {
                     )}
                 </section>
 
-                {/* 4th section ongoing progress bar */}
-                <section className="rounded-3xl border border-gray-200 bg-white p-4 shadow-lg dark:border-gray-800 dark:bg-gray-900">
-                    <div className="mb-3 flex items-center gap-2">
-                        <div className="flex h-10 w-10 items-center justify-center rounded-2xl bg-emerald-100 text-emerald-600 dark:bg-emerald-900/20 dark:text-emerald-300">
-                            <FontAwesomeIcon icon={faBookOpen} />
-                        </div>
-                        <div>
-                            <h2 className="font-semibold">Story rhythm</h2>
-                            <p className="text-xs text-gray-500 dark:text-gray-400">A quick pulse check for your library.</p>
-                        </div>
-                    </div>
-
-                    <div className="space-y-3">
-                        <div className="rounded-2xl bg-gray-50 p-3 dark:bg-gray-800/70">
-                            <div className="mb-2 flex items-center justify-between text-xs uppercase tracking-[0.2em] text-gray-400">
-                                <span>Ongoing projects</span>
-                                <span>{ongoingBooks}/{books.length || 1}</span>
-                            </div>
-                            <div className="h-2 overflow-hidden rounded-full bg-gray-200 dark:bg-gray-700">
-                                <div className="h-full rounded-full bg-gradient-to-r from-emerald-400 to-cyan-400" style={{ width: `${books.length ? (ongoingBooks / books.length) * 100 : 0}%` }} />
-                            </div>
-                        </div>
-                    </div>
-
-                </section>
-
                 {/* 5th section calendar/ features soon */}
                 <div className="rounded-3xl border border-gray-200 bg-white p-4 shadow-lg dark:border-gray-800 dark:bg-gray-900">
                     <div className="flex items-center justify-between mb-1">
@@ -1216,6 +1190,32 @@ export default function UserPage() {
                     <p className="text-xs font-semibold uppercase tracking-[0.2em] text-emerald-700 dark:text-emerald-300">Creative prompt</p>
                     <p className="mt-2 text-sm leading-6">{dashboardTips[tipIndex]}</p>
                 </div>
+
+                {/* 4th section ongoing progress bar */}
+                <section className="rounded-3xl border border-gray-200 bg-white p-4 shadow-lg dark:border-gray-800 dark:bg-gray-900">
+                    <div className="mb-3 flex items-center gap-2">
+                        <div className="flex h-10 w-10 items-center justify-center rounded-2xl bg-emerald-100 text-emerald-600 dark:bg-emerald-900/20 dark:text-emerald-300">
+                            <FontAwesomeIcon icon={faBookOpen} />
+                        </div>
+                        <div>
+                            <h2 className="font-semibold">Story rhythm</h2>
+                            <p className="text-xs text-gray-500 dark:text-gray-400">A quick pulse check for your library.</p>
+                        </div>
+                    </div>
+
+                    <div className="space-y-3">
+                        <div className="rounded-2xl bg-gray-50 p-3 dark:bg-gray-800/70">
+                            <div className="mb-2 flex items-center justify-between text-xs uppercase tracking-[0.2em] text-gray-400">
+                                <span>Ongoing projects</span>
+                                <span>{ongoingBooks}/{books.length || 1}</span>
+                            </div>
+                            <div className="h-2 overflow-hidden rounded-full bg-gray-200 dark:bg-gray-700">
+                                <div className="h-full rounded-full bg-gradient-to-r from-emerald-400 to-cyan-400" style={{ width: `${books.length ? (ongoingBooks / books.length) * 100 : 0}%` }} />
+                            </div>
+                        </div>
+                    </div>
+
+                </section>
 
                 <div className="rounded-3xl border border-gray-200 bg-white p-4 shadow-lg dark:border-gray-800 dark:bg-gray-900">
                     <h3 className="font-semibold">Story Dreamers direction use</h3>

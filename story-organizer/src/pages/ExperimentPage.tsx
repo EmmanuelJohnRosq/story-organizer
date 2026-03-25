@@ -1471,7 +1471,7 @@ export default function ExperimentPage() {
 
         <div className="grid gap-3 xxs:grid-cols-[1.2fr_1.5fr]">
           {/* LEFT SIDE CONTAINER */}
-          <div className="flex-1 space-y-2">
+          <div className="w-full flex-1 space-y-2">
 
               {/* BOOK AND CHARACTER FORMS LEFT PANEL */}
               <div className="w-full">
@@ -1883,7 +1883,7 @@ export default function ExperimentPage() {
                               </div>
 
                               <div className="mt-2 flex">
-                                <label className="block truncate text-2xl font-black">
+                                <label className="text-2xl font-black">
                                   {titleDraft || currentBook?.title || "Book Content"}
                                 </label>
                               </div>
