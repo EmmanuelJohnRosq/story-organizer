@@ -1,5 +1,5 @@
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
-import { faFileImport, faCircleUser, faUpload, faSpinner, faDownload, faArrowLeft, faUser, faAngleRight, faLink, faX } from "@fortawesome/free-solid-svg-icons";
+import { faFileImport, faCircleUser, faUpload, faSpinner, faDownload, faArrowLeft, faUser, faAngleRight, faLink, faX, faGears, faGear, faPanorama, faExplosion, faBomb, faRotate } from "@fortawesome/free-solid-svg-icons";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { db } from "../db";
 import { useNavigate, useParams, useLocation } from "react-router-dom";
@@ -7,7 +7,8 @@ import { useDropzone } from "react-dropzone";
 
 import { useGoogleAuth, type GoogleUser } from "../context/GoogleAuthContext";
 import { signOut } from "../services/googleAuth";
-import { downloadDriveFile, listManualBackupFiles, listRestoreBackupFiles, type DriveBackupFile, uploadManualBackup, upsertAutoBackup, isTokenActive } from "../services/driveService";
+import { downloadDriveFile, listManualBackupFiles, listRestoreBackupFiles, type DriveBackupFile, uploadManualBackup, upsertAutoBackup, isTokenActive, deleteAllBackups } from "../services/driveService";
+import { faBackspace } from "@fortawesome/free-solid-svg-icons/faBackspace";
 
 interface HeaderProps {
   showGalaxy: boolean;
@@ -589,13 +590,22 @@ export default function Header({ showGalaxy, onToggle }: HeaderProps) {
     }
 
     // NUKES ALL THE EXISTING FILES IN GOOGLE DRIVE/DELETE ALL
-    // async function deleteAllGdrive() {
-    // const token = localStorage.getItem("googleAccessToken");
-    // if (token) {
-    //     await deleteAllBackups(token);
-    //     alert("All old backup files deleted!");
-    // }
-    // }
+    async function deleteAllGdrive() {
+        const token = localStorage.getItem("googleAccessToken");
+        if (!token) return;
+
+        const isConfirmed = window.confirm("Delete all this account's gdrive backup files?")
+
+        if (isConfirmed === true) {
+            await deleteAllBackups(token);
+            alert("All old backup files deleted!");
+        }
+        else {
+            return;
+        }
+    }
+
+    const [openMoreSettings, setOpenMoreSettings] = useState(false);
     
     return (
         <>
@@ -766,18 +776,6 @@ export default function Header({ showGalaxy, onToggle }: HeaderProps) {
                             </button>
                         </div>
 
-                        {/* The Toggle animation */}
-                        <button 
-                            onClick={onToggle}
-                            className="flex items-center gap-2 px-3 py-1.5 rounded-full border border-white/20 bg-white/5 hover:bg-white/10 transition-all group"
-                            title="background animation toggle"
-                        >
-                            <div className={`w-3 h-3 rounded-full transition-all ${showGalaxy ? 'bg-cyan-400 shadow-[0_0_8px_#22d3ee]' : 'bg-slate-500'}`} />
-                            <span className="text-xs font-medium text-slate-300 group-hover:text-white">
-                            {showGalaxy ? "Animations ON" : "Animations OFF"}
-                            </span>
-                        </button>
-
                         {/* CONNECT GOOGLE ACCOUNT FOR BACKUP SAVE */}
                         {googleUser ? (
                         <>
@@ -794,7 +792,7 @@ export default function Header({ showGalaxy, onToggle }: HeaderProps) {
                         </>
                         ) : (
                             <button
-                                onClick={() => setShowAccountSettings(prev => !prev)}
+                                onClick={() => {setShowAccountSettings(prev => !prev); setOpenMoreSettings(prev => !prev);}}
                                 className="p-1 transition border border-white text-gray-200 rounded-md hover:bg-gray-300 hover:text-gray-950 transition"
                             >   
                                 <FontAwesomeIcon icon={faCircleUser} size="xl" />
@@ -809,12 +807,14 @@ export default function Header({ showGalaxy, onToggle }: HeaderProps) {
                                 onClick={(e) => {
                                     e.stopPropagation(); // Prevents clicking the backdrop from triggering the Card
                                     setShowAccountSettings(false);
+                                    setOpenMoreSettings(false);
                             }}
                             />
 
                             <div 
-                                className="absolute right-5 top-12 z-40 w-63 rounded-md border border-gray-200 bg-white shadow-lg dark:text-white dark:bg-gray-900 dark:border-gray-700 p-2 space-y-2"
+                                className="absolute right-5 top-12 z-40 w-63 rounded-md border border-gray-200 bg-white shadow-lg dark:text-white dark:bg-gray-900 dark:border-gray-700 py-2 space-y-2"
                             >
+                                {/* account info */}
                                 {googleUser && (
                                     <div className="flex flex-col gap-1 p-1">
                                         <p className="text-xs font-semibold uppercase tracking-wider text-gray-400">
@@ -877,7 +877,6 @@ export default function Header({ showGalaxy, onToggle }: HeaderProps) {
                                     </div>
                                 </>
                                 ) : (
-
                                     <button
                                         title="Re-authenticate Google connection to backup/restore data"
                                         onClick={() => logIn()}
@@ -887,6 +886,59 @@ export default function Header({ showGalaxy, onToggle }: HeaderProps) {
                                     </button>
                                 )}
 
+                                {/* settings... more dropdown options */}
+                                <div onMouseOver={() => setOpenMoreSettings(true)}
+                                    onMouseLeave={() => setTimeout(() => {setOpenMoreSettings(false),3000})}
+                                >
+                                    <button
+                                        className="w-full text-left px-2 py-1 rounded hover:bg-gray-100 dark:hover:bg-gray-700"
+                                    > 
+                                        <FontAwesomeIcon icon={faGear} className="mr-2"/>
+                                        Settings
+                                    </button>
+
+                                    {openMoreSettings && (
+                                    <div>
+                                        <div 
+                                            className="absolute right-62.5 top-40 z-40 w-63 rounded-md border border-gray-200 bg-white shadow-lg dark:text-white dark:bg-gray-900 dark:border-gray-700 space-y-2"
+                                            onMouseOver={() => setOpenMoreSettings(true)}
+                                        >
+                                            <p className="p-1 text-xs font-semibold uppercase tracking-wider text-gray-400">
+                                                Settings
+                                            </p>
+                                            <button
+                                                className="w-full text-left px-2 py-1 rounded hover:bg-gray-100 dark:hover:bg-gray-700"
+                                                onMouseDown={onToggle}
+                                                title="background animation toggle"
+                                            > 
+                                                <FontAwesomeIcon icon={faPanorama} className={`mr-2 ${showGalaxy ? 'text-cyan-400 shadow-[0_0_8px_#22d3ee]' : ''}`}/>
+                                                <span>Toggle background</span>
+                                            </button>
+
+                                            <button
+                                                className="w-full text-left px-2 py-1 rounded hover:bg-gray-100 dark:hover:bg-gray-700"
+                                                onMouseDown={() => alert("There are currently no updates available.")}
+                                            > 
+                                                <FontAwesomeIcon icon={faRotate} className="mr-2"/>
+                                                Check for updates...
+                                            </button>
+
+                                            {!displayExpiringAuth && googleUser && (
+                                                <button
+                                                    className="w-full text-left px-2 py-1 rounded text-red-800 dark:hover:bg-gray-500/20"
+                                                    onMouseDown={deleteAllGdrive}
+                                                    disabled
+                                                > 
+                                                    <FontAwesomeIcon icon={faBomb} className="mr-2"/>
+                                                    Delete all gdrive backup
+                                                </button>
+                                            )}
+                                        </div>
+                                    </div>
+                                    )}
+                                </div>
+
+                                {/* login/sign out */}
                                 {googleUser ? 
                                     (
                                     <>
@@ -909,13 +961,12 @@ export default function Header({ showGalaxy, onToggle }: HeaderProps) {
                                     </>
                                     )
                                 }       
+
                             </div>
                         </>
                         )}
 
                     </div>
-
-                    {/* <button className="bg-green-100 p-1 rounded-xl" onClick={() => setDisplayExpiringAuth(!displayExpiringAuth)}> MAKE IT APPEAR</button> */}
 
                 </div>
             </header>
@@ -1099,20 +1150,6 @@ export default function Header({ showGalaxy, onToggle }: HeaderProps) {
                 </div>
             </div>
             )}
-
-            {/* DISPLAY RECONNECT TO GOOGLE ACCOUNT WHEN AUTH EXPIRES */}
-            {/* {displayExpiringAuth && (
-            <div className="fixed z-50 top-15 left-1/2 bg-gray-300 py-1 px-4 transform -translate-x-1/2 rounded shadow-lg animate-fadeDown flex justify-between">
-                <span className="flex place-items-center mr-2">
-                    Google Auth Expired: Reconnect to Google Drive
-                </span>
-                <button 
-                    className="h-10 items-center border bg-blue-500 px-4 py-2 text-white rounded-md hover:border hover:border-blue-900"
-                    onClick={() => logIn()}>
-                     Reconnect
-                </button>
-            </div>
-            )} */}
 
             {showRestoreBackupModal && (
             <div

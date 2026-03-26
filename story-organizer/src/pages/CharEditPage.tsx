@@ -832,14 +832,14 @@ export default function CharEditPage() {
       slate: "bg-slate-500/10 text-slate-300 border-slate-500/20",
     };
     return (
-      <span className={`rounded-full border px-3 py-0.5 text-[10px] font-bold uppercase tracking-wider ${colors[color]}`}>
+      <span className={`rounded-full border px-3 py-0.5 text-xs font-bold uppercase tracking-wider ${colors[color]}`}>
         {children}
       </span>
     );
   };
 
   const StatTag = ({ children }: { children: React.ReactNode }) => (
-    <span className="rounded-md bg-indigo-500/10 px-2.5 py-1 text-black dark:text-gray-200 border border-indigo-500/20 text-sm font-medium">
+    <span className="rounded-md bg-indigo-500/10 px-2.5 py-1 text-black dark:text-gray-200 border border-indigo-500/20 text-[11px] font-medium">
       {children} 
     </span>
   );
@@ -1081,14 +1081,15 @@ export default function CharEditPage() {
                 </h1>
                 <div className="mt-2 flex items-center gap-2">
                   <div className="mt-1 flex flex-wrap gap-2">
-                    <Badge color="purple">{editingCharacter.role || "Unknown"}</Badge>
                     <Badge color="emerald">{editingCharacter.status || "Unknown"}</Badge>
+                    <Badge color="purple">{editingCharacter.role || "Unknown"}</Badge>
                     <Badge color="sky">{editingCharacter.importance || "Unknown"}</Badge>
                     <Badge color="slate">{upcaseLetter(editingCharacter.setRace[0] || "Unknown")}</Badge>
                     {editingCharacter.setRace.length > 2 && (
                       <Badge color="slate">+{editingCharacter.setRace.length - 2}</Badge>
                     )}
                   </div>
+                  
                 </div>
               </div>
 
