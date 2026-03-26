@@ -820,7 +820,6 @@ export default function ExperimentPage() {
 
       setIsNotesDrawerMounted(true);
       setNotesShowState(true);
-      addDraftNotes();
 
       requestAnimationFrame(() => {
         setIsNotesDrawerVisible(true);
@@ -1399,7 +1398,6 @@ export default function ExperimentPage() {
       });
     };
 
-    const activeBookStatus = upcaseLetter(bookStatus || currentBook?.status || "ongoing");
     const highlightedCharacterCount = character.filter(char => (char.priority ?? 0) > 0).length;
     const pinnedNotesCount = bookNotes.filter(note => note.pinned).length;
     const statusTone =
@@ -1418,10 +1416,14 @@ export default function ExperimentPage() {
 
       {/* CONTENT CONTAINER */}
       <div className="mt-12 space-y-3 xxs:mt-13">
-
+                                       
         {/* hero section card */}
-        <section className="overflow-hidden rounded-3xl border border-gray-200 bg-white shadow-lg dark:border-gray-800 dark:bg-gray-900">
-          <div className="grid gap-0 lg:grid-cols-[1.4fr_0.9fr]">
+        <section 
+          className="overflow-hidden rounded-3xl 
+          border border-gray-200 bg-white 
+          shadow-lg 
+          dark:border-gray-800 dark:bg-gray-900">
+          <div className="">
             <div className={`relative overflow-hidden bg-gradient-to-br ${statusTone} p-6 text-white sm:p-8`}>
               <div className="absolute inset-0 bg-[radial-gradient(circle_at_top_right,rgba(255,255,255,0.22),transparent_32%),radial-gradient(circle_at_bottom_left,rgba(255,255,255,0.18),transparent_28%)]" />
               <div className="relative">
@@ -1445,30 +1447,28 @@ export default function ExperimentPage() {
                   Keep your book profile, cast, and lore aligned in one polished workspace.
                 </p>
 
-                <div className="mt-7 flex flex-wrap gap-2 text-xs font-semibold uppercase tracking-[0.22em] text-white/80">
-                  <span className="rounded-full border border-white/20 bg-white/10 px-3 py-1.5">{activeBookStatus}</span>
-                  <span className="rounded-full border border-white/20 bg-white/10 px-3 py-1.5">Volume {bookVolume || currentBook?.volume || 0}</span>
-                  <span className="rounded-full border border-white/20 bg-white/10 px-3 py-1.5">{bookChapterCount || 0} Chapters</span>
+                <div className="mt-5 flex flex-wrap gap-2 text-xs font-semibold uppercase tracking-[0.22em] text-white/80">
+                    {[
+                    { label: "Characters", value: character.length },
+                    { label: "Highlighted", value: highlightedCharacterCount },
+                    { label: "Pinned notes", value: pinnedNotesCount },
+                    { label: "Lore sections", value: worldbuildingSections.length },
+                    { label: "Genre", value: bookGenre.length },
+                    { label: "Tags", value: bookTags.length },
+                  ].map(stat => (
+                    <div key={stat.label} className="rounded-full border border-white/20 bg-white/10 px-3 py-1.5">
+                      <span>{stat.value}</span>
+                      <span className="inline-block h-1.5 w-1.5 rounded-full bg-blue-300 group-hover:bg-cyan-500/80 transition-colors pointer-events-none mb-0.5 mx-2" />
+                      <span>{stat.label}</span>
+                    </div>
+                  ))}
                 </div>
               </div>
             </div>
-
-            <div className="hidden sm:grid grid-cols-2 gap-3 bg-gray-50 p-4 dark:bg-gray-950/60 sm:p-2">
-              {[
-                { label: "Characters", value: character.length },
-                { label: "Highlighted", value: highlightedCharacterCount },
-                { label: "Pinned notes", value: pinnedNotesCount },
-                { label: "Lore sections", value: worldbuildingSections.length },
-              ].map(stat => (
-                <div key={stat.label} className="rounded-2xl border border-gray-200 bg-white px-4 py-4 shadow-sm dark:border-gray-800 dark:bg-gray-900 transition-colors hover:bg-gray-100 dark:hover:bg-gray-800">
-                  <p className="text-[11px] uppercase tracking-[0.24em] text-gray-400">{stat.label}</p>
-                  <p className="mt-2 text-2xl font-bold text-gray-900 dark:text-white">{stat.value}</p>
-                </div>
-              ))}
-            </div>
           </div>
         </section>
-
+        
+        {/* The two section content */}
         <div className="grid gap-3 xxs:grid-cols-[1.2fr_1.5fr]">
           {/* LEFT SIDE CONTAINER */}
           <div className="w-full flex-1 space-y-2">
@@ -1805,12 +1805,12 @@ export default function ExperimentPage() {
                     <div className="flex flex-col">
                       <div className="rounded-3xl border border-gray-200 bg-white px-4 pb-4 pt-4 shadow-lg dark:border-gray-800 dark:bg-gray-900 transition duration-300 animate-fadeDown">
                         <div className="space-y-2">
-
-                            {/* Summary */}
+                            {/* book details */}
                             <div>
-                              <div className="flex items-start justify-between gap-3">
+
+                              <div className="flex items-center justify-between gap-3">
                                 <div className="min-w-0">
-                                  <p className="text-xs uppercase tracking-[0.28em] text-indigo-500">Book profile</p>
+                                  <p className="text-xs uppercase tracking-[0.28em] text-blue-500">Book profile</p>
                                 </div>
                                   
                                 <div className="relative inline-block"> 
@@ -1832,7 +1832,7 @@ export default function ExperimentPage() {
                                       }}
                                     />
                                   
-                                    <div className="absolute top-9 right-1 z-30 w-56 rounded-md border bg-white dark:bg-gray-800 dark:border-gray-600 shadow-xl p-2 space-y-1">
+                                    <div className="absolute top-9 right-1 z-30 w-56 rounded-md border bg-white dark:bg-gray-900 dark:border-gray-700 shadow-xl p-2 space-y-1">
                                       
                                       {/* minimize book details */}
                                       <button
@@ -1882,102 +1882,114 @@ export default function ExperimentPage() {
                                 </div>
                               </div>
 
-                              <div className="mt-2 flex">
-                                <label className="text-2xl font-black">
-                                  {titleDraft || currentBook?.title || "Book Content"}
-                                </label>
-                              </div>
-                              
-                              {/* quick details */}
-                              <div className="mt-2 grid grid-cols-2 gap-2 shadow-sm">
-                                {/* Volume Box */}
-                                <div className="flex flex-col gap-1 rounded-xl bg-gray-50 p-2 dark:bg-gray-800/50 transition-colors hover:bg-gray-100 dark:hover:bg-gray-800">
-                                  <span className="text-[10px] font-bold uppercase tracking-wider text-neutral-400 dark:text-neutral-500">
-                                    Format
-                                  </span>
-                                  <span className="text-sm font-semibold text-neutral-700 dark:text-neutral-200">
-                                    Volume {bookVolume || "0"}
-                                  </span>
+                              <div className={`${showBookContent ? "hidden" : ""}`}>
+                                <div className="mt-2 flex">
+                                  <label className="text-2xl font-black">
+                                    {titleDraft || currentBook?.title || "Book Content"}
+                                  </label>
                                 </div>
-
-                                {/* Name Box */}
-                                <div className="flex flex-col gap-1 rounded-xl bg-gray-50 p-2 dark:bg-gray-800/50 transition-colors hover:bg-gray-100 dark:hover:bg-gray-800">
-                                  <span className="text-[10px] font-bold uppercase tracking-wider text-neutral-400 dark:text-neutral-500">
-                                    Series Name
-                                  </span>
-                                  <span className="truncate text-sm font-semibold text-neutral-700 dark:text-neutral-200">
-                                    {bookVolName || "Main Story"}
-                                  </span>
-                                </div>
-
-                                {/* Status Box */}
-                                <div className="flex flex-col gap-1 rounded-xl bg-gray-50 p-2 dark:bg-gray-800/50 transition-colors hover:bg-gray-100 dark:hover:bg-gray-800">
-                                  <span className="text-[10px] font-bold uppercase tracking-wider text-neutral-400 dark:text-neutral-500">
-                                    Book Status
-                                  </span>
-                                  <div className="flex items-center gap-1.5">
-                                    <span className="h-1.5 w-1.5 rounded-full bg-emerald-500 shadow-[0_0_8px_rgba(16,185,129,0.5)]"></span>
+                                
+                                {/* quick details */}
+                                <div className="mt-2 grid grid-cols-2 gap-2 shadow-sm">
+                                  
+                                  {/* Volume Box */}
+                                  <div className="flex flex-col gap-1 rounded-xl bg-gray-50 p-2 dark:bg-gray-800/50 transition-colors hover:bg-gray-100 dark:hover:bg-gray-800">
+                                    <span className="text-[10px] font-bold uppercase tracking-wider text-neutral-400 dark:text-neutral-500">
+                                      Series
+                                    </span>
                                     <span className="text-sm font-semibold text-neutral-700 dark:text-neutral-200">
-                                      {upcaseLetter(bookStatus) || "Unknown"}
+                                      Volume {bookVolume || "0"}
+                                    </span>
+                                  </div>
+
+                                  {/* Volume Name Box */}
+                                  <div className="flex flex-col gap-1 rounded-xl bg-gray-50 p-2 dark:bg-gray-800/50 transition-colors hover:bg-gray-100 dark:hover:bg-gray-800">
+                                    <span className="text-[10px] font-bold uppercase tracking-wider text-neutral-400 dark:text-neutral-500">
+                                      Volume Title
+                                    </span>
+                                    <span className="truncate text-sm font-semibold text-neutral-700 dark:text-neutral-200">
+                                      {bookVolName || "Main Story"}
+                                    </span>
+                                  </div>
+
+                                  {/* Status Box */}
+                                  <div className="flex flex-col gap-1 rounded-xl bg-gray-50 p-2 dark:bg-gray-800/50 transition-colors hover:bg-gray-100 dark:hover:bg-gray-800">
+                                    <span className="text-[10px] font-bold uppercase tracking-wider text-neutral-400 dark:text-neutral-500">
+                                      Book Status
+                                    </span>
+                                    <div className="flex items-center gap-1.5">
+                                      <span className="h-1.5 w-1.5 rounded-full bg-emerald-500 shadow-[0_0_8px_rgba(16,185,129,0.5)]"></span>
+                                      <span className="text-sm font-semibold text-neutral-700 dark:text-neutral-200">
+                                        {upcaseLetter(bookStatus) || "Unknown"}
+                                      </span>
+                                    </div>
+                                  </div>
+
+                                  {/* Chapter Box */}
+                                  <div className="flex flex-col gap-1 rounded-xl bg-gray-50 p-2 dark:bg-gray-800/50 transition-colors hover:bg-gray-100 dark:hover:bg-gray-800">
+                                    <span className="text-[10px] font-bold uppercase tracking-wider text-neutral-400 dark:text-neutral-500">
+                                      Count
+                                    </span>
+                                    <span className="text-sm font-semibold text-neutral-700 dark:text-neutral-200">
+                                      {bookChapterCount ? `${bookChapterCount} Chapters` : "Count Pending"}
                                     </span>
                                   </div>
                                 </div>
 
-                                {/* Chapter Box */}
-                                <div className="flex flex-col gap-1 rounded-xl bg-gray-50 p-2 dark:bg-gray-800/50 transition-colors hover:bg-gray-100 dark:hover:bg-gray-800">
+                                {/* Summary Text-area */}
+                                <div className="mt-2 flex flex-col gap-1 rounded-xl bg-gray-50 p-2 dark:bg-gray-800/50 transition-colors hover:bg-gray-100 dark:hover:bg-gray-800">
                                   <span className="text-[10px] font-bold uppercase tracking-wider text-neutral-400 dark:text-neutral-500">
-                                    Count
+                                    Summary
                                   </span>
-                                  <span className="text-sm font-semibold text-neutral-700 dark:text-neutral-200">
-                                    {bookChapterCount ? `${bookChapterCount} Chapters` : "Count Pending"}
-                                  </span>
+                                  <textarea
+                                    rows={bookSummary ? 12 : 1}
+                                    className={`min-h-[180px] w-full rounded-2xl border border-gray-200 bg-gray-50 px-4 py-4 font-serif text-sm leading-7 text-gray-700 transition-all duration-300 placeholder:text-center placeholder:text-lg placeholder-gray-400 focus:outline-none dark:border-gray-800 dark:bg-gray-950/60 dark:text-gray-200 dark:placeholder-gray-600 text-area-scroll resize-none`}
+                                    placeholder="Update book summary"
+                                    value={bookSummary}
+                                    onFocus={(e) => autoResize(e)}
+                                    onBlur={(e) => { e.currentTarget.style.height = "auto";}}
+                                    readOnly
+                                  />
                                 </div>
                               </div>
 
-                              <textarea
-                                rows={bookSummary ? 12 : 1}
-                                className={`${showBookContent ? "hidden" : ""} mt-4 min-h-[180px] w-full rounded-2xl border border-gray-200 bg-gray-50 px-4 py-4 font-serif text-sm leading-7 text-gray-700 transition-all duration-300 placeholder:text-center placeholder:text-lg placeholder-gray-400 focus:outline-none dark:border-gray-800 dark:bg-gray-950/60 dark:text-gray-200 dark:placeholder-gray-600 text-area-scroll resize-none`}
-                                placeholder="Update book summary"
-                                value={bookSummary}
-                                onFocus={(e) => autoResize(e)}
-                                onBlur={(e) => { e.currentTarget.style.height = "auto";}}
-                                readOnly
-                              />
                             </div>
                         </div>
+
+                        {/* CHARACTER GENRE AND TAGS */}
+                        {!showBookContent && (
+                          <div className="mt-2 flex flex-col gap-1 rounded-xl bg-gray-50 p-2 dark:bg-gray-800/50 transition-colors hover:bg-gray-100 dark:hover:bg-gray-800">
+                            <span className="text-[10px] font-bold uppercase tracking-wider text-neutral-400 dark:text-neutral-500">
+                              Book Classification
+                            </span>
+
+                            <div className="mb-1 mt-1 block">
+                              <label className="text-xs uppercase tracking-[0.22em] text-blue-900 dark:text-blue-400">Genre</label>
+                              <label className="text-xs text-gray-300"> • </label>
+                              <label className="text-xs uppercase tracking-[0.22em] text-cyan-900 dark:text-cyan-400">Tags</label>
+                            </div>
+                            
+                            <div className="flex flex-wrap gap-2">
+                              {bookChips.length ? (
+                                bookChips.map((chip, index) => (
+                                  <span 
+                                    key={`${chip.type}-${chip.text}-${index}`} 
+                                    className={`px-3 py-1 rounded-full text-sm ${
+                                      chip.type === 'genre' 
+                                        ? "bg-blue-200 text-blue-900 dark:bg-blue-900/70 dark:text-blue-100" // Genre Style
+                                        : "bg-cyan-200 text-cyan-900 dark:bg-cyan-900/70 dark:text-cyan-100" // Tag Style
+                                    }`}
+                                  > 
+                                    {upcaseLetter(chip.text)}
+                                  </span>
+                                ))
+                              ) : (
+                                <span className="text-sm text-gray-500 dark:text-gray-400">No data yet.</span>
+                              )}
+                            </div>
+                          </div>
+                        )}
                       </div>
-
-                      {/* CHARACTER GENRE AND TAGS */}
-                      {!showBookContent && (
-                        <div className="rounded-3xl border border-gray-200 bg-white p-4 shadow-lg dark:border-gray-800 dark:bg-gray-900 transition duration-300">
-                          <label className="text-sm font-semibold">Book Classification</label>
-
-                          <div className="mb-1 mt-1 block">
-                            <label className="text-xs uppercase tracking-[0.22em] text-blue-900 dark:text-blue-400">Genre</label>
-                            <label className="text-xs text-gray-300"> • </label>
-                            <label className="text-xs uppercase tracking-[0.22em] text-purple-900 dark:text-purple-400">Tags</label>
-                          </div>
-                          
-                          <div className="flex flex-wrap gap-2">
-                            {bookChips.length ? (
-                              bookChips.map((chip, index) => (
-                                <span 
-                                  key={`${chip.type}-${chip.text}-${index}`} 
-                                  className={`px-3 py-1 rounded-full text-sm ${
-                                    chip.type === 'genre' 
-                                      ? "bg-blue-200 text-blue-900 dark:bg-blue-900/40 dark:text-blue-200" // Genre Style
-                                      : "bg-purple-200 text-purple-900 dark:bg-purple-900/40 dark:text-purple-200" // Tag Style
-                                  }`}
-                                >
-                                  {upcaseLetter(chip.text)}
-                                </span>
-                              ))
-                            ) : (
-                              <span className="text-sm text-gray-500 dark:text-gray-400">No data yet.</span>
-                            )}
-                          </div>
-                        </div>
-                      )}
 
                     </div>
                   )}
@@ -2065,11 +2077,15 @@ export default function ExperimentPage() {
 
           </div>
           
-          {/* CENTER CONTAINER */}
+          {/* RIGHT SIDE CONTAINER */}
           <div className="w-full flex-1 space-y-2">
 
             {/* character data and grid display */}
-            <div className="rounded-3xl border border-gray-200 bg-white p-4 shadow-lg transition duration-300 dark:border-gray-800 dark:bg-gray-900">
+            <div 
+              className="rounded-3xl 
+              border border-gray-200 bg-white 
+              p-4 shadow-lg transition duration-300 
+              dark:border-gray-800 dark:bg-gray-900">
               {/* CHARACTER DATA COMPLETION PROGRESS BAR */}
               <div className="mb-3">
                 <div className="flex items-center justify-between mb-2">
@@ -2360,627 +2376,625 @@ export default function ExperimentPage() {
         </div>
         
       </div>
-    
 
       {/* MODALS */}
-
-        {/* Undo Popup */}
-        {showUndoPopup && (
-            <div className="fixed top-14 left-1/2 bg-gray-300 py-4 px-8 transform -translate-x-1/2 rounded shadow-lg flex justify-center space-x-4 animate-fadeDown">
-            <span>Deleted</span>
-            <button 
-                className="bg-blue-500 hover:bg-blue-400 px-3 py-1 rounded text-sm font-semibold flex"
-                onClick={handleUndo}
-                >
-                <svg
-                xmlns="http://www.w3.org/2000/svg"
-                fill="none"
-                viewBox="0 0 24 24"
-                strokeWidth={2}
-                stroke="currentColor"
-                className="w-4 h-5"
-                >
-                <path d="M9 15L3 9m0 0l6-6M3 9h12a6 6 0 010 12h-3" />
-                </svg> Undo
-            </button>
-            </div>
-        )}
-
-        {/* CHANGES SAVED POPUP */}
-        {showStatePopup && (
-        <div className="fixed top-14 z-50 left-1/2 bg-gray-300 py-1 px-5 transform -translate-x-1/2 rounded shadow-lg flex justify-center space-x-4 animate-fadeDown">
-            <span>
-            {alertMessage}
-            <FontAwesomeIcon className="text-green-500" size="lg" icon={faCheck}/>
-            </span>
-        </div>
-        )}
-
-        {/* BOOK NOTES */}
-        {createPortal(
-          <>
-            {/* MOBILE NOTES TOGGLE */}
-            <button
-              ref={notesFabRef}
-              onClick={displayNotes}
-              className={`
-                fixed bottom-5 right-5 z-50
-                bg-blue-600 hover:bg-blue-700
-                border border-blue-600 hover:border-blue-400
-                text-white rounded-full
-                px-4 py-3.5 shadow-xl
-                transition-transform duration-600 
-                ${notesShowState ? "hidden" : "none"}
-              `}
-              title={notesShowState ? "Close notes" : "Open notes"}
-            >
-              <FontAwesomeIcon icon={notesShowState ? faMinus : faPlus}/>
-            </button>
-
-            {/* Collapsible notes drawer*/}
-            {isNotesDrawerMounted && (
-              <div
-                className={`text-black dark:text-white fixed inset-0 z-40 transition-opacity duration-300 justify-items-center ${isNotesDrawerVisible ? "opacity-100" : "opacity-0"}`}
-                role="dialog"
-                aria-modal="true"
+      {/* Undo Popup */}
+      {showUndoPopup && (
+          <div className="fixed top-14 left-1/2 bg-gray-300 py-4 px-8 transform -translate-x-1/2 rounded shadow-lg flex justify-center space-x-4 animate-fadeDown">
+          <span>Deleted</span>
+          <button 
+              className="bg-blue-500 hover:bg-blue-400 px-3 py-1 rounded text-sm font-semibold flex"
+              onClick={handleUndo}
               >
-                <button
-                  className="absolute inset-0 bg-black/50"
-                  aria-label="Close notes drawer"
-                  onClick={closeNotesDrawer}
+              <svg
+              xmlns="http://www.w3.org/2000/svg"
+              fill="none"
+              viewBox="0 0 24 24"
+              strokeWidth={2}
+              stroke="currentColor"
+              className="w-4 h-5"
+              >
+              <path d="M9 15L3 9m0 0l6-6M3 9h12a6 6 0 010 12h-3" />
+              </svg> Undo
+          </button>
+          </div>
+      )}
+
+      {/* CHANGES SAVED POPUP */}
+      {showStatePopup && (
+      <div className="fixed top-14 z-50 left-1/2 bg-gray-300 py-1 px-5 transform -translate-x-1/2 rounded shadow-lg flex justify-center space-x-4 animate-fadeDown">
+          <span>
+          {alertMessage}
+          <FontAwesomeIcon className="text-green-500" size="lg" icon={faCheck}/>
+          </span>
+      </div>
+      )}
+
+      {/* BOOK NOTES */}
+      {createPortal(
+        <>
+          {/* MOBILE NOTES TOGGLE */}
+          <button
+            ref={notesFabRef}
+            onClick={displayNotes}
+            className={`
+              fixed bottom-5 right-5 z-50
+              border border-gray-200 bg-gradient-to-br from-blue-600 to-cyan-500
+              hover:border-gray-100 hover:from-blue-600/80 hover:to-cyan-400
+              text-white rounded-full
+              px-4 py-3.5 shadow-lg
+              transition-transform duration-600 
+              ${notesShowState ? "hidden" : "none"}
+            `}
+            title={notesShowState ? "Close notes" : "Open notes"}
+          >
+            <FontAwesomeIcon icon={notesShowState ? faMinus : faPlus}/>
+          </button>
+
+          {/* Collapsible notes drawer*/}
+          {isNotesDrawerMounted && (
+            <div
+              className={`text-black dark:text-white fixed inset-0 z-50 transition-opacity duration-300 justify-items-center ${isNotesDrawerVisible ? "opacity-100" : "opacity-0"}`}
+              role="dialog"
+              aria-modal="true"
+            >
+              <button
+                className="absolute inset-0 bg-black/50"
+                aria-label="Close notes drawer"
+                onClick={closeNotesDrawer}
+              />
+
+              {/* notes content */}
+              <div
+                ref={notesDrawerPanelRef}
+                className={`
+                  absolute bottom-0 xxs:right-15
+                  bg-gray-100 dark:bg-gray-800
+                  shadow-2xl p-3 rounded-t-2xl
+                  w-full max-w-[60vh] max-h-[90vh]
+                  transition-all duration-500
+                  ${isNotesDrawerVisible ? "translate-y-0" : "translate-y-full"}
+                `}
+              >
+
+                <NotesCollection
+                  title="Notes"
+                  notes={bookNotes}
+                  draftNote={draftNote}
+                  draftNoteState={draftNoteState}
+                  noteToDelete={noteToDelete}
+                  hideSave={hideSave}
+                  onFocusId={onFocusId}
+                  noteContent={noteContent}
+                  emptyMessage="Add notes, references, future scenarios, book plans, etc..."
+                  contentClassName="mt-2 h-[calc(75vh-3.5rem)] xxs:h-[calc(85vh-3.5rem)] overflow-y-auto overflow-x-hidden notes-scroll overflow-contain"
+                  showPinnedIcon
+                  disableDeleteWhenPinned
+                  onAddDraft={addDraftNotes}
+                  onCloseDraft={closeNotesDrawer}
+                  onChangeDraft={(content) => setDraftNote(prev => (prev ? { ...prev, content } : prev))}
+                  onChangeNote={(noteId, content) => setBookNotes(prev => prev.map(note => note.id === noteId ? { ...note, content } : note))}
+                  onSaveNote={saveNote}
+                  onDeleteRequest={setNoteToDelete}
+                  onDeleteConfirm={handleDeleteNote}
+                  onDeleteCancel={() => setNoteToDelete(null)}
+                  onFocusNote={(note) => {
+                    setOnFocusId(String(note.id ?? ""));
+                    setNoteContent(note.content);
+                    setHideSave(true);
+                    setDraftstate(!note.id);
+                  }}
+                  onCancelEditing={() => { setHideSave(false); setDraftNote(null); }}
+                  onTogglePin={togglePin}
                 />
 
-                {/* notes content */}
-                <div
-                  ref={notesDrawerPanelRef}
-                  className={`
-                    absolute bottom-0 xxs:right-15
-                    bg-gray-100 dark:bg-gray-800
-                    shadow-2xl p-3
-                    w-full max-w-[60vh] max-h-[90vh]
-                    transition-all duration-500
-                    ${isNotesDrawerVisible ? "translate-y-0" : "translate-y-full"}
-                  `}
-                >
-
-                  <NotesCollection
-                    title="Notes"
-                    notes={bookNotes}
-                    draftNote={draftNote}
-                    draftNoteState={draftNoteState}
-                    noteToDelete={noteToDelete}
-                    hideSave={hideSave}
-                    onFocusId={onFocusId}
-                    noteContent={noteContent}
-                    emptyMessage="Add notes, references, future scenarios, book plans, etc..."
-                    contentClassName="mt-2 h-[calc(75vh-3.5rem)] xxs:h-[calc(85vh-3.5rem)] overflow-y-auto overflow-x-hidden notes-scroll overflow-contain"
-                    showPinnedIcon
-                    disableDeleteWhenPinned
-                    onAddDraft={addDraftNotes}
-                    onCloseDraft={closeNotesDrawer}
-                    onChangeDraft={(content) => setDraftNote(prev => (prev ? { ...prev, content } : prev))}
-                    onChangeNote={(noteId, content) => setBookNotes(prev => prev.map(note => note.id === noteId ? { ...note, content } : note))}
-                    onSaveNote={saveNote}
-                    onDeleteRequest={setNoteToDelete}
-                    onDeleteConfirm={handleDeleteNote}
-                    onDeleteCancel={() => setNoteToDelete(null)}
-                    onFocusNote={(note) => {
-                      setOnFocusId(String(note.id ?? ""));
-                      setNoteContent(note.content);
-                      setHideSave(true);
-                      setDraftstate(!note.id);
-                    }}
-                    onCancelEditing={() => { setHideSave(false); setDraftNote(null); }}
-                    onTogglePin={togglePin}
-                  />
-
-                {/* notes content closer   */}
-                </div>
-
-              {/* notes closer */}
-              </div>
-            )}
-          </>,
-          document.body
-        )}
-
-        {/* WORLD BUILDING INPUT MODAL */}
-        {showWorldbuildingModal && (
-          <div
-            className="fixed inset-0 z-70 bg-black/50 flex items-center justify-center p-3"
-            onMouseDown={(e) => {
-              if (e.target === e.currentTarget) {
-                setShowWorldbuildingModal(false);
-                document.body.classList.toggle('overflow-hidden', false);
-              }
-            }}
-          >
-            <div className="w-full max-w-2xl max-h-[90vh] overflow-y-auto rounded-md bg-white dark:bg-gray-900 p-4 shadow-2xl notes-scroll" onMouseDown={(e) => e.stopPropagation()}>
-              <div className="flex items-start justify-between gap-3">
-                <div>
-                  <h2 className="text-lg font-semibold">Add Worldbuilding Section</h2>
-                  <p className="text-xs text-gray-500 dark:text-gray-400">Add a title, then as many label/value facts as you need.</p>
-                </div>
-                <button
-                  type="button"
-                  className="px-2 py-1 rounded border border-gray-400 hover:bg-gray-200 dark:hover:bg-gray-700"
-                  onClick={() => {setShowWorldbuildingModal(false); document.body.classList.toggle('overflow-hidden', false);}}
-                >
-                  Close
-                </button>
+              {/* notes content closer   */}
               </div>
 
-              <form onSubmit={saveWorldbuildingSection} className="mt-4 space-y-3">
-                <div>
-                  <label className="text-sm font-medium">Section Title</label>
-                  <input
-                    type="text"
-                    className="mt-1 w-full rounded border border-gray-300 dark:border-gray-700 px-3 py-2 bg-transparent"
-                    placeholder="ex: Economy, Politics, Religion..."
-                    value={worldSectionTitle}
-                    onChange={(e) => setWorldSectionTitle(e.target.value)}
-                    required
-                  />
-                </div>
+            {/* notes closer */}
+            </div>
+          )}
+        </>,
+        document.body
+      )}
 
-                <div className="space-y-2">
-                  <div className="flex items-center justify-between">
-                    <label className="text-sm font-medium">Entries (Label + Value)</label>
-                    <button
-                      type="button"
-                      className="text-xs px-2 py-1 rounded border border-gray-400 hover:bg-gray-200 dark:hover:bg-gray-700"
-                      onClick={addWorldDraftEntry}
-                    >
-                      <FontAwesomeIcon icon={faPlus} /> Add entry
-                    </button>
-                  </div>
+      {/* WORLD BUILDING INPUT MODAL */}
+      {showWorldbuildingModal && (
+        <div
+          className="fixed inset-0 z-70 bg-black/50 flex items-center justify-center p-3"
+          onMouseDown={(e) => {
+            if (e.target === e.currentTarget) {
+              setShowWorldbuildingModal(false);
+              document.body.classList.toggle('overflow-hidden', false);
+            }
+          }}
+        >
+          <div className="w-full max-w-2xl max-h-[90vh] overflow-y-auto rounded-md bg-white dark:bg-gray-900 p-4 shadow-2xl notes-scroll" onMouseDown={(e) => e.stopPropagation()}>
+            <div className="flex items-start justify-between gap-3">
+              <div>
+                <h2 className="text-lg font-semibold">Add Worldbuilding Section</h2>
+                <p className="text-xs text-gray-500 dark:text-gray-400">Add a title, then as many label/value facts as you need.</p>
+              </div>
+              <button
+                type="button"
+                className="px-2 py-1 rounded border border-gray-400 hover:bg-gray-200 dark:hover:bg-gray-700"
+                onClick={() => {setShowWorldbuildingModal(false); document.body.classList.toggle('overflow-hidden', false);}}
+              >
+                Close
+              </button>
+            </div>
 
-                  {worldDraftEntries.map((entry, index) => (
-                    <div key={`draft-entry-${index}`} className="rounded border border-gray-300 dark:border-gray-700 p-2 space-y-2">
-                      <div className="flex items-center justify-between">
-                        <span className="text-xs text-gray-500">Entry #{index + 1}</span>
-                        <button
-                          type="button"
-                          className="text-xs text-red-500 disabled:opacity-40"
-                          onClick={() => removeWorldDraftEntry(index)}
-                          disabled={worldDraftEntries.length === 1}
-                        >
-                          Remove
-                        </button>
-                      </div>
+            <form onSubmit={saveWorldbuildingSection} className="mt-4 space-y-3">
+              <div>
+                <label className="text-sm font-medium">Section Title</label>
+                <input
+                  type="text"
+                  className="mt-1 w-full rounded border border-gray-300 dark:border-gray-700 px-3 py-2 bg-transparent"
+                  placeholder="ex: Economy, Politics, Religion..."
+                  value={worldSectionTitle}
+                  onChange={(e) => setWorldSectionTitle(e.target.value)}
+                  required
+                />
+              </div>
 
-                      <input
-                        type="text"
-                        className="w-full rounded border border-gray-300 dark:border-gray-700 px-2 py-1 bg-transparent"
-                        placeholder="Label (ex: Cost, Rule, Limitation)"
-                        value={entry.label}
-                        onChange={(e) => updateWorldDraftEntry(index, "label", e.target.value)}
-                      />
-                      <textarea
-                        rows={2}
-                        className="w-full rounded border border-gray-300 dark:border-gray-700 px-2 py-1 bg-transparent"
-                        placeholder="Value / detail"
-                        value={entry.value}
-                        onChange={(e) => updateWorldDraftEntry(index, "value", e.target.value)}
-                      />
-                    </div>
-                  ))}
-                </div>
-
-                <div className="flex justify-end gap-2 pt-1">
+              <div className="space-y-2">
+                <div className="flex items-center justify-between">
+                  <label className="text-sm font-medium">Entries (Label + Value)</label>
                   <button
                     type="button"
-                    className="px-3 py-1 rounded bg-gray-500 text-white hover:bg-gray-600"
-                    onClick={() => {setShowWorldbuildingModal(false); document.body.classList.toggle('overflow-hidden', false);}}
+                    className="text-xs px-2 py-1 rounded border border-gray-400 hover:bg-gray-200 dark:hover:bg-gray-700"
+                    onClick={addWorldDraftEntry}
                   >
-                    Cancel
-                  </button>
-                  <button
-                    type="submit"
-                    className="px-3 py-1 rounded bg-blue-600 text-white hover:bg-blue-700"
-                  >
-                    Save Section
+                    <FontAwesomeIcon icon={faPlus} /> Add entry
                   </button>
                 </div>
-              </form>
-            </div>
-          </div>
-        )}
 
-        {/* WORLD BUILDING EDIT MODAL */}
-        {showEditWorldbuildingModal && (
-          <div
-            className="fixed inset-0 z-70 bg-black/50 flex items-center justify-center p-3"
-            onMouseDown={(e) => {
-              if (e.target === e.currentTarget) {
-                closeEditWorldbuildingModal();
-              }
-            }}
-          >
-            <div className="w-full max-w-2xl max-h-[90vh] overflow-y-auto rounded-md bg-white dark:bg-gray-900 p-4 shadow-2xl notes-scroll" onMouseDown={(e) => e.stopPropagation()}>
-              {/* title */}
-              <div className="flex items-start justify-between gap-3">
-
-                  {selectedWorldSectionId ?
-                    (<button 
-                      className={`text-gray-500 dark:text-gray-400 hover:text-gray-300`}
-                      onClick={() => setSelectedWorldSectionId(null)}
-                    > <FontAwesomeIcon icon={faArrowLeft} size="lg"/>
-                    </button>
-                    )
-                    :
-                    (
-                    <div>
-                      <h2 className="text-lg font-semibold">Edit World Setting Section</h2>
-                      <p className="text-xs text-gray-500 dark:text-gray-400">Choose one section, then update its title and entries.</p>
-                    </div>
-                    )
-                  }
-
-                <button
-                  type="button"
-                  className="px-2 py-1 rounded border border-gray-400 hover:bg-gray-200 dark:hover:bg-gray-700"
-                  onClick={closeEditWorldbuildingModal}
-                >
-                  Close
-                </button>
-              </div>
-
-              {/* world sections list */}
-              <div className="mt-2 space-y-3">
-                {/* list */}
-                {!selectedWorldSectionId && (
-                  <div>
-                    <label className="text-sm font-medium">Choose Section</label>
-                    <div className="grid gap-2 sm:grid-cols-3">
-                      {worldbuildingSections.map((section) => (
-                        <button
-                          key={`edit-selector-${section.id}`}
-                          type="button"
-                          className={`text-left px-2 py-1 border border-gray-600/50 group`}
-                          onClick={() => selectWorldSectionForEdit(section.id)}
-                        >
-                          <span className="text-sm font-medium text-blue-700 dark:text-blue-300 group-hover:text-blue-500 line-clamp-1">{section.title}</span>
-                          <span className="block text-xs text-gray-500 dark:text-gray-400">{section.entries.length} entr{section.entries.length === 1 ? "y" : "ies"}</span>
-                        </button>
-                      ))}
-                    </div>
-                  </div>
-                )}
-
-                {/* chosen section edit */}
-                {selectedWorldSectionId && (
-                  <form onSubmit={saveEditedWorldbuildingSection} className="space-y-3">
-                    <div>
-                      <label className="text-sm font-medium">Section Title</label>
-                      <input
-                        type="text"
-                        className="mt-1 w-full rounded border border-gray-300 dark:border-gray-700 px-3 py-2 bg-transparent"
-                        placeholder="ex: Economy, Politics, Religion..."
-                        value={editWorldSectionTitle}
-                        onChange={(e) => setEditWorldSectionTitle(e.target.value)}
-                        required
-                      />
-                    </div>
-
-                    <div className="space-y-2">
-                      <div className="flex items-center justify-between">
-                        <label className="text-sm font-medium">Entries (Label + Value)</label>
-                        <button
-                          type="button"
-                          className="text-xs px-2 py-1 rounded border border-gray-400 hover:bg-gray-200 dark:hover:bg-gray-700"
-                          onClick={addEditWorldDraftEntry}
-                        >
-                          <FontAwesomeIcon icon={faPlus} /> Add entry
-                        </button>
-                      </div>
-
-                      {editWorldDraftEntries.map((entry, index) => (
-                        <div key={`edit-draft-entry-${index}`} className="rounded border border-gray-300 dark:border-gray-700 p-2 space-y-2">
-                          <div className="flex items-center justify-between">
-                            <span className="text-xs text-gray-500">Entry #{index + 1}</span>
-                            <button
-                              type="button"
-                              className="text-xs text-red-500 disabled:opacity-40"
-                              onClick={() => removeEditWorldDraftEntry(index)}
-                              disabled={editWorldDraftEntries.length === 1}
-                            >
-                              Remove
-                            </button>
-                          </div>
-
-                          <input
-                            type="text"
-                            className="w-full rounded border border-gray-300 dark:border-gray-700 px-2 py-1 bg-transparent"
-                            placeholder="Label (ex: Cost, Rule, Limitation)"
-                            value={entry.label}
-                            onChange={(e) => updateEditWorldDraftEntry(index, "label", e.target.value)}
-                          />
-                          <textarea
-                            rows={2}
-                            className="w-full rounded border border-gray-300 dark:border-gray-700 px-2 py-1 bg-transparent"
-                            placeholder="Value / detail"
-                            value={entry.value}
-                            onChange={(e) => updateEditWorldDraftEntry(index, "value", e.target.value)}
-                          />
-                        </div>
-                      ))}
-                    </div>
-
-                    <div className="flex items-center justify-between gap-2 pt-1">
+                {worldDraftEntries.map((entry, index) => (
+                  <div key={`draft-entry-${index}`} className="rounded border border-gray-300 dark:border-gray-700 p-2 space-y-2">
+                    <div className="flex items-center justify-between">
+                      <span className="text-xs text-gray-500">Entry #{index + 1}</span>
                       <button
                         type="button"
-                        className="px-3 py-1 rounded bg-red-600 text-white hover:bg-red-700"
-                        onClick={() => deleteWorldbuildingSection(selectedWorldSectionId)}
+                        className="text-xs text-red-500 disabled:opacity-40"
+                        onClick={() => removeWorldDraftEntry(index)}
+                        disabled={worldDraftEntries.length === 1}
                       >
-                        Delete Section
+                        Remove
                       </button>
-
-                      <div className="flex gap-2">
-                        <button
-                          type="button"
-                          className="px-3 py-1 rounded bg-gray-500 text-white hover:bg-gray-600"
-                          onClick={() => setSelectedWorldSectionId(null)}
-                        >
-                          Cancel
-                        </button>
-                        <button
-                          type="submit"
-                          className="px-3 py-1 rounded bg-blue-600 text-white hover:bg-blue-700"
-                        >
-                          Save Changes
-                        </button>
-                      </div>
                     </div>
-                  </form>
-                )}
-              </div>
-            </div>
-          </div>
-        )}
 
-        {/* world atlas slide bar */}
-        {isWorldAtlasMounted && (
-          <div
-            className={`fixed inset-0 z-50 transition-all duration-500 ease-out
-              ${isWorldAtlasVisible 
-                ? "bg-slate-950/70 backdrop-blur-md opacity-100" 
-                : "bg-slate-950/0 backdrop-blur-0 opacity-0"}
-              `}  
-            onMouseDown={(e) => {
-              if (e.target === e.currentTarget) {
-                closeWorldAtlas();
-              }
-            }}
-          >
-            <div
-              className={`relative h-full w-full max-w-full sm:max-w-[55vw]
-              rounded-r-3xl border-r border-white/10
-              bg-gradient-to-b from-[#020617] via-[#020617] to-[#0a1628]
-              text-white shadow-[0_0_80px_rgba(34,211,238,0.08)]
-              transition-all duration-500 ease-[cubic-bezier(0.22,1,0.36,1)]
-              will-change-transform
-              ${isWorldAtlasVisible 
-                ? "translate-x-0 opacity-100 scale-100" 
-                : "-translate-x-full opacity-0 scale-[0.98]"}
-              `}
-              onMouseDown={(e) => e.stopPropagation()}
-            >
-
-              <div className="absolute inset-0 pointer-events-none overflow-hidden z-0">
-                {[...Array(18)].map((_, i) => (
-                  <span
-                    key={i}
-                    className="particle"
-                    style={{
-                      left: `${Math.random() * 100}%`,
-                      animationDuration: `${12 + Math.random() * 10}s`,
-                      animationDelay: `${Math.random() * 5}s`,
-                      background: Math.random() > 0.5
-                        ? "rgba(34, 211, 238, 0.7)"
-                        : "rgba(168, 85, 247, 0.6)",
-                    }}
-                  />
+                    <input
+                      type="text"
+                      className="w-full rounded border border-gray-300 dark:border-gray-700 px-2 py-1 bg-transparent"
+                      placeholder="Label (ex: Cost, Rule, Limitation)"
+                      value={entry.label}
+                      onChange={(e) => updateWorldDraftEntry(index, "label", e.target.value)}
+                    />
+                    <textarea
+                      rows={2}
+                      className="w-full rounded border border-gray-300 dark:border-gray-700 px-2 py-1 bg-transparent"
+                      placeholder="Value / detail"
+                      value={entry.value}
+                      onChange={(e) => updateWorldDraftEntry(index, "value", e.target.value)}
+                    />
+                  </div>
                 ))}
               </div>
-              
-              <div className="absolute top-0 right-0 h-full w-[2.5px] bg-gradient-to-b from-transparent via-cyan-400/40 to-transparent blur-[1px]" />
-              
-              <div className="flex h-full flex-col overflow-hidden">
-                <div className="border-b border-white/10 px-5 py-4">
-                  <div className="flex items-start justify-between gap-3">
-                    <div>
-                      <p className="text-[11px] uppercase tracking-[0.45em] text-cyan-300/60">Archive of Worlds</p>
-                      <h2 className="mt-2 text-2xl font-semibold bg-gradient-to-r from-white via-cyan-100 to-slate-400 bg-clip-text text-transparent">
-                        {currentBook?.title || "Your Story"} — Atlas
-                      </h2>
-                      <p className="mt-2 max-w-2xl text-sm text-slate-300">
-                        Reveal your setting like a guided discovery: regions, rules, legends, factions, religions, magic systems, and hidden truths.
-                      </p>
-                    </div>
 
-                    <button
-                      type="button"
-                      className="rounded-full border border-white/15 px-3 py-1 text-sm text-slate-200 transition hover:bg-white/10"
-                      onClick={closeWorldAtlas}
-                    >
-                      Close
-                    </button>
-                  </div>
-
-                  <div className="mt-4 flex flex-wrap gap-2">
-                    <button
-                      type="button"
-                      className="group rounded-full border border-cyan-400/30 
-                        bg-cyan-400/10 px-3 py-1 text-xs font-medium text-cyan-100 
-                        transition-all duration-300 
-                        hover:bg-cyan-400/20 hover:shadow-[0_0_12px_rgba(34,211,238,0.4)]"
-                      onClick={openWorldbuildingModal}
-                    >
-                      <FontAwesomeIcon icon={faPlus} /> Add lore section
-                    </button>
-                    <button
-                      type="button"
-                      className="group rounded-full border border-cyan-400/30 
-                        bg-cyan-400/10 px-3 py-1 text-xs font-medium text-cyan-100 
-                        transition-all duration-300 
-                        hover:bg-cyan-400/20 hover:shadow-[0_0_12px_rgba(34,211,238,0.4)]"
-                      onClick={openEditWorldbuildingModal}
-                      disabled={worldbuildingSections.length < 1}
-                    >
-                      <FontAwesomeIcon icon={faPen} /> Edit sections
-                    </button>
-                  </div>
-                </div>
-
-                {worldbuildingSections.length > 0 ? (
-                  <div className="grid min-h-0 flex-1 lg:grid-cols-[0.6fr_1.4fr]">
-                    <div className="overflow-y-auto border-b border-white/10 lg:border-b-0 lg:border-r notes-scroll">
-                      <p className="p-2 text-xs uppercase tracking-[0.3em] text-slate-400">Lore paths</p>
-                      <div className="">
-                        {worldbuildingSections.map((section) => (
-                          <button
-                            key={`atlas-section-${section.id}`}
-                            type="button"
-                            onClick={() => setActiveWorldSectionId(section.id)}
-                            className={`group relative w-full border-y px-2 py-1 text-left transition-all duration-300
-                              ${activeWorldSectionId === section.id
-                                  ? "border-cyan-300/60 bg-gradient-to-br from-cyan-400/10 to-transparent shadow-[0_0_25px_rgba(34,211,238,0.15)]"
-                                  : "border-white/10 bg-white/1 hover:bg-white/10 hover:border-cyan-400/30"
-                              }`}
-                          >
-                            <div className="absolute inset-0 opacity-0 group-hover:opacity-100 transition
-                                bg-gradient-to-r from-cyan-400/10 via-transparent to-transparent pointer-events-none" />
-                            <div className="flex items-center">
-                              <span className="mr-3 group-hover:bg-cyan-500/80 rounded-full py-1 px-1 bg-cyan-500/30 pointer-events-none"/>
-                              <div className="w-full">
-                                <h3 className="text-base font-semibold text-white line-clamp-2">{section.title}</h3>
-                                <div className="flex items-center justify-between text-xs text-slate-400">
-                                  <span>{section.entries.length} lore note{section.entries.length === 1 ? "" : "s"}</span>
-                                  <span>{activeWorldSectionId === section.id ? "Opened" : "Enter"}</span>
-                                </div>
-                              </div>
-                            </div> 
-                          </button>
-                        ))}
-                      </div>
-                    </div>
-
-                    <div className="overflow-y-auto notes-scroll">
-                      {activeWorldSection && (
-                        <div className="">
-                          <div className="relative text-center">
-                            <div className="absolute inset-0 bg-[radial-gradient(circle_at_top,rgba(34,211,238,0.15),transparent_80%)] pointer-events-none" />
-                            <h3 className="text-3xl font-semibold text-cyan-100/70 py-2">{activeWorldSection.title}</h3>
-                          </div>
-
-                          <div className="grid gap-1.5 pb-2 px-2">
-                            {activeWorldSection.entries.map((entry, index) => (
-                              <article
-                                key={`atlas-entry-${activeWorldSection.id}-${entry.label}-${index}`}
-                                className="group relative rounded-2xl border border-white/10 
-                                  bg-gradient-to-br from-white/[0.06] to-transparent 
-                                  p-4 transition-all duration-300
-                                  hover:border-cyan-400/40 hover:shadow-[0_0_20px_rgba(34,211,238,0.15)]"
-                              >
-                                <div className="absolute inset-0 opacity-0 group-hover:opacity-100 transition
-                                  bg-gradient-to-r from-transparent via-white/10 to-transparent blur-xl" />
-                                <div className="flex items-start justify-between gap-3">
-                                  <div>
-                                    <p className="text-[11px] uppercase tracking-[0.28em] text-cyan-300/70">{entry.label}</p>
-                                    <p className="mt-2 text-sm leading-7 text-slate-100 whitespace-pre-wrap">{entry.value}</p>
-                                  </div>
-                                  <span className="rounded-full border border-white/10 px-2 py-1 text-[10px] uppercase tracking-[0.25em] text-slate-400">
-                                    {String(index + 1).padStart(2, "0")}
-                                  </span>
-                                </div>
-                              </article>
-                            ))}
-                          </div>
-                        </div>
-                      )}
-                    </div>
-                  </div>
-                ) : (
-                  <div className="flex flex-1 items-center justify-center p-6">
-                    <div className="max-w-md rounded-3xl border border-dashed border-cyan-300/25 bg-white/[0.03] p-8 text-center">
-                      <p className="text-[11px] uppercase tracking-[0.35em] text-cyan-300/70">Blank map</p>
-                      <h3 className="mt-3 text-2xl font-semibold bg-gradient-to-r from-cyan-200 to-slate-400 bg-clip-text text-transparent">Your world has not been charted yet.</h3>
-                      <p className="mt-3 text-sm leading-6 text-slate-300">
-                        Start with broad categories like Kingdoms, Magic Rules, Religions, Timeline, Factions, or Landmarks. Then let each section unfold the book's world in layers.
-                      </p>
-                      <button
-                        type="button"
-                        className="mt-5 rounded-full border border-cyan-400/30 bg-cyan-400/10 px-4 py-2 text-sm font-medium text-cyan-100 transition hover:bg-cyan-400/20"
-                        onClick={openWorldbuildingModal}
-                      >
-                        <FontAwesomeIcon icon={faPlus} /> Create first lore section
-                      </button>
-                    </div>
-                  </div>
-                )}
-              </div>
-            </div>
-          </div>
-        )}
-
-        {/* book cover cropper */}
-        {showBookCoverCropper && bookCoverImageSrc && createPortal(
-          <div className="fixed inset-0 z-[70] flex items-center justify-center bg-black/70 px-4">
-            <div className="w-full max-w-lg rounded-3xl bg-white p-4 shadow-2xl dark:bg-gray-900">
-              <div className="text-gray-500 dark:text-gray-200">
-                  <h3 className="text-lg font-semibold">Crop book cover</h3>
-                  <p className="mt-1 text-sm">
-                      Select the part of the image that should appear on your book cards.
-                  </p>
-              </div>
-
-              <div className="relative mt-4 h-96 w-full overflow-hidden rounded-2xl bg-gray-950">
-                <Cropper
-                  image={bookCoverImageSrc}
-                  crop={bookCoverCrop}
-                  zoom={bookCoverZoom}
-                  aspect={3 / 4}
-                  objectFit="cover"
-                  onCropChange={setBookCoverCrop}
-                  onZoomChange={setBookCoverZoom}
-                  onCropComplete={onBookCoverCropComplete}
-                />
-              </div>
-
-              <div className="mt-4">
-                <label className="mb-2 block text-sm font-medium dark:text-white">Zoom</label>
-                <input
-                  type="range"
-                  min={0.5}
-                  max={3}
-                  step={0.05}
-                  value={bookCoverZoom}
-                  onChange={(e) => setBookCoverZoom(Number(e.target.value))}
-                  className="w-full"
-                />
-              </div>
-
-              <div className="mt-5 flex justify-end gap-3">
+              <div className="flex justify-end gap-2 pt-1">
                 <button
                   type="button"
-                  onClick={resetBookCoverCropState}
-                  className="rounded-xl border border-gray-300 px-4 py-2 text-sm font-medium transition text-gray-500 dark:text-gray-200 hover:bg-gray-100 dark:border-gray-700 dark:hover:bg-gray-800"
+                  className="px-3 py-1 rounded bg-gray-500 text-white hover:bg-gray-600"
+                  onClick={() => {setShowWorldbuildingModal(false); document.body.classList.toggle('overflow-hidden', false);}}
                 >
                   Cancel
                 </button>
                 <button
-                  type="button"
-                  onClick={handleBookCoverCropSave}
-                  className="rounded-xl bg-blue-600 px-4 py-2 text-sm font-semibold text-white transition hover:bg-blue-500"
+                  type="submit"
+                  className="px-3 py-1 rounded bg-blue-600 text-white hover:bg-blue-700"
                 >
-                  Use this crop
+                  Save Section
                 </button>
               </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* WORLD BUILDING EDIT MODAL */}
+      {showEditWorldbuildingModal && (
+        <div
+          className="fixed inset-0 z-70 bg-black/50 flex items-center justify-center p-3"
+          onMouseDown={(e) => {
+            if (e.target === e.currentTarget) {
+              closeEditWorldbuildingModal();
+            }
+          }}
+        >
+          <div className="w-full max-w-2xl max-h-[90vh] overflow-y-auto rounded-md bg-white dark:bg-gray-900 p-4 shadow-2xl notes-scroll" onMouseDown={(e) => e.stopPropagation()}>
+            {/* title */}
+            <div className="flex items-start justify-between gap-3">
+
+                {selectedWorldSectionId ?
+                  (<button 
+                    className={`text-gray-500 dark:text-gray-400 hover:text-gray-300`}
+                    onClick={() => setSelectedWorldSectionId(null)}
+                  > <FontAwesomeIcon icon={faArrowLeft} size="lg"/>
+                  </button>
+                  )
+                  :
+                  (
+                  <div>
+                    <h2 className="text-lg font-semibold">Edit World Setting Section</h2>
+                    <p className="text-xs text-gray-500 dark:text-gray-400">Choose one section, then update its title and entries.</p>
+                  </div>
+                  )
+                }
+
+              <button
+                type="button"
+                className="px-2 py-1 rounded border border-gray-400 hover:bg-gray-200 dark:hover:bg-gray-700"
+                onClick={closeEditWorldbuildingModal}
+              >
+                Close
+              </button>
             </div>
-          </div>,
-          document.body
-        )}
+
+            {/* world sections list */}
+            <div className="mt-2 space-y-3">
+              {/* list */}
+              {!selectedWorldSectionId && (
+                <div>
+                  <label className="text-sm font-medium">Choose Section</label>
+                  <div className="grid gap-2 sm:grid-cols-3">
+                    {worldbuildingSections.map((section) => (
+                      <button
+                        key={`edit-selector-${section.id}`}
+                        type="button"
+                        className={`text-left px-2 py-1 border border-gray-600/50 group`}
+                        onClick={() => selectWorldSectionForEdit(section.id)}
+                      >
+                        <span className="text-sm font-medium text-blue-700 dark:text-blue-300 group-hover:text-blue-500 line-clamp-1">{section.title}</span>
+                        <span className="block text-xs text-gray-500 dark:text-gray-400">{section.entries.length} entr{section.entries.length === 1 ? "y" : "ies"}</span>
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {/* chosen section edit */}
+              {selectedWorldSectionId && (
+                <form onSubmit={saveEditedWorldbuildingSection} className="space-y-3">
+                  <div>
+                    <label className="text-sm font-medium">Section Title</label>
+                    <input
+                      type="text"
+                      className="mt-1 w-full rounded border border-gray-300 dark:border-gray-700 px-3 py-2 bg-transparent"
+                      placeholder="ex: Economy, Politics, Religion..."
+                      value={editWorldSectionTitle}
+                      onChange={(e) => setEditWorldSectionTitle(e.target.value)}
+                      required
+                    />
+                  </div>
+
+                  <div className="space-y-2">
+                    <div className="flex items-center justify-between">
+                      <label className="text-sm font-medium">Entries (Label + Value)</label>
+                      <button
+                        type="button"
+                        className="text-xs px-2 py-1 rounded border border-gray-400 hover:bg-gray-200 dark:hover:bg-gray-700"
+                        onClick={addEditWorldDraftEntry}
+                      >
+                        <FontAwesomeIcon icon={faPlus} /> Add entry
+                      </button>
+                    </div>
+
+                    {editWorldDraftEntries.map((entry, index) => (
+                      <div key={`edit-draft-entry-${index}`} className="rounded border border-gray-300 dark:border-gray-700 p-2 space-y-2">
+                        <div className="flex items-center justify-between">
+                          <span className="text-xs text-gray-500">Entry #{index + 1}</span>
+                          <button
+                            type="button"
+                            className="text-xs text-red-500 disabled:opacity-40"
+                            onClick={() => removeEditWorldDraftEntry(index)}
+                            disabled={editWorldDraftEntries.length === 1}
+                          >
+                            Remove
+                          </button>
+                        </div>
+
+                        <input
+                          type="text"
+                          className="w-full rounded border border-gray-300 dark:border-gray-700 px-2 py-1 bg-transparent"
+                          placeholder="Label (ex: Cost, Rule, Limitation)"
+                          value={entry.label}
+                          onChange={(e) => updateEditWorldDraftEntry(index, "label", e.target.value)}
+                        />
+                        <textarea
+                          rows={2}
+                          className="w-full rounded border border-gray-300 dark:border-gray-700 px-2 py-1 bg-transparent"
+                          placeholder="Value / detail"
+                          value={entry.value}
+                          onChange={(e) => updateEditWorldDraftEntry(index, "value", e.target.value)}
+                        />
+                      </div>
+                    ))}
+                  </div>
+
+                  <div className="flex items-center justify-between gap-2 pt-1">
+                    <button
+                      type="button"
+                      className="px-3 py-1 rounded bg-red-600 text-white hover:bg-red-700"
+                      onClick={() => deleteWorldbuildingSection(selectedWorldSectionId)}
+                    >
+                      Delete Section
+                    </button>
+
+                    <div className="flex gap-2">
+                      <button
+                        type="button"
+                        className="px-3 py-1 rounded bg-gray-500 text-white hover:bg-gray-600"
+                        onClick={() => setSelectedWorldSectionId(null)}
+                      >
+                        Cancel
+                      </button>
+                      <button
+                        type="submit"
+                        className="px-3 py-1 rounded bg-blue-600 text-white hover:bg-blue-700"
+                      >
+                        Save Changes
+                      </button>
+                    </div>
+                  </div>
+                </form>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* world atlas slide bar */}
+      {isWorldAtlasMounted && (
+        <div
+          className={`fixed inset-0 z-50 transition-all duration-500 ease-out
+            ${isWorldAtlasVisible 
+              ? "bg-slate-950/70 backdrop-blur-md opacity-100" 
+              : "bg-slate-950/0 backdrop-blur-0 opacity-0"}
+            `}  
+          onMouseDown={(e) => {
+            if (e.target === e.currentTarget) {
+              closeWorldAtlas();
+            }
+          }}
+        >
+          <div
+            className={`relative h-full w-full max-w-full sm:max-w-[55vw]
+            rounded-r-3xl border-r border-white/10
+            bg-gradient-to-b from-[#020617] via-[#020617] to-[#0a1628]
+            text-white shadow-[0_0_80px_rgba(34,211,238,0.08)]
+            transition-all duration-500 ease-[cubic-bezier(0.22,1,0.36,1)]
+            will-change-transform
+            ${isWorldAtlasVisible 
+              ? "translate-x-0 opacity-100 scale-100" 
+              : "-translate-x-full opacity-0 scale-[0.98]"}
+            `}
+            onMouseDown={(e) => e.stopPropagation()}
+          >
+
+            <div className="absolute inset-0 pointer-events-none overflow-hidden z-0">
+              {[...Array(18)].map((_, i) => (
+                <span
+                  key={i}
+                  className="particle"
+                  style={{
+                    left: `${Math.random() * 100}%`,
+                    animationDuration: `${12 + Math.random() * 10}s`,
+                    animationDelay: `${Math.random() * 5}s`,
+                    background: Math.random() > 0.5
+                      ? "rgba(34, 211, 238, 0.7)"
+                      : "rgba(168, 85, 247, 0.6)",
+                  }}
+                />
+              ))}
+            </div>
+            
+            <div className="absolute top-0 right-0 h-full w-[2.5px] bg-gradient-to-b from-transparent via-cyan-400/40 to-transparent blur-[1px]" />
+            
+            <div className="flex h-full flex-col overflow-hidden">
+              <div className="border-b border-white/10 px-5 py-4">
+                <div className="flex items-start justify-between gap-3">
+                  <div>
+                    <p className="text-[11px] uppercase tracking-[0.45em] text-cyan-300/60">Archive of Worlds</p>
+                    <h2 className="mt-2 text-2xl font-semibold bg-gradient-to-r from-white via-cyan-100 to-slate-400 bg-clip-text text-transparent">
+                      {currentBook?.title || "Your Story"} — Atlas
+                    </h2>
+                    <p className="mt-2 max-w-2xl text-sm text-slate-300">
+                      Reveal your setting like a guided discovery: regions, rules, legends, factions, religions, magic systems, and hidden truths.
+                    </p>
+                  </div>
+
+                  <button
+                    type="button"
+                    className="rounded-full border border-white/15 px-3 py-1 text-sm text-slate-200 transition hover:bg-white/10"
+                    onClick={closeWorldAtlas}
+                  >
+                    Close
+                  </button>
+                </div>
+
+                <div className="mt-4 flex flex-wrap gap-2">
+                  <button
+                    type="button"
+                    className="group rounded-full border border-cyan-400/30 
+                      bg-cyan-400/10 px-3 py-1 text-xs font-medium text-cyan-100 
+                      transition-all duration-300 
+                      hover:bg-cyan-400/20 hover:shadow-[0_0_12px_rgba(34,211,238,0.4)]"
+                    onClick={openWorldbuildingModal}
+                  >
+                    <FontAwesomeIcon icon={faPlus} /> Add lore section
+                  </button>
+                  <button
+                    type="button"
+                    className="group rounded-full border border-cyan-400/30 
+                      bg-cyan-400/10 px-3 py-1 text-xs font-medium text-cyan-100 
+                      transition-all duration-300 
+                      hover:bg-cyan-400/20 hover:shadow-[0_0_12px_rgba(34,211,238,0.4)]"
+                    onClick={openEditWorldbuildingModal}
+                    disabled={worldbuildingSections.length < 1}
+                  >
+                    <FontAwesomeIcon icon={faPen} /> Edit sections
+                  </button>
+                </div>
+              </div>
+
+              {worldbuildingSections.length > 0 ? (
+                <div className="grid min-h-0 flex-1 lg:grid-cols-[0.6fr_1.4fr]">
+                  <div className="overflow-y-auto border-b border-white/10 lg:border-b-0 lg:border-r notes-scroll">
+                    <p className="p-2 text-xs uppercase tracking-[0.3em] text-slate-400">Lore paths</p>
+                    <div className="">
+                      {worldbuildingSections.map((section) => (
+                        <button
+                          key={`atlas-section-${section.id}`}
+                          type="button"
+                          onClick={() => setActiveWorldSectionId(section.id)}
+                          className={`group relative w-full border-y px-2 py-1 text-left transition-all duration-300
+                            ${activeWorldSectionId === section.id
+                                ? "border-cyan-300/60 bg-gradient-to-br from-cyan-400/10 to-transparent shadow-[0_0_25px_rgba(34,211,238,0.15)]"
+                                : "border-white/10 bg-white/1 hover:bg-white/10 hover:border-cyan-400/30"
+                            }`}
+                        >
+                          <div className="absolute inset-0 opacity-0 group-hover:opacity-100 transition
+                              bg-gradient-to-r from-cyan-400/10 via-transparent to-transparent pointer-events-none" />
+                          <div className="flex items-center">
+                            <span className="mr-3 group-hover:bg-cyan-500/80 rounded-full py-1 px-1 bg-cyan-500/30 pointer-events-none"/>
+                            <div className="w-full">
+                              <h3 className="text-base font-semibold text-white line-clamp-2">{section.title}</h3>
+                              <div className="flex items-center justify-between text-xs text-slate-400">
+                                <span>{section.entries.length} lore note{section.entries.length === 1 ? "" : "s"}</span>
+                                <span>{activeWorldSectionId === section.id ? "Opened" : "Enter"}</span>
+                              </div>
+                            </div>
+                          </div> 
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+
+                  <div className="overflow-y-auto notes-scroll">
+                    {activeWorldSection && (
+                      <div className="">
+                        <div className="relative text-center">
+                          <div className="absolute inset-0 bg-[radial-gradient(circle_at_top,rgba(34,211,238,0.15),transparent_80%)] pointer-events-none" />
+                          <h3 className="text-3xl font-semibold text-cyan-100/70 py-2">{activeWorldSection.title}</h3>
+                        </div>
+
+                        <div className="grid gap-1.5 pb-2 px-2">
+                          {activeWorldSection.entries.map((entry, index) => (
+                            <article
+                              key={`atlas-entry-${activeWorldSection.id}-${entry.label}-${index}`}
+                              className="group relative rounded-2xl border border-white/10 
+                                bg-gradient-to-br from-white/[0.06] to-transparent 
+                                p-4 transition-all duration-300
+                                hover:border-cyan-400/40 hover:shadow-[0_0_20px_rgba(34,211,238,0.15)]"
+                            >
+                              <div className="absolute inset-0 opacity-0 group-hover:opacity-100 transition
+                                bg-gradient-to-r from-transparent via-white/10 to-transparent blur-xl" />
+                              <div className="flex items-start justify-between gap-3">
+                                <div>
+                                  <p className="text-[11px] uppercase tracking-[0.28em] text-cyan-300/70">{entry.label}</p>
+                                  <p className="mt-2 text-sm leading-7 text-slate-100 whitespace-pre-wrap">{entry.value}</p>
+                                </div>
+                                <span className="rounded-full border border-white/10 px-2 py-1 text-[10px] uppercase tracking-[0.25em] text-slate-400">
+                                  {String(index + 1).padStart(2, "0")}
+                                </span>
+                              </div>
+                            </article>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              ) : (
+                <div className="flex flex-1 items-center justify-center p-6">
+                  <div className="max-w-md rounded-3xl border border-dashed border-cyan-300/25 bg-white/[0.03] p-8 text-center">
+                    <p className="text-[11px] uppercase tracking-[0.35em] text-cyan-300/70">Blank map</p>
+                    <h3 className="mt-3 text-2xl font-semibold bg-gradient-to-r from-cyan-200 to-slate-400 bg-clip-text text-transparent">Your world has not been charted yet.</h3>
+                    <p className="mt-3 text-sm leading-6 text-slate-300">
+                      Start with broad categories like Kingdoms, Magic Rules, Religions, Timeline, Factions, or Landmarks. Then let each section unfold the book's world in layers.
+                    </p>
+                    <button
+                      type="button"
+                      className="mt-5 rounded-full border border-cyan-400/30 bg-cyan-400/10 px-4 py-2 text-sm font-medium text-cyan-100 transition hover:bg-cyan-400/20"
+                      onClick={openWorldbuildingModal}
+                    >
+                      <FontAwesomeIcon icon={faPlus} /> Create first lore section
+                    </button>
+                  </div>
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* book cover cropper */}
+      {showBookCoverCropper && bookCoverImageSrc && createPortal(
+        <div className="fixed inset-0 z-[70] flex items-center justify-center bg-black/70 px-4">
+          <div className="w-full max-w-lg rounded-3xl bg-white p-4 shadow-2xl dark:bg-gray-900">
+            <div className="text-gray-500 dark:text-gray-200">
+                <h3 className="text-lg font-semibold">Crop book cover</h3>
+                <p className="mt-1 text-sm">
+                    Select the part of the image that should appear on your book cards.
+                </p>
+            </div>
+
+            <div className="relative mt-4 h-96 w-full overflow-hidden rounded-2xl bg-gray-950">
+              <Cropper
+                image={bookCoverImageSrc}
+                crop={bookCoverCrop}
+                zoom={bookCoverZoom}
+                aspect={3 / 4}
+                objectFit="cover"
+                onCropChange={setBookCoverCrop}
+                onZoomChange={setBookCoverZoom}
+                onCropComplete={onBookCoverCropComplete}
+              />
+            </div>
+
+            <div className="mt-4">
+              <label className="mb-2 block text-sm font-medium dark:text-white">Zoom</label>
+              <input
+                type="range"
+                min={0.5}
+                max={3}
+                step={0.05}
+                value={bookCoverZoom}
+                onChange={(e) => setBookCoverZoom(Number(e.target.value))}
+                className="w-full"
+              />
+            </div>
+
+            <div className="mt-5 flex justify-end gap-3">
+              <button
+                type="button"
+                onClick={resetBookCoverCropState}
+                className="rounded-xl border border-gray-300 px-4 py-2 text-sm font-medium transition text-gray-500 dark:text-gray-200 hover:bg-gray-100 dark:border-gray-700 dark:hover:bg-gray-800"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                onClick={handleBookCoverCropSave}
+                className="rounded-xl bg-blue-600 px-4 py-2 text-sm font-semibold text-white transition hover:bg-blue-500"
+              >
+                Use this crop
+              </button>
+            </div>
+          </div>
+        </div>,
+        document.body
+      )}
 
     {/* MAIN PARENT CONTAINER DIV CLOSER */}
     </div>

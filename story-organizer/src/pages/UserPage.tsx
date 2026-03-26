@@ -409,6 +409,7 @@ export default function UserPage() {
     const notesFabRef = useRef<HTMLButtonElement | null>(null);
 
     const notesDrawerTimeoutRef = useRef<number | null>(null);
+    const notesDrawerPanelRef = useRef<HTMLDivElement | null>(null);
 
     const openNotesDrawer = () => {
       if (notesDrawerTimeoutRef.current) {
@@ -418,7 +419,6 @@ export default function UserPage() {
 
       setIsNotesDrawerMounted(true);
       setNotesShowState(true);
-      addDraftNotes();
 
       requestAnimationFrame(() => {
         setIsNotesDrawerVisible(true);
@@ -707,36 +707,27 @@ export default function UserPage() {
         <aside className="hidden lg:block lg:w-[320px] xl:w-[360px]">
             <div className="sticky top-15 space-y-3">
 
-                {/* 1st section dashcard */}
-                <section className="overflow-hidden rounded-3xl border border-violet-800/70 bg-gradient-to-br from-violet-900/50 via-indigo-900 to-cyan-950 p-5 text-white shadow-2xl">
-                    <div className="flex items-center justify-between"> 
-                        <div>
-                            <p className="text-xs uppercase tracking-[0.3em] text-white/70">Story projects</p>
-                            <h1 className="mt-2 text-3xl font-black leading-tight">Shape your universe faster.</h1>
+                {/* 1st section ongoing progress bar */}
+                <section className="rounded-3xl border border-gray-200 bg-white p-4 shadow-lg dark:border-gray-800 dark:bg-gray-900">
+                    <div className="mb-3 flex items-center gap-2">
+                        <div className="flex h-10 w-10 items-center justify-center rounded-2xl bg-blue-100 text-blue-600 dark:bg-blue-900/30 dark:text-blue-300">
+                            <FontAwesomeIcon icon={faBookOpen} />
                         </div>
-                        <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-white/15 backdrop-blur">
-                            <FontAwesomeIcon icon={faWandMagicSparkles} size="lg" />
+                        <div>
+                            <h2 className="font-semibold">Story rhythm</h2>
+                            <p className="text-xs text-gray-500 dark:text-gray-400">A quick pulse check for your library.</p>
                         </div>
                     </div>
 
-                    <p className="mt-4 text-sm text-white/85">Plan books, protect ideas, and keep every project visually alive with custom covers and quick access to your latest work.</p>
-
-                    <div className="mt-5 grid grid-cols-2 gap-2">
-                        <div className="rounded-2xl border border-white/15 bg-white/10 p-3">
-                            <p className="text-[11px] uppercase tracking-[0.2em] text-white/60">Books</p>
-                            <p className="mt-1 text-2xl font-bold">{books.length}</p>
-                        </div>
-                        <div className="rounded-2xl border border-white/15 bg-white/10 p-3">
-                            <p className="text-[11px] uppercase tracking-[0.2em] text-white/60">Characters</p>
-                            <p className="mt-1 text-2xl font-bold">{characters.length}</p>
-                        </div>
-                        <div className="rounded-2xl border border-white/15 bg-white/10 p-3">
-                            <p className="text-[11px] uppercase tracking-[0.2em] text-white/60">Notes</p>
-                            <p className="mt-1 text-2xl font-bold">{userNotes.length}</p>
-                        </div>
-                        <div className="rounded-2xl border border-white/15 bg-white/10 p-3">
-                            <p className="text-[11px] uppercase tracking-[0.2em] text-white/60">Chapters</p>
-                            <p className="mt-1 text-2xl font-bold">{totalChapters}</p>
+                    <div className="space-y-3">
+                        <div className="rounded-2xl bg-gray-50 p-3 dark:bg-gray-800/70">
+                            <div className="mb-2 flex items-center justify-between text-xs uppercase tracking-[0.2em] text-gray-400">
+                                <span>Ongoing projects</span>
+                                <span>{ongoingBooks}/{books.length || 1}</span>
+                            </div>
+                            <div className="h-2 overflow-hidden rounded-full bg-gray-200 dark:bg-gray-700">
+                                <div className="h-full rounded-full bg-gradient-to-r from-cyan-500 to-blue-600" style={{ width: `${books.length ? (ongoingBooks / books.length) * 100 : 0}%` }} />
+                            </div>
                         </div>
                     </div>
                 </section>
@@ -744,7 +735,7 @@ export default function UserPage() {
                 {/* 2nd section continue writing quick path */}
                 <section className="rounded-3xl border border-gray-200 bg-white p-4 shadow-lg dark:border-gray-800 dark:bg-gray-900">
                     <div className="flex items-center gap-2">
-                        <div className="flex h-10 w-10 items-center justify-center rounded-2xl bg-indigo-100 text-indigo-600 dark:bg-indigo-900/30 dark:text-indigo-300">
+                        <div className="flex h-10 w-10 items-center justify-center rounded-2xl bg-blue-100 text-blue-600 dark:bg-blue-900/30 dark:text-blue-300">
                             <FontAwesomeIcon icon={faPenNib} />
                         </div>
                         <div>
@@ -930,28 +921,28 @@ export default function UserPage() {
         {/* CENTER CONTAINER */}
         <main className="min-w-0 flex-1">
             {/* center section header web app details */}
-            <section className="rounded-3xl border border-gray-200 p-4 shadow-lg bg-gradient-to-br from-slate-500 dark:from-slate-900 via-blue-900/30 to-cyan-950 border border-indigo-500/30">
+            <section className="rounded-3xl border border-gray-200 p-4 shadow-lg bg-gradient-to-br dark:from-gray-300 dark:from-gray-900 dark:via-blue-900/30 dark:to-cyan-950 border border-indigo-800/30">
                 <div className="flex flex-col gap-4 justify-between">
                     <div>
-                        <p className="text-xs uppercase tracking-[0.3em] text-indigo-200">Your library</p>
+                        <p className="text-xs uppercase tracking-[0.3em] dark:text-blue-200">Your library</p>
                         <h2 className="mt-2 text-3xl font-black">A visual shelf for every world you're building.</h2>
-                        <p className="mt-2 max-w-2xl text-sm text-gray-500 dark:text-gray-300">Inspired by modern writing dashboards, this layout gives each project a stronger identity with cover art, quick metadata, and a clearer path back into your workspace.</p>
+                        <p className="mt-2 max-w-2xl text-sm text-gray-500 dark:text-gray-300">Inspired by modern writing dashboards, this layout gives each project a stronger identity. Plan books, protect ideas, and keep every project visually alive with quick access to your latest work.</p>
                     </div>
                     <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
-                        <div className="rounded-2xl shadow-xl g-gray-50 px-4 py-3 text-center bg-white dark:bg-gray-800/70">
-                            <p className="text-xs uppercase tracking-[0.2em] text-gray-400">Books</p>
+                        <div className="rounded-2xl shadow-xl g-gray-50 px-4 py-3 text-center border border-blue-800/70 bg-gradient-to-br dark:from-blue-800 dark:via-blue-900 dark:to-cyan-950">
+                            <p className="text-xs uppercase tracking-[0.2em] dark:text-gray-200">Books</p>
                             <p className="mt-1 text-xl font-bold">{books.length}</p>
                         </div>
-                        <div className="rounded-2xl shadow-xl bg-gray-50 px-4 py-3 text-center bg-white dark:bg-gray-800/70">
-                            <p className="text-xs uppercase tracking-[0.2em] text-gray-400">Ongoing</p>
-                            <p className="mt-1 text-xl font-bold">{ongoingBooks}</p>
+                        <div className="rounded-2xl shadow-xl bg-gray-50 px-4 py-3 text-center border border-blue-800/70 bg-gradient-to-br dark:from-blue-800 dark:via-blue-900 dark:to-cyan-950">
+                            <p className="text-xs uppercase tracking-[0.2em] dark:text-gray-200">Characters</p>
+                            <p className="mt-1 text-xl font-bold">{characters.length}</p>
                         </div>
-                        <div className="rounded-2xl shadow-xl bg-gray-50 px-4 py-3 text-center bg-white dark:bg-gray-800/70">
-                            <p className="text-xs uppercase tracking-[0.2em] text-gray-400">Notes</p>
+                        <div className="rounded-2xl shadow-xl bg-gray-50 px-4 py-3 text-center border border-blue-800/70 bg-gradient-to-br dark:from-blue-800 dark:via-blue-900 dark:to-cyan-950">
+                            <p className="text-xs uppercase tracking-[0.2em] dark:text-gray-200">Notes</p>
                             <p className="mt-1 text-xl font-bold">{userNotes.length}</p>
                         </div>
-                        <div className="rounded-2xl shadow-xl bg-gray-50 px-4 py-3 text-center bg-white dark:bg-gray-800/70">
-                            <p className="text-xs uppercase tracking-[0.2em] text-gray-400">Covers</p>
+                        <div className="rounded-2xl shadow-xl bg-gray-50 px-4 py-3 text-center border border-blue-800/70 bg-gradient-to-br dark:from-blue-800 dark:via-blue-900 dark:to-cyan-950">
+                            <p className="text-xs uppercase tracking-[0.2em] dark:text-gray-200">Covers</p>
                             <p className="mt-1 text-xl font-bold">{Object.keys(bookCoverMap).length}</p>
                         </div>
                     </div>
@@ -1060,8 +1051,8 @@ export default function UserPage() {
             <section className="mt-3 rounded-3xl border border-gray-200 bg-white p-4 shadow-lg dark:border-gray-800 dark:bg-gray-900">
                 <div className="mb-4 flex items-center justify-between gap-3">
                     <div>
-                        <h2 className="text-2xl font-bold">Library shelf</h2>
-                        <p className="text-sm text-gray-500 dark:text-gray-400">Click any book to open its story workshop.</p>
+                        <h2 className="text-2xl font-bold">Library</h2>
+                        <p className="text-sm text-gray-500 dark:text-gray-400">Click any book to open its story workspace.</p>
                     </div>
 
                     <div className="hidden items-center gap-2 rounded-2xl border border-gray-200 bg-gray-50 px-3 py-2 text-xs text-gray-500 dark:border-gray-700 dark:bg-gray-800/70 dark:text-gray-300 sm:flex">
@@ -1186,39 +1177,13 @@ export default function UserPage() {
         {/* RIGHT CONTAINER */}
         <aside className="hidden xl:block xl:w-[280px]">
             <div className="sticky top-15 space-y-3">
-                <div className="rounded-3xl border border-emerald-300 bg-emerald-50/80 p-4 shadow-lg dark:border-emerald-700 dark:bg-emerald-900/20">
-                    <p className="text-xs font-semibold uppercase tracking-[0.2em] text-emerald-700 dark:text-emerald-300">Creative prompt</p>
+                <div className="rounded-3xl border border-cyan-300 bg-blue-50/80 p-4 shadow-lg dark:border-blue-700 dark:bg-blue-900/20">
+                    <h3 className="font-semibold">Creative prompt</h3>
                     <p className="mt-2 text-sm leading-6">{dashboardTips[tipIndex]}</p>
                 </div>
 
-                {/* 4th section ongoing progress bar */}
-                <section className="rounded-3xl border border-gray-200 bg-white p-4 shadow-lg dark:border-gray-800 dark:bg-gray-900">
-                    <div className="mb-3 flex items-center gap-2">
-                        <div className="flex h-10 w-10 items-center justify-center rounded-2xl bg-emerald-100 text-emerald-600 dark:bg-emerald-900/20 dark:text-emerald-300">
-                            <FontAwesomeIcon icon={faBookOpen} />
-                        </div>
-                        <div>
-                            <h2 className="font-semibold">Story rhythm</h2>
-                            <p className="text-xs text-gray-500 dark:text-gray-400">A quick pulse check for your library.</p>
-                        </div>
-                    </div>
-
-                    <div className="space-y-3">
-                        <div className="rounded-2xl bg-gray-50 p-3 dark:bg-gray-800/70">
-                            <div className="mb-2 flex items-center justify-between text-xs uppercase tracking-[0.2em] text-gray-400">
-                                <span>Ongoing projects</span>
-                                <span>{ongoingBooks}/{books.length || 1}</span>
-                            </div>
-                            <div className="h-2 overflow-hidden rounded-full bg-gray-200 dark:bg-gray-700">
-                                <div className="h-full rounded-full bg-gradient-to-r from-emerald-400 to-cyan-400" style={{ width: `${books.length ? (ongoingBooks / books.length) * 100 : 0}%` }} />
-                            </div>
-                        </div>
-                    </div>
-
-                </section>
-
                 <div className="rounded-3xl border border-gray-200 bg-white p-4 shadow-lg dark:border-gray-800 dark:bg-gray-900">
-                    <h3 className="font-semibold">Story Dreamers direction use</h3>
+                    <h3 className="font-semibold">Shape your universe faster.</h3>
                     <ul className="mt-3 space-y-2 text-sm text-gray-500 dark:text-gray-400">
                         <li>• Hero dashboard styling inspired by creative workspace apps.</li>
                         <li>• Visual shelf cards so each project feels collectible and distinct.</li>
@@ -1321,8 +1286,8 @@ export default function UserPage() {
                     onClick={displayNotes}
                     className={`
                     fixed bottom-5 right-5 z-50
-                    bg-blue-600 hover:bg-blue-700
-                    border border-blue-600 hover:border-blue-400
+                    border border-gray-200 bg-gradient-to-br from-blue-600 to-cyan-500
+                    hover:border-gray-100 hover:from-blue-600/80 hover:to-cyan-400
                     text-white rounded-full
                     px-4 py-3.5 shadow-xl
                     transition-transform duration-600 
@@ -1336,53 +1301,61 @@ export default function UserPage() {
                 {/* Collapsible notes drawer*/}
                 {isNotesDrawerMounted && (
                     <div
-                    className={`text-black dark:text-white fixed inset-0 z-40 transition-opacity duration-300 justify-items-center ${isNotesDrawerVisible ? "opacity-100" : "opacity-0"}`}
+                    className={`text-black dark:text-white fixed inset-0 z-70 transition-opacity duration-300 justify-items-center ${isNotesDrawerVisible ? "opacity-100" : "opacity-0"}`}
                     role="dialog"
                     aria-modal="true"
                     >
-                    <button
-                        className="absolute inset-0 bg-black/50"
-                        aria-label="Close notes drawer"
-                        onClick={closeNotesDrawer}
-                    />
-    
-                    {/* THIS IS FOR THE USER NOTES */}
-                    { notesShowState && (
-                    <NotesCollection
-                        className={`absolute bottom-0 xxs:right-15
-                        bg-gray-100 dark:bg-gray-800
-                        shadow-2xl p-3
-                        w-full max-w-[60vh] max-h-[90vh]
-                        transition-all duration-500
-                        ${isNotesDrawerVisible ? "translate-y-0" : "translate-y-full"}
+                        <button
+                            className="absolute inset-0 bg-black/50"
+                            aria-label="Close notes drawer"
+                            onClick={closeNotesDrawer}
+                        />
+
+                        {/* notes content */}
+                        <div
+                        ref={notesDrawerPanelRef}
+                        className={`
+                            absolute bottom-0 xxs:right-15
+                            bg-gray-100 dark:bg-gray-800
+                            shadow-2xl p-3 rounded-t-2xl
+                            w-full max-w-[60vh] max-h-[90vh]
+                            transition-all duration-500
+                            ${isNotesDrawerVisible ? "translate-y-0" : "translate-y-full"}
                         `}
-                        title="Author Notes"
-                        notes={userNotes}
-                        draftNote={draftNote}
-                        draftNoteState={draftNoteState}
-                        noteToDelete={noteToDelete}
-                        hideSave={hideSave}
-                        onFocusId={onFocusId}
-                        contentClassName="h-[calc(75vh-3.5rem)] xxs:h-[calc(85vh-3.5rem)] overflow-y-auto overflow-x-hidden notes-scroll overflow-contain mt-2"
-                        noteContent={noteContent}
-                        emptyMessage="Add notes, references, future scenarios, book plans, etc..."
-                        onAddDraft={addDraftNotes}
-                        onCloseDraft={closeNotesDrawer}
-                        onChangeDraft={(content) => setDraftNote(prev => (prev ? { ...prev, content } : prev))}
-                        onChangeNote={(noteId, content) => setUserNotes(prev => prev.map(note => note.id === noteId ? { ...note, content } : note))}
-                        onSaveNote={saveNote}
-                        onDeleteRequest={setNoteToDelete}
-                        onDeleteConfirm={handleDeleteNote}
-                        onDeleteCancel={() => setNoteToDelete(null)}
-                        onFocusNote={(note) => {
-                            setOnFocusId(String(note.id ?? ""));
-                            setNoteContent(note.content);
-                            setHideSave(true);
-                            setDraftstate(!note.id);
-                        }}
-                        onCancelEditing={() => { setHideSave(false); setDraftNote(null); }}
-                    />
-                    )}
+                        >
+
+                            {/* THIS IS FOR THE USER NOTES */}
+                            { notesShowState && (
+                            <NotesCollection
+                                title="Author Notes"
+                                notes={userNotes}
+                                draftNote={draftNote}
+                                draftNoteState={draftNoteState}
+                                noteToDelete={noteToDelete}
+                                hideSave={hideSave}
+                                onFocusId={onFocusId}
+                                contentClassName="h-[calc(75vh-3.5rem)] xxs:h-[calc(85vh-3.5rem)] overflow-y-auto overflow-x-hidden notes-scroll overflow-contain mt-2"
+                                noteContent={noteContent}
+                                emptyMessage="Add notes, references, future scenarios, book plans, etc..."
+                                onAddDraft={addDraftNotes}
+                                onCloseDraft={closeNotesDrawer}
+                                onChangeDraft={(content) => setDraftNote(prev => (prev ? { ...prev, content } : prev))}
+                                onChangeNote={(noteId, content) => setUserNotes(prev => prev.map(note => note.id === noteId ? { ...note, content } : note))}
+                                onSaveNote={saveNote}
+                                onDeleteRequest={setNoteToDelete}
+                                onDeleteConfirm={handleDeleteNote}
+                                onDeleteCancel={() => setNoteToDelete(null)}
+                                onFocusNote={(note) => {
+                                    setOnFocusId(String(note.id ?? ""));
+                                    setNoteContent(note.content);
+                                    setHideSave(true);
+                                    setDraftstate(!note.id);
+                                }}
+                                onCancelEditing={() => { setHideSave(false); setDraftNote(null); }}
+                            />
+                            )}
+
+                        </div>
     
                     {/* notes closer */}
                     </div>
@@ -1392,7 +1365,7 @@ export default function UserPage() {
             )}
 
             {showCropper && imageSrc && createPortal(
-                <div className="fixed inset-0 z-[70] flex items-center justify-center bg-black/70 px-4">
+                <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 px-4">
                     <div className="w-full max-w-lg rounded-3xl bg-white p-4 shadow-2xl dark:bg-gray-900">
                         <div className="text-gray-500 dark:text-gray-200">
                             <h3 className="text-lg font-semibold">Crop book cover</h3>

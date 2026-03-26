@@ -610,14 +610,15 @@ export default function Header({ showGalaxy, onToggle }: HeaderProps) {
                 
                     {isBookContext ? (
                         <div className="flex items-center text-white min-w-0 pt-1">
-                            <button
-                                type="button"
-                                onClick={() => navigate(backPath)}
-                                className="px-2 py-1 rounded-l-md hover:bg-white/10 transition"
-                                title={"Back"}
-                            >
-                                <FontAwesomeIcon icon={faArrowLeft} size="lg"/>
-                            </button>
+                            <div className="px-2 py-1 rounded-l-md hover:bg-white/10 transition">
+                                <button
+                                    type="button"
+                                    onClick={() => navigate(backPath)}
+                                    title={"Back"}
+                                >
+                                    <FontAwesomeIcon icon={faArrowLeft} size="lg"/>
+                                </button>
+                            </div>
 
                             <div className="hidden sm:flex items-center justify-center lg:justify-start border-l border-slate-700 h-full px-4 gap-2">
                                 <h2 className="text-base font-semibold text-white whitespace-nowrap">
@@ -629,15 +630,6 @@ export default function Header({ showGalaxy, onToggle }: HeaderProps) {
                                         <FontAwesomeIcon icon={faAngleRight} className="text-lg" />
                                         <p className="text-sm truncate text-gray-300">
                                             {characterName}
-                                        </p>
-                                    </div>
-                                )}
-
-                                {isEditPage && (
-                                    <div className="flex items-center gap-2 text-gray-400">
-                                        <FontAwesomeIcon icon={faAngleRight} className="text-lg" />
-                                        <p className="text-xs truncate text-gray-300">
-                                            Character creation
                                         </p>
                                     </div>
                                 )}

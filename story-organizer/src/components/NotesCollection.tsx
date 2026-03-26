@@ -161,13 +161,13 @@ export default function NotesCollection({
 
                 <button
                   type="button"
-                  className="group rounded-full px-0.5"
+                  className="group rounded-full px-0.5 disabled:bg-gray-500/50 disabled:hover:text-gray-500"
                   onMouseDown={() => onDeleteRequest(note)}
                   disabled={!note.id || (disableDeleteWhenPinned && note.pinned === true)}
                 >
                   <svg
                     xmlns="http://www.w3.org/2000/svg"
-                    className="h-5 w-5 text-gray-700 group-hover:text-red-500 dark:text-gray-400"
+                    className="h-5 w-5 text-gray-700 group-hover:text-red-500/70 dark:text-gray-400"
                     fill="none"
                     viewBox="0 0 24 24"
                     stroke="currentColor"

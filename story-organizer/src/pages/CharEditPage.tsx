@@ -652,7 +652,6 @@ export default function CharEditPage() {
 
     setIsNotesDrawerMounted(true);
     setNotesShowState(true);
-    addDraftNotes();
 
     requestAnimationFrame(() => {
       setIsNotesDrawerVisible(true);
@@ -825,8 +824,9 @@ export default function CharEditPage() {
     return word.charAt(0).toUpperCase() + word.slice(1);
   }
 
-  const Badge = ({ children, color }: { children: React.ReactNode, color: 'emerald' | 'sky' | 'slate' }) => {
+  const Badge = ({ children, color }: { children: React.ReactNode, color: 'purple' | 'emerald' | 'sky' | 'slate' }) => {
     const colors = {
+      purple: "bg-purple-500/10 text-purple-400 border-purple-500/20",
       emerald: "bg-emerald-500/10 text-emerald-400 border-emerald-500/20",
       sky: "bg-sky-500/10 text-sky-400 border-sky-500/20",
       slate: "bg-slate-500/10 text-slate-300 border-slate-500/20",
@@ -1079,14 +1079,15 @@ export default function CharEditPage() {
                 <h1 className="text-3xl font-black tracking-tight text-white sm:text-4xl">
                   {editingCharacter.name || "Unnamed Character"}
                 </h1>
-                <div className="flex items-center gap-2">
-                  <p className="mt-1 text-lg font-medium text-slate-200/70 italic">
-                    {editingCharacter.role || "Role not defined"}
-                  </p>
-                  <div className="border-l border-gray-500 pl-2 mt-1 flex flex-wrap gap-2">
+                <div className="mt-2 flex items-center gap-2">
+                  <div className="mt-1 flex flex-wrap gap-2">
+                    <Badge color="purple">{editingCharacter.role || "Unknown"}</Badge>
                     <Badge color="emerald">{editingCharacter.status || "Unknown"}</Badge>
                     <Badge color="sky">{editingCharacter.importance || "Unknown"}</Badge>
                     <Badge color="slate">{upcaseLetter(editingCharacter.setRace[0] || "Unknown")}</Badge>
+                    {editingCharacter.setRace.length > 2 && (
+                      <Badge color="slate">+{editingCharacter.setRace.length - 2}</Badge>
+                    )}
                   </div>
                 </div>
               </div>
@@ -1411,7 +1412,7 @@ export default function CharEditPage() {
             </div>
 
             <div className="space-y-1 text-sm">
-              <p><strong>Title:</strong> {book.title}</p>
+              <p><strong>Book:</strong> {book.title}</p>
               <p><strong>Tags:</strong> {editingCharacter.tags.length > 0 ? editingCharacter.tags.join(", ") : "None"}</p>
             </div>
 
@@ -1426,6 +1427,15 @@ export default function CharEditPage() {
                 >
                   Save Build
                 </button>
+
+                <button
+                  type="button"
+                  className={`w-full rounded-lg px-3 py-2 text-sm font-semibold text-white ${isEditMode ? "bg-gray-800 hover:bg-gray-800/50" : "disabled:opacity-80 cursor-not-allowed"}`}
+                  disabled={!isEditMode}
+                  onClick={() => void navigate(`/book/${currentBookId}`)}
+                >
+                  Back to book
+                </button>
                 
                 <span className="border-t-1 text-xs text-gray-500 mt-3 pb-3"></span>
               </div>
@@ -1434,7 +1444,7 @@ export default function CharEditPage() {
                 <button
                   type="button"
                   disabled={!isEditMode}
-                  className="rounded-lg bg-red-700/50 px-1.5 py-2 text-[12px] font-semibold text-white hover:bg-red-700/60 disabled:cursor-not-allowed disabled:opacity-50"
+                  className="mt-2 rounded-lg bg-red-700/50 px-1.5 py-2 text-[12px] font-semibold text-white hover:bg-red-700/60 disabled:cursor-not-allowed disabled:opacity-50"
                   onClick={() => void deleteCharacter(editingCharacter.id)}
                 >
                   Delete Character
@@ -1583,8 +1593,8 @@ export default function CharEditPage() {
               onClick={displayNotes}
               className={`
                 fixed bottom-5 right-5 z-50
-                bg-blue-600 hover:bg-blue-700
-                border border-blue-600 hover:border-blue-400
+                border border-gray-200 bg-gradient-to-br from-blue-600 to-cyan-500
+                hover:border-gray-100 hover:from-blue-600/80 hover:to-cyan-400
                 text-white rounded-full
                 px-4 py-3.5 shadow-xl
                 transition-transform duration-600 
@@ -1614,7 +1624,7 @@ export default function CharEditPage() {
                   className={`
                     absolute bottom-0 xxs:right-15
                     bg-gray-100 dark:bg-gray-800
-                    shadow-2xl p-3
+                    shadow-2xl p-3 rounded-t-2xl
                     w-full max-w-[60vh] max-h-[90vh]
                     transition-all duration-500
                     ${isNotesDrawerVisible ? "translate-y-0" : "translate-y-full"}
