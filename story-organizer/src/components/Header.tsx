@@ -8,7 +8,6 @@ import { useDropzone } from "react-dropzone";
 import { useGoogleAuth, type GoogleUser } from "../context/GoogleAuthContext";
 import { signOut } from "../services/googleAuth";
 import { downloadDriveFile, listManualBackupFiles, listRestoreBackupFiles, type DriveBackupFile, uploadManualBackup, upsertAutoBackup, isTokenActive, deleteAllBackups } from "../services/driveService";
-import { faBackspace } from "@fortawesome/free-solid-svg-icons/faBackspace";
 
 interface HeaderProps {
   showGalaxy: boolean;
@@ -106,6 +105,8 @@ export default function Header({ showGalaxy, onToggle }: HeaderProps) {
     const [selectedBackupId, setSelectedBackupId] = useState<string>("");
     const [displayExpiringAuth, setDisplayExpiringAuth] = useState(false);
 
+    const [tokenAccessStatus, setTokenAccessStatus] = useState<"active" | "expired" | "missing">("missing");
+
     // MODALS
     const [showRestoreBackupModal, setshowRestoreBackupModal] = useState(false);
     const [isRestoringBackup, setIsRestoringBackup] = useState(false);
@@ -121,10 +122,19 @@ export default function Header({ showGalaxy, onToggle }: HeaderProps) {
     );
 
     useEffect(() => {
-        if(googleUser) return;
+        if (googleUser) return;
+
         const gUser = localStorage.getItem("googleConnected");
-        const userObject = JSON.parse(gUser!);
-        setGoogleUser(userObject);
+        if (!gUser) return;
+
+        try {
+            const parsed = JSON.parse(gUser);
+            if (parsed?.email) {
+            setGoogleUser(parsed);
+            }
+        } catch {
+            localStorage.removeItem("googleConnected");
+        }
     }, [googleUser]);
 
     useEffect(() => {
@@ -133,58 +143,110 @@ export default function Header({ showGalaxy, onToggle }: HeaderProps) {
         setGoogleUser(user);
     }, [user]);
 
+    const updateTokenAccessStatus = useCallback(() => {
+        const token = localStorage.getItem("googleAccessToken");
+        const expiresAtRaw = localStorage.getItem("googleAccessTokenExpiresAt");
+        const authState = sessionStorage.getItem("googleAuth");
+        const expiresAt = expiresAtRaw ? Number(expiresAtRaw) : NaN;
+
+        if (!token || Number.isNaN(expiresAt)) {
+            setTokenAccessStatus("missing");
+            setDisplayExpiringAuth(Boolean(googleUser));
+            return "missing" as const;
+        }
+
+        const isExpired = Date.now() >= expiresAt;
+        const isRevoked = authState === "false";
+
+        if (isExpired || isRevoked) {
+            sessionStorage.setItem("googleAuth", "false");
+            setTokenAccessStatus("expired");
+            setDisplayExpiringAuth(true);
+            return "expired" as const;
+        }
+
+        setTokenAccessStatus("active");
+        setDisplayExpiringAuth(false);
+        return "active" as const;
+    }, [googleUser]);
+
+    useEffect(() => {
+        updateTokenAccessStatus();
+    }, [googleUser, updateTokenAccessStatus]);
+
+    useEffect(() => {
+        if (tokenAccessStatus !== "active") return;
+
+        const expiresAtRaw = localStorage.getItem("googleAccessTokenExpiresAt");
+        const expiresAt = expiresAtRaw ? Number(expiresAtRaw) : NaN;
+
+        if (Number.isNaN(expiresAt)) {
+            setTokenAccessStatus("missing");
+            setDisplayExpiringAuth(Boolean(googleUser));
+            return;
+        }
+
+        const delayUntilExpiry = Math.max(0, expiresAt - Date.now());
+        const timeoutId = window.setTimeout(() => {
+            setTokenAccessStatus("expired");
+            sessionStorage.setItem("googleAuth", "false");
+            setDisplayExpiringAuth(true);
+        }, delayUntilExpiry);
+
+        return () => window.clearTimeout(timeoutId);
+    }, [tokenAccessStatus, googleUser]);
+
+    useEffect(() => {
+        const syncStatus = () => {
+            updateTokenAccessStatus();
+        };
+
+        window.addEventListener("focus", syncStatus);
+        document.addEventListener("visibilitychange", syncStatus);
+
+        return () => {
+            window.removeEventListener("focus", syncStatus);
+            document.removeEventListener("visibilitychange", syncStatus);
+        };
+    }, [updateTokenAccessStatus]);
+
     useEffect(() => {
       const checkBackup = async () => {
+        const status = updateTokenAccessStatus();
         const token = localStorage.getItem("googleAccessToken");
-        const authState = sessionStorage.getItem("googleAuth");
-        if (!token) return;
-        if (authState === "false") {
+        if (googleUser && (status !== "active" || !token)) {
             console.error("Google Authentication Required");
-            setDisplayExpiringAuth(true);
             return;
         }
     
         try {
           const [manualFiles, restoreFiles] = await Promise.all([
-            listManualBackupFiles(token),
-            listRestoreBackupFiles(token),
+            listManualBackupFiles(token!),
+            listRestoreBackupFiles(token!),
           ]);
           setManualBackups(manualFiles.slice(0, 3));
           setRestoreBackups(restoreFiles);
           setSelectedBackupId((current) => current || restoreFiles[0]?.id || "");
-          setDisplayExpiringAuth(false);
+          setTokenAccessStatus("active");
         } catch {
           console.error("Drive check failed");
+          setTokenAccessStatus("expired");
           setDisplayExpiringAuth(true);
         }
       };
 
     checkBackup();
-    }, [user]);
+    }, [user, updateTokenAccessStatus]);
 
     useEffect(() => {
         const checkBackup = async () => {
-            const token = localStorage.getItem("googleAccessToken");
-            const authState = sessionStorage.getItem("googleAuth");
-            if (!token) return;
-            if (authState === "false") {
-                console.error("Google Authentication Required");
-                setDisplayExpiringAuth(true);
-                return;
-            }
-        
-            if (authState === "true") {
-                setDisplayExpiringAuth(false);
-            }
-            else {
-                console.error("Drive check failed");
-                setDisplayExpiringAuth(true);
-                return;
-            }
+            const status = updateTokenAccessStatus();
+            if (status !== "active") return;
+            setDisplayExpiringAuth(false);
         };
 
     checkBackup();
-    }, [showAccountSettings]);
+    }, [showAccountSettings, updateTokenAccessStatus]);
     
 
     // DARK MODE EFFECT
@@ -453,6 +515,7 @@ export default function Header({ showGalaxy, onToggle }: HeaderProps) {
         const checkAuth = await isTokenActive(token);
         if(!checkAuth) {
             console.error("Google Authentication Required");
+            setTokenAccessStatus("expired");
             setDisplayExpiringAuth(true);
             setShowAccountSettings(false);
             setSelectedBackupId("")
@@ -502,16 +565,19 @@ export default function Header({ showGalaxy, onToggle }: HeaderProps) {
 
     async function googleLogout() {
         const isConfirmed = window.confirm("Are you sure you want to log out?");
-        if (isConfirmed) {
-            setGoogleUser(null);
-            signOut(); // Call the actual logout function passed as a prop
-            setShowAccountSettings(false);
-        }
+        if (!isConfirmed) return;
+
+        signOut();
+        setGoogleUser(null);
+        setShowAccountSettings(false);
+        setDisplayExpiringAuth(false); // optional cleanup
+        setTokenAccessStatus("missing"); // if you use this state
     }
 
     async function logIn() {
         try {
             signIn(); 
+            setTokenAccessStatus("active");
 
         } catch (error) {
             console.error("Login failed or was cancelled:", error);
@@ -537,7 +603,6 @@ export default function Header({ showGalaxy, onToggle }: HeaderProps) {
             try {
                 const data = await getAllDB();
                 await upsertAutoBackup(data, token);
-                console.log("upload backup automatically");
                 setAutoBackupState(true);
                 if (!cancelled) {
                     setDisplayExpiringAuth(false);
@@ -616,11 +681,11 @@ export default function Header({ showGalaxy, onToggle }: HeaderProps) {
                 bg-gray-950 backdrop-blur-md
                 transition-transform duration-300 ease-in-out
                 `}>
-                <div className="flex justify-between place-items-center py-1 px-1 md:px-5 w-full sm:w-full mx-auto">
+                <div className="flex h-full items-center justify-between px-2 md:px-5 w-full mx-auto gap-2">
                 
                     {isBookContext ? (
-                        <div className="flex items-center text-white min-w-0 pt-1">
-                            <div className="px-2 py-1 rounded-l-md hover:bg-white/10 transition">
+                        <div className="flex items-center text-white min-w-0 h-full">
+                            <div className="h-9 w-9 inline-flex items-center justify-center rounded-md hover:bg-white/10 transition">
                                 <button
                                     type="button"
                                     onClick={() => navigate(backPath)}
@@ -630,15 +695,15 @@ export default function Header({ showGalaxy, onToggle }: HeaderProps) {
                                 </button>
                             </div>
 
-                            <div className="hidden sm:flex items-center justify-center lg:justify-start border-l border-slate-700 h-full px-4 gap-2">
-                                <h2 className="text-base font-semibold text-white whitespace-nowrap">
+                            <div className="hidden sm:flex items-center border-l border-slate-700 h-9 pl-4 ml-2 gap-2">
+                                <h2 className="text-base font-semibold text-white whitespace-nowrap leading-none">
                                     {bookTitle || "Book"}
                                 </h2>
 
                                 {characterName && (
                                     <div className="flex items-center gap-2 text-gray-400">
                                         <FontAwesomeIcon icon={faAngleRight} className="text-lg" />
-                                        <p className="text-sm truncate text-gray-300">
+                                        <p className="text-base truncate text-gray-100 leading-none">
                                             {characterName}
                                         </p>
                                     </div>
@@ -648,128 +713,134 @@ export default function Header({ showGalaxy, onToggle }: HeaderProps) {
                     ) : (
                         <>
                             <div 
-                                className="flex gap-1 text-white cursor-pointer select-none"
+                                className="flex items-center gap-2 text-white cursor-pointer select-none h-full"
                             >
-                                <div className="h-10 overflow-hidden">
+                                <div className="h-9 overflow-hidden flex items-center">
                                     <img 
                                     src="/textures/logo/logo2.png" 
                                     alt="📖" 
                                     className="w-full h-full object-cover" 
                                     />
                                 </div>
-                                <span className="hidden md:block text-xl font-semibold tracking-tight pt-1">
+                                <span className="hidden md:block text-xl font-semibold tracking-tight leading-none">
                                     Story Dreamer
                                 </span>
                             </div>
                         </>
                     )}
 
-                    {/* THIS DELETES ALL EXISTING FILES IN GOOGLE DRIVE */}
-                    {/* <button className="bg-red-500 p-10" onClick={() => deleteAllGdrive()}> NUKE IT ALL NOW</button> */}
-
-                    <div className="flex gap-2">
+                    <div className="flex gap-2 items-center">
                     
-                        {/* SEARCH INPUT FIELD... IN PROGRESS */}
-                        <div className="hidden md:flex text-white bg-gray-950">   
-                            <label className="block text-sm font-medium text-heading sr-only ">Search</label>
-                            <div className="relative">
-                                <div className="absolute inset-y-0 start-0 flex items-center ps-3 pointer-events-none">
-                                    <svg 
-                                    className="w-4 h-4 text-gray-200"
-                                    fill="none" 
-                                    viewBox="0 0 24 24"
-                                    strokeWidth={2}
-                                    stroke="currentColor">
-                                        <path 
-                                        stroke="currentColor" 
-                                        d="m21 21-4.35-4.35M10.5 18a7.5 7.5 0 1 1 0-15 7.5 7.5 0 0 1 0 15Z"
-                                        />
-                                    </svg>
+                        {/* search field */}
+                        <>
+                            {/* SEARCH INPUT FIELD... IN PROGRESS */}
+                            <div className="hidden md:flex text-white bg-gray-950">   
+                                <label className="block text-sm font-medium text-heading sr-only ">Search</label>
+                                <div className="relative">
+                                    <div className="absolute inset-y-0 start-0 flex items-center ps-3 pointer-events-none">
+                                        <svg 
+                                        className="w-4 h-4 text-gray-200"
+                                        fill="none" 
+                                        viewBox="0 0 24 24"
+                                        strokeWidth={2}
+                                        stroke="currentColor">
+                                            <path 
+                                            stroke="currentColor" 
+                                            d="m21 21-4.35-4.35M10.5 18a7.5 7.5 0 1 1 0-15 7.5 7.5 0 0 1 0 15Z"
+                                            />
+                                        </svg>
+                                    </div>
+                                    <input 
+                                    className="w-full px-0 mt-1 py-1 ps-9 border-b 
+                                    outline-none text-heading text-sm shadow-xs 
+                                    focus:border-gray-200
+                                    placeholder:text-body" 
+                                    placeholder="Search" 
+                                    title="Currently in development..." />
                                 </div>
-                                <input 
-                                className="w-full px-0 mt-1 py-1 ps-9 border-b 
-                                outline-none text-heading text-sm shadow-xs 
-                                focus:border-gray-200
-                                placeholder:text-body" 
-                                placeholder="Search" 
-                                title="Currently in development..." />
                             </div>
-                        </div>
 
-                        {/* MOBILE ICON BUTTON */}
-                        <button
-                        onClick={() => setOpenSearch(true)}
-                        className="
-                            md:hidden
-                            flex items-center justify-center
-                            w-10 h-9 group
-                            border rounded-md
-                            text-white bg-gray-950 
-                            hover:bg-gray-200
-                            transition
-                        "
-                        >
-                        <svg 
-                            className="w-4 h-4 text-gray-200 group-hover:text-gray-950"
-                            fill="none" 
-                            viewBox="0 0 24 24"
-                            strokeWidth={3}
-                            stroke="currentColor">
-                                <path 
-                                stroke="currentColor"
-                                d="m21 21-4.35-4.35M10.5 18a7.5 7.5 0 1 1 0-15 7.5 7.5 0 0 1 0 15Z"
-                                />
-                            </svg>
-                        </button>
-
-                        {/* MOBILE OVERLAY SEARCH */}
-                        {openSearch && (
-                        <div className="fixed top-0 left-0 w-full h-13 z-[60] bg-gray-950 px-4 flex items-center gap-3">
-                            <svg 
-                            className="w-4 h-4 text-gray-200"
-                            fill="none" 
-                            viewBox="0 0 24 24"
-                            strokeWidth={2}
-                            stroke="currentColor">
-                                <path 
-                                stroke="currentColor" 
-                                d="m21 21-4.35-4.35M10.5 18a7.5 7.5 0 1 1 0-15 7.5 7.5 0 0 1 0 15Z"
-                                />
-                            </svg>
-
-                            <input
-                            autoFocus
-                            type="text"
-                            placeholder="Search"
-                            required
-                            className="
-                                flex-1 bg-transparent
-                                border-0 border-b border-gray-600
-                                px-0 py-1
-                                text-sm text-gray-100
-                                placeholder-gray-500
-                                focus:outline-none focus:ring-0
-                                focus:border-indigo-400
-                            "
-                            />
-
+                            {/* MOBILE ICON BUTTON */}
                             <button
-                            onClick={() => setOpenSearch(false)}
-                            className="text-gray-400 hover:text-gray-200 transition"
+                            onClick={() => setOpenSearch(true)}
+                            className="
+                                md:hidden
+                                flex items-center justify-center
+                                w-10 h-9 group
+                                border rounded-md
+                                text-white bg-gray-950 
+                                hover:bg-gray-200
+                                transition
+                            "
                             >
-                            ✕
+                            <svg 
+                                className="w-4 h-4 text-gray-200 group-hover:text-gray-950"
+                                fill="none" 
+                                viewBox="0 0 24 24"
+                                strokeWidth={3}
+                                stroke="currentColor">
+                                    <path 
+                                    stroke="currentColor"
+                                    d="m21 21-4.35-4.35M10.5 18a7.5 7.5 0 1 1 0-15 7.5 7.5 0 0 1 0 15Z"
+                                    />
+                                </svg>
                             </button>
-                        </div>
-                        )}
 
-                        {/* dark mode switch */}
-                        <div onClick={toggleTheme} className="h-9 border border-white text-gray-200 rounded-md hover:bg-gray-300 hover:text-gray-950 transition">
-                            <button className="hidden dark:block">
+                            {/* MOBILE OVERLAY SEARCH */}
+                            {openSearch && (
+                            <div className="fixed top-0 left-0 w-full h-13 z-[60] bg-gray-950 px-4 flex items-center gap-3">
+                                <svg 
+                                className="w-4 h-4 text-gray-200"
+                                fill="none" 
+                                viewBox="0 0 24 24"
+                                strokeWidth={2}
+                                stroke="currentColor">
+                                    <path 
+                                    stroke="currentColor" 
+                                    d="m21 21-4.35-4.35M10.5 18a7.5 7.5 0 1 1 0-15 7.5 7.5 0 0 1 0 15Z"
+                                    />
+                                </svg>
+
+                                <input
+                                autoFocus
+                                type="text"
+                                placeholder="Search"
+                                required
+                                className="
+                                    flex-1 bg-transparent
+                                    border-0 border-b border-gray-600
+                                    px-0 py-1
+                                    text-sm text-gray-100
+                                    placeholder-gray-500
+                                    focus:outline-none focus:ring-0
+                                    focus:border-indigo-400
+                                "
+                                />
+
+                                <button
+                                onClick={() => setOpenSearch(false)}
+                                className="text-gray-400 hover:text-gray-200 transition"
+                                >
+                                ✕
+                                </button>
+                            </div>
+                            )}
+                        </>
+
+                        {/* dark mode switch */}    
+                        <div 
+                            onClick={toggleTheme} 
+                            className="h-9 rounded-xl
+                            text-white
+                            border border-gray-300 hover:bg-gray-800 
+                            transition inline-flex items-center justify-center"
+                        >
+                            <button className="hidden dark:block h-9 w-9">
                                 <span className="group inline-flex shrink-0 justify-center items-center size-8 stroke-2">
                                     <svg className="shrink-0 size-5" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M12 3a6 6 0 0 0 9 9 9 9 0 1 1-9-9Z"/></svg>
                                 </span>
                             </button>
-                            <button className="block dark:hidden">
+                            <button className="block dark:hidden h-9 w-9">
                                 <span className="group inline-flex shrink-0 justify-center items-center size-8 stroke-2">
                                     <svg className="shrink-0 size-5" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor"><circle cx="12" cy="12" r="4"/><path d="M12 2v2"/><path d="M12 20v2"/><path d="m4.93 4.93 1.41 1.41"/><path d="m17.66 17.66 1.41 1.41"/><path d="M2 12h2"/><path d="M20 12h2"/><path d="m6.34 17.66-1.41 1.41"/><path d="m19.07 4.93-1.41 1.41"/></svg>
                                 </span>
@@ -780,7 +851,7 @@ export default function Header({ showGalaxy, onToggle }: HeaderProps) {
                         {googleUser ? (
                         <>
                             <div 
-                                className="w-9 h-9 rounded-full overflow-hidden shadow-lg border border-slate-700 transition hover:border-white cursor-pointer select-none"
+                                className="w-9 h-9 rounded-xl overflow-hidden border border-gray-300 transition hover:bg-gray-800 cursor-pointer select-none"
                                 onClick={() => {setShowAccountSettings(prev => !prev);}}
                             >
                             <img
@@ -792,8 +863,8 @@ export default function Header({ showGalaxy, onToggle }: HeaderProps) {
                         </>
                         ) : (
                             <button
-                                onClick={() => {setShowAccountSettings(prev => !prev); setOpenMoreSettings(prev => !prev);}}
-                                className="p-1 transition border border-white text-gray-200 rounded-md hover:bg-gray-300 hover:text-gray-950 transition"
+                                onClick={() => {setShowAccountSettings(prev => !prev);}}
+                                className="h-9 w-9 inline-flex items-center justify-center p-1 transition border border-white text-gray-200 rounded-md hover:bg-gray-300 hover:text-gray-950 transition"
                             >   
                                 <FontAwesomeIcon icon={faCircleUser} size="xl" />
                             </button>
@@ -801,7 +872,7 @@ export default function Header({ showGalaxy, onToggle }: HeaderProps) {
 
                         {/* THIS IS THE DROPDOWN WHEN CLICKING SYSTEM FUNCTIONS */}
                         {showAccountSettings && (
-                        <>
+                        <>  
                             <div  
                                 className="fixed inset-0 z-30 cursor-default h-screen" 
                                 onClick={(e) => {
@@ -887,56 +958,58 @@ export default function Header({ showGalaxy, onToggle }: HeaderProps) {
                                 )}
 
                                 {/* settings... more dropdown options */}
-                                <div onMouseOver={() => setOpenMoreSettings(true)}
-                                    onMouseLeave={() => setTimeout(() => {setOpenMoreSettings(false),3000})}
-                                >
-                                    <button
-                                        className="w-full text-left px-2 py-1 rounded hover:bg-gray-100 dark:hover:bg-gray-700"
-                                    > 
-                                        <FontAwesomeIcon icon={faGear} className="mr-2"/>
-                                        Settings
-                                    </button>
+                                {googleUser && (
+                                    <div onMouseOver={() => setOpenMoreSettings(true)}
+                                        onMouseLeave={() => setTimeout(() => {setOpenMoreSettings(false),3000})}
+                                    >
+                                        <button
+                                            className="w-full text-left px-2 py-1 rounded hover:bg-gray-100 dark:hover:bg-gray-700"
+                                        > 
+                                            <FontAwesomeIcon icon={faGear} className="mr-2"/>
+                                            Settings
+                                        </button>
 
-                                    {openMoreSettings && (
-                                    <div>
-                                        <div 
-                                            className="absolute right-62.5 top-40 z-40 w-63 rounded-md border border-gray-200 bg-white shadow-lg dark:text-white dark:bg-gray-900 dark:border-gray-700 space-y-2"
-                                            onMouseOver={() => setOpenMoreSettings(true)}
-                                        >
-                                            <p className="p-1 text-xs font-semibold uppercase tracking-wider text-gray-400">
-                                                Settings
-                                            </p>
-                                            <button
-                                                className="w-full text-left px-2 py-1 rounded hover:bg-gray-100 dark:hover:bg-gray-700"
-                                                onMouseDown={onToggle}
-                                                title="background animation toggle"
-                                            > 
-                                                <FontAwesomeIcon icon={faPanorama} className={`mr-2 ${showGalaxy ? 'text-cyan-400 shadow-[0_0_8px_#22d3ee]' : ''}`}/>
-                                                <span>Toggle background</span>
-                                            </button>
-
-                                            <button
-                                                className="w-full text-left px-2 py-1 rounded hover:bg-gray-100 dark:hover:bg-gray-700"
-                                                onMouseDown={() => alert("There are currently no updates available.")}
-                                            > 
-                                                <FontAwesomeIcon icon={faRotate} className="mr-2"/>
-                                                Check for updates...
-                                            </button>
-
-                                            {!displayExpiringAuth && googleUser && (
+                                        {openMoreSettings && (
+                                        <div>
+                                            <div 
+                                                className="absolute right-62.5 top-40 z-40 w-63 rounded-md border border-gray-200 bg-white shadow-lg dark:text-white dark:bg-gray-900 dark:border-gray-700 space-y-2"
+                                                onMouseOver={() => setOpenMoreSettings(true)}
+                                            >
+                                                <p className="p-1 text-xs font-semibold uppercase tracking-wider text-gray-400">
+                                                    Settings
+                                                </p>
                                                 <button
-                                                    className="w-full text-left px-2 py-1 rounded text-red-800 dark:hover:bg-gray-500/20"
-                                                    onMouseDown={deleteAllGdrive}
-                                                    disabled
+                                                    className="w-full text-left px-2 py-1 rounded hover:bg-gray-100 dark:hover:bg-gray-700"
+                                                    onMouseDown={onToggle}
+                                                    title="background animation toggle"
                                                 > 
-                                                    <FontAwesomeIcon icon={faBomb} className="mr-2"/>
-                                                    Delete all gdrive backup
+                                                    <FontAwesomeIcon icon={faPanorama} className={`mr-2 ${showGalaxy ? 'text-cyan-400 shadow-[0_0_8px_#22d3ee]' : ''}`}/>
+                                                    <span>Toggle background</span>
                                                 </button>
-                                            )}
+
+                                                <button
+                                                    className="w-full text-left px-2 py-1 rounded hover:bg-gray-100 dark:hover:bg-gray-700"
+                                                    onMouseDown={() => alert("There are currently no updates available.")}
+                                                > 
+                                                    <FontAwesomeIcon icon={faRotate} className="mr-2"/>
+                                                    Check for updates...
+                                                </button>
+
+                                                {!displayExpiringAuth && googleUser && (
+                                                    <button
+                                                        className="w-full text-left px-2 py-1 rounded text-red-800 dark:hover:bg-gray-500/20"
+                                                        onMouseDown={deleteAllGdrive}
+                                                        disabled
+                                                    > 
+                                                        <FontAwesomeIcon icon={faBomb} className="mr-2"/>
+                                                        Delete all gdrive backup
+                                                    </button>
+                                                )}
+                                            </div>
                                         </div>
+                                        )}
                                     </div>
-                                    )}
-                                </div>
+                                )}
 
                                 {/* login/sign out */}
                                 {googleUser ? 

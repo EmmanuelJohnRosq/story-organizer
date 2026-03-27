@@ -59,4 +59,6 @@ export function signOut() {
   userProfile = null;
   localStorage.removeItem(GOOGLE_ACCESS_TOKEN_KEY);
   localStorage.removeItem(GOOGLE_TOKEN_EXPIRES_AT_KEY);
+  localStorage.removeItem("googleConnected");
+  sessionStorage.setItem("googleAuth", "false");
 }

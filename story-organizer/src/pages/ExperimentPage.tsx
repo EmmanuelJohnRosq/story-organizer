@@ -1412,10 +1412,10 @@ export default function ExperimentPage() {
   return (
     // MAIN PARENT CONTAINER DIV CLOSER
     <div className="mx-auto w-full max-w-7xl px-3 pb-6 pt-2 xxs:pl-20 xxs:px-6">
-      <Navbar actions={navbarActions} />
+      <Navbar actions={navbarActions}/>
 
       {/* CONTENT CONTAINER */}
-      <div className="mt-12 space-y-3 xxs:mt-13">
+      <div className="mt-12 pb-8 space-y-3 xxs:pb-0 xxs:mt-13">
                                        
         {/* hero section card */}
         <section 
@@ -1428,26 +1428,26 @@ export default function ExperimentPage() {
               <div className="absolute inset-0 bg-[radial-gradient(circle_at_top_right,rgba(255,255,255,0.22),transparent_32%),radial-gradient(circle_at_bottom_left,rgba(255,255,255,0.18),transparent_28%)]" />
               <div className="relative">
                 
-                <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
+                <div className="flex flex-col gap-4 flex-row sm:items-start justify-between">
                   <div className="min-w-0 mt-1">
-                    <h2 className="text-xl font-semibold uppercase tracking-[0.35em] text-white/70">Story workshop</h2>
+                    <h2 className="text-xl font-semibold sm:uppercase sm:tracking-[0.35em] text-white/70">Story Workshop</h2>
                   </div>
 
                   <button
                     type="button"
                     onClick={() => navigate("/")}
-                    className="inline-flex items-center gap-2 self-start rounded-2xl border border-white/20 bg-white/10 px-4 py-2 text-sm font-semibold text-white backdrop-blur transition hover:bg-white/20"
+                    className="hidden sm:inline-flex items-center gap-2 self-start rounded-2xl border border-white/20 bg-white/10 px-4 py-2 text-sm font-semibold text-white backdrop-blur transition hover:bg-white/20"
                   >
                     <FontAwesomeIcon icon={faArrowLeft} />
-                    Back to library
+                    <span className="hidden sm:block">Back to library</span>
                   </button>
                 </div>
 
-                <p className="mt-3 max-w-2xl text-sm text-white/85 sm:text-base">
+                <p className="max-w-2xl text-xs sm:text-sm text-white/85 sm:text-base">
                   Keep your book profile, cast, and lore aligned in one polished workspace.
                 </p>
 
-                <div className="mt-5 flex flex-wrap gap-2 text-xs font-semibold uppercase tracking-[0.22em] text-white/80">
+                <div className="hidden mt-5 sm:flex flex-wrap gap-2 text-xs font-semibold uppercase tracking-[0.22em] text-white/80">
                     {[
                     { label: "Characters", value: character.length },
                     { label: "Highlighted", value: highlightedCharacterCount },

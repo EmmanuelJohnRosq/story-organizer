@@ -2,7 +2,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { useLocation, useNavigate, useParams } from "react-router-dom";
 import { db, type Book, type Character, type CharacterDescription, type CharImage, type Notes, type WorldbuildingEntry, type WorldbuildingSection } from "../db";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
-import { faEdit, faEye, faFile, faFileLines, faGlobe, faHouse, faImages, faMinus, faPlus, faProjectDiagram, faTableColumns, faWandMagicSparkles } from "@fortawesome/free-solid-svg-icons";
+import { faArrowLeft, faArrowRight, faCircle, faEdit, faEye, faFile, faFileLines, faGlobe, faHouse, faImages, faMinus, faPlus, faProjectDiagram, faTableColumns, faToggleOff, faToggleOn, faWandMagicSparkles, faX } from "@fortawesome/free-solid-svg-icons";
 import { faMagicWandSparkles } from "@fortawesome/free-solid-svg-icons/faMagicWandSparkles";
 import { createPortal } from "react-dom";
 import type { EditableNote } from "../components/NotesCollection";
@@ -100,7 +100,7 @@ function ChipEditor({ label, items, onChange, placeholder, disabled = false }: C
           <button
             type="button"
             onClick={addItem}
-            className="rounded-lg bg-indigo-600 px-3 py-2 text-sm font-semibold text-white hover:bg-indigo-700"
+            className="rounded-lg bg-blue-600 px-3 py-2 text-sm font-semibold text-white hover:bg-blue-700"
           >
             Add
           </button>
@@ -121,12 +121,16 @@ export default function CharEditPage() {
   const [allCharacters, setAllCharacters] = useState<Character[]>([]);
   const [editingCharacter, setEditingCharacter] = useState<Character | null>(null);
   const [originalCharacter, setOriginalCharacter] = useState<Character | null>(null);
+
   const [alert, setAlert] = useState("");
   const [success, setSuccess] = useState("");
 
   const [tagOptions, setTagOptions] = useState<string[]>(TAG_OPTIONS);
   const [customTagDraft, setCustomTagDraft] = useState("");
   const [relationshipDraft, setRelationshipDraft] = useState<{ charId: number; type: string }>({ charId: 0, type: "ally" });
+  const [relatedCharactersPage, setRelatedCharactersPage] = useState(0);
+  const relatedCharactersPerPage = 6;
+
   const [showImagePicker, setShowImagePicker] = useState(false);
   const [characterImages, setCharacterImages] = useState<CharImage[]>([]);
   const [selectedImageId, setSelectedImageId] = useState("");
@@ -202,12 +206,19 @@ export default function CharEditPage() {
       setOriginalCharacter(loadedCharacter);
       setAllCharacters(loadedCharacters);
       loadImages(loadedCharacters);
+      setRelatedCharactersPage(0);
       loadCharNotes(selectedCharacterId);
       setTagOptions(Array.from(new Set([...TAG_OPTIONS, ...loadedCharacter.tags])));
     };
 
     void loadData();
   }, [currentBookId, selectedCharacterId]);
+
+  useEffect(() => {
+    if (!editingCharacter) return;
+    const maxPage = Math.max(Math.ceil((editingCharacter.relationships?.length ?? 0) / relatedCharactersPerPage) - 1, 0);
+    setRelatedCharactersPage((prev) => Math.min(prev, maxPage));
+  }, [editingCharacter, relatedCharactersPerPage]);
 
   const loadCharacterImages = async () => {
       if (!selectedCharacterId) return;
@@ -600,6 +611,7 @@ export default function CharEditPage() {
     await db.characters.update(cleanedCharacter.id, cleanedCharacter);
 
     setEditingCharacter(cleanedCharacter);
+    setOriginalCharacter(cleanedCharacter);
     setSuccess("Character progression saved!");
     setTimeout(() => setSuccess(""), 1800);
   }
@@ -845,7 +857,7 @@ export default function CharEditPage() {
   );
 
   const TimeCard = ({ label, date, type }: TimeStampProps) => (
-    <div className="group relative flex items-center gap-3 rounded-xl border border-white/5 bg-white/[0.02] p-3 transition-all hover:bg-white/[0.05] hover:border-indigo-500/30">
+    <div className="group relative flex items-center gap-3 rounded-xl border border-gray-400 dark:border-white/5 dark:bg-white/[0.08] p-3 transition-all dark:hover:bg-white/[0.1] hover:border-blue-500/30">
       {/* Visual Icon with Glow */}
       <div className={`flex h-8 w-8 items-center justify-center rounded-lg border shadow-inner ${
         type === 'created' 
@@ -868,7 +880,7 @@ export default function CharEditPage() {
 
       {/* Text Data */}
       <div className="flex flex-col">
-        <span className="text-[10px] font-bold uppercase tracking-widest text-slate-500 group-hover:text-slate-300 transition-colors">
+        <span className="text-[10px] font-bold uppercase tracking-widest dark:text-slate-300 transition-colors">
           {label}
         </span>
         <span className="text-xs font-mono font-medium text-black dark:text-slate-300">
@@ -969,10 +981,6 @@ export default function CharEditPage() {
     setOpenWorldSections(prev => ({ ...prev, [sectionId]: !prev[sectionId] }));
   };
 
-  const editModeSwitch = () => {
-    setIsEditMode(!isEditMode);
-  };
-
   // navbar pass actions and logic
   const navbarActions: NavbarAction[] = [
     {
@@ -986,7 +994,7 @@ export default function CharEditPage() {
       id: "edit-mode",
       label: isEditMode ? "Edit" : "View",
       icon: faEdit,
-      onClick: editModeSwitch,
+      onClick: toogleEditMode,
       title: "Switch edit mode",
     },
     {
@@ -1030,17 +1038,28 @@ export default function CharEditPage() {
     },
   ];
 
+  function toogleEditMode() {
+    const hasChanges = JSON.stringify(editingCharacter) !== JSON.stringify(originalCharacter);
+
+    if (hasChanges) {
+      window.alert("Unsaved changes detected.");
+      return;
+    }
+
+    setIsEditMode((prev) => !prev);
+  }
+
   return (
     // MAIN EDIT PAGE CONTAINER
-    <div className="mx-auto w-full max-w-full xxs:max-w-6xl p-4 md:p-6 mt-9 xxs:pl-20">
+    <div className="mx-auto w-full max-w-full xxs:max-w-7xl p-4 mt-10 xxs:pl-20 pb-14 xxs:pb-3">
       <Navbar actions={navbarActions} />
 
       {/* HERO CARD HEADER */}
-      <div className="relative isolate overflow-hidden rounded-3xl border border-white/10 bg-slate-900/40 p-6 shadow-2xl backdrop-blur-md ring-1 ring-white/5">
+      <div className="relative isolate overflow-hidden rounded-3xl border border-white/10 dark:bg-slate-900/40 p-6 shadow-lg backdrop-blur-md ring-1 ring-white/5">
         
         {/* Modern Gradient Orbs */}
-        <div className="absolute -right-16 -top-16 -z-10 h-64 w-64 rounded-full bg-indigo-500/10 blur-[80px]" />
-        <div className="absolute -left-16 -bottom-16 -z-10 h-64 w-64 rounded-full bg-emerald-500/10 blur-[80px]" />
+        <div className={`absolute -right-16 -top-16 -z-10 h-64 w-64 rounded-full ${isEditMode ? "bg-blue-500/50" : "bg-cyan-500/30"}  blur-[80px]`} />
+        <div className={`absolute -left-16 -bottom-16 -z-10 h-64 w-64 rounded-full ${isEditMode ? "bg-cyan-500/30" : "bg-blue-500/50"} blur-[80px]`} />
 
         <div className="relative flex flex-col gap-8 lg:flex-row lg:items-start lg:justify-between">
           
@@ -1071,12 +1090,13 @@ export default function CharEditPage() {
             <div className="flex-1 py-1">
               <div className="w-full place-items-center sm:w-fit sm:place-items-start">
                 <div className="flex items-center gap-2 mb-1">
-                  <div className={`h-1.5 w-1.5 rounded-full animate-pulse ${isEditMode ? "bg-indigo-400" : "bg-emerald-400"}`} />
-                  <span className={`text-[12px] font-bold uppercase tracking-[0.2em] ${isEditMode ? "text-indigo-400" : "text-emerald-400"}`}>
-                    Character Profile · {isEditMode ? "Editing Mode" : "Viewing Mode"}
-                  </span>
+                  <div className={`text-[12px] font-bold uppercase tracking-[0.2em] ${isEditMode ? "text-cyan-400" : "text-blue-300"}`}>
+                    <span>Character Profile</span>
+                    <FontAwesomeIcon icon={faCircle} className="text-[5px] mb-0.5 mx-2" beatFade/>
+                    {isEditMode ? "Editing Mode" : "Browsing Mode"}
+                  </div>
                 </div>
-                <h1 className="text-3xl font-black tracking-tight text-white sm:text-4xl">
+                <h1 className="text-3xl font-black tracking-tight dark:text-white sm:text-4xl line-clamp-4">
                   {editingCharacter.name || "Unnamed Character"}
                 </h1>
                 <div className="mt-2 flex items-center gap-2">
@@ -1120,15 +1140,15 @@ export default function CharEditPage() {
           <div className="flex flex-col gap-3 lg:w-64">
             <button
               type="button"
-              onClick={() => setIsEditMode((prev) => !prev)}
-              className={`flex items-center justify-center gap-2 rounded-xl px-4 py-2.5 text-xs font-bold uppercase tracking-widest transition-all duration-300 ${
+              onClick={() => toogleEditMode()}
+              className={`flex group items-center justify-center gap-2 rounded-xl px-4 py-2.5 text-xs font-bold uppercase tracking-widest transition-all duration-300 ${
                 isEditMode 
-                ? "bg-indigo-500 text-white shadow-lg shadow-indigo-500/25 hover:bg-indigo-400" 
-                : "bg-emerald-700 text-slate-300 border border-white/10 hover:bg-slate-700"
+                ? "bg-cyan-700 text-white shadow-sm shadow-cyan-500/40 hover:bg-cyan-600" 
+                : "bg-blue-700 text-white shadow-blue-500/40 hover:bg-blue-600"
               }`}
             >
-              <FontAwesomeIcon icon={!isEditMode ? faMagicWandSparkles : faEye} />
-              {isEditMode ? " Switch to View Mode" : " Enable Editing Mode"}
+              <FontAwesomeIcon icon={isEditMode ? faToggleOn : faToggleOff} className="group-hover:text-white"/>
+              {isEditMode ? "Back to Browse Mode" : " Enable Editing Mode"}
             </button>
 
             <div className="p-1 space-y-1">
@@ -1156,8 +1176,8 @@ export default function CharEditPage() {
                 onClick={() => setActiveTab(tab.key)}
                 className={`rounded-full px-3 py-1.5 text-sm font-semibold transition ${
                   activeTab === tab.key
-                    ? "bg-indigo-600 text-white"
-                    : "bg-gray-200 text-gray-700 hover:bg-gray-300 dark:bg-gray-800 dark:text-gray-300"
+                    ? "bg-blue-700 text-white hover:bg-blue-800"
+                    : "bg-gray-200 text-gray-700 hover:bg-gray-300 dark:hover:bg-gray-600 dark:bg-gray-700 dark:text-gray-300"
                 }`}
               >
                 {tab.label}
@@ -1200,7 +1220,21 @@ export default function CharEditPage() {
             {activeTab === "abilities" && (
               <div className="space-y-3">
                 {editingCharacter.abilities.map((ability, index) => (
-                  <div key={index} className="rounded-lg border border-gray-200 p-3 dark:border-gray-700">
+                 <div key={index} className="relative rounded-lg border border-gray-200 p-3 dark:border-gray-700">
+
+                    <button 
+                      type="button"
+                      hidden={!isEditMode} disabled={!isEditMode}
+                      onClick={() => setEditingCharacter({ ...editingCharacter, abilities: editingCharacter.abilities.filter((_, itemIndex) => itemIndex !== index) })}
+                      className="
+                      absolute right-2 -top-2 text-xs 
+                      text-red-500/60 hover:scale-110 hover:text-red-500 
+                      cursor-pointer 
+                      bg-white dark:bg-gray-900 px-2"
+                    >
+                      Delete
+                    </button>
+
                     <div className="flex gap-2">
                       <input className="w-1/3 rounded-lg border p-2 dark:bg-gray-800" value={ability.ability} placeholder="Ability" onChange={(event) => {
                         const next = [...editingCharacter.abilities];
@@ -1216,12 +1250,13 @@ export default function CharEditPage() {
                       }} 
                         disabled={!isEditMode}
                       />
-                      <button type="button" disabled={!isEditMode} className="rounded-lg bg-red-500 px-3 py-2 text-white disabled:cursor-not-allowed disabled:opacity-50" onClick={() => setEditingCharacter({ ...editingCharacter, abilities: editingCharacter.abilities.filter((_, itemIndex) => itemIndex !== index) })}>Remove</button>
                     </div>
                   </div>
                 ))}
 
-                <button type="button" disabled={!isEditMode} className="rounded-lg bg-indigo-600 px-3 py-2 text-sm font-semibold text-white disabled:cursor-not-allowed disabled:opacity-50" onClick={() => setEditingCharacter({ ...editingCharacter, abilities: [...editingCharacter.abilities, { ability: "", description: "" }] })}>+ Add Ability</button>
+                <div className="flex justify-end">
+                  <button hidden={!isEditMode} type="button" disabled={!isEditMode} className="rounded-lg bg-blue-600 hover:bg-blue-700 px-3 py-2 text-sm font-semibold text-white disabled:cursor-not-allowed disabled:opacity-50" onClick={() => setEditingCharacter({ ...editingCharacter, abilities: [...editingCharacter.abilities, { ability: "", description: "" }] })}>+ Add Ability</button>
+                </div>
               </div>
             )}
 
@@ -1251,7 +1286,7 @@ export default function CharEditPage() {
 
             {activeTab === "relationships" && (
               <div className="space-y-3">
-                <div className="rounded-lg border border-gray-200 p-3 dark:border-gray-700">
+                <div className="rounded-lg border border-gray-200 p-3 dark:border-gray-700" hidden={!isEditMode}>
                   <div className="grid gap-2 md:grid-cols-[1fr_1fr_auto]">
                     <label className="space-y-1 text-sm">
                       <span className="block font-medium text-gray-600 dark:text-gray-300">Character</span>
@@ -1267,7 +1302,7 @@ export default function CharEditPage() {
                     <span className="block font-medium text-gray-600 dark:text-gray-300">Relationship Type</span>
                     <input className="w-full rounded-lg border p-2 dark:bg-gray-800 disabled:opacity-80" placeholder="relationship type" disabled={!isEditMode} value={relationshipDraft.type} onChange={(event) => setRelationshipDraft({ ...relationshipDraft, type: event.target.value })} />
                     </label>
-                    <button type="button" disabled={!isEditMode} className="rounded-lg bg-indigo-600 px-3 py-2 text-sm font-semibold text-white disabled:cursor-not-allowed disabled:opacity-50" onClick={() => {
+                    <button type="button" disabled={!isEditMode} className="rounded-lg w-fit sm:w-full sm:mt-5.5 bg-blue-600 hover:bg-blue-700 px-3 py-2 text-sm font-semibold text-white disabled:cursor-not-allowed disabled:opacity-50" onClick={() => {
                       if (!relationshipDraft.charId) return;
                       setEditingCharacter({ ...editingCharacter, relationships: [...editingCharacter.relationships, relationshipDraft] });
                       setRelationshipDraft({ charId: 0, type: "ally" });
@@ -1300,15 +1335,15 @@ export default function CharEditPage() {
                         disabled={!isEditMode}
                         key={option}
                         onClick={() => toggleChecklist(option, editingCharacter.tags, (tags) => setEditingCharacter({ ...editingCharacter, tags }))}
-                        className={`rounded-full border px-3 py-1 text-sm disabled:cursor-not-allowed disabled:opacity-70 ${editingCharacter.tags.includes(option) ? "border-emerald-500 bg-emerald-100 text-emerald-800 dark:bg-emerald-900/40 dark:text-emerald-300" : "border-gray-300 bg-white text-gray-700 dark:border-gray-600 dark:bg-gray-800 dark:text-gray-200"}`}
+                        className={`rounded-full border px-3 py-1 text-sm disabled:cursor-not-allowed ${editingCharacter.tags.includes(option) ? "border-emerald-500 bg-emerald-100 text-emerald-800 dark:bg-emerald-900/40 dark:text-emerald-300" : "border-gray-300 bg-white text-gray-700 dark:border-gray-600 dark:bg-gray-800 dark:text-gray-200"}`}
                       >
                         {editingCharacter.tags.includes(option) ? "✓ " : ""}{option}
                       </button>
                     ))}
                   </div>
-                  <div className="mt-2 flex gap-2">
+                  <div className="mt-2 flex gap-2" hidden={!isEditMode}>
                     <input className="w-full rounded-lg border p-2 dark:bg-gray-800 disabled:opacity-80" disabled={!isEditMode} value={customTagDraft} onChange={(event) => setCustomTagDraft(event.target.value)} placeholder="Add custom tag option" />
-                    <button type="button" disabled={!isEditMode} className="rounded-lg bg-indigo-600 px-3 py-2 text-sm font-semibold text-white disabled:cursor-not-allowed disabled:opacity-50" onClick={() => {
+                    <button type="button" disabled={!isEditMode} className="rounded-lg bg-blue-600 hover:bg-blue-700 px-3 py-2 text-sm font-semibold text-white disabled:cursor-not-allowed disabled:opacity-50" onClick={() => {
                       const cleaned = normalizeWhitespace(customTagDraft);
                       if (!cleaned) return;
                       setTagOptions((prev) => Array.from(new Set([...prev, cleaned])));
@@ -1337,38 +1372,74 @@ export default function CharEditPage() {
           {/* RELATIONSHIP SIDEBAR*/}
           {editingCharacter.relationships?.length >= 1 && !isEditMode && (
             <div className="space-y-3 rounded-xl border border-gray-200 bg-white p-4 shadow-sm dark:border-gray-700 dark:bg-gray-900">
-              <div className="text-lg font-bold mb-1">
-                Related Characters
+              <div className="flex justify-between">
+                <div className="text-lg font-bold">
+                  Related Characters
+                </div>
+
+                {editingCharacter.relationships?.length > 6 && (
+                  <div className="flex items-center gap-2">
+                    <button
+                      type="button"
+                      onClick={() => setRelatedCharactersPage((prev) => Math.max(prev - 1, 0))}
+                      disabled={relatedCharactersPage === 0}
+                      className="rounded-xl bg-gray-200 px-3 py-1.5 text-xs font-medium transition hover:bg-gray-300 disabled:opacity-50 dark:bg-gray-700 dark:hover:bg-gray-600"
+                    >
+                      <FontAwesomeIcon icon={faArrowLeft}/>
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() =>
+                        setRelatedCharactersPage((prev) =>
+                          Math.min(prev + 1, Math.ceil(editingCharacter.relationships.length / relatedCharactersPerPage) - 1)
+                        )
+                      }
+                      disabled={(relatedCharactersPage + 1) * relatedCharactersPerPage >= editingCharacter.relationships.length}
+                      className="rounded-xl bg-gray-200 px-3 py-1.5 text-xs font-medium transition hover:bg-gray-300 disabled:opacity-50 dark:bg-gray-700 dark:hover:bg-gray-600"
+                    >
+                      <FontAwesomeIcon icon={faArrowRight}/>
+                    </button>
+                  </div>
+                )}
               </div>
 
-              <div className="flex grid grid-cols-4 lg:grid-cols-3 gap-3 p-2 notes-scroll">
-                {editingCharacter.relationships?.slice(0,6).map((rel, i) => (
-                  <div
-                    key={i}
-                    className="group relative grid place-items-center"
-                  >
-                    <div 
-                      className="h-20 w-20 lg:w-18 lg:h-18 rounded-full overflow-hidden shadow-lg border-2 border-slate-700 group-hover:scale-110 group-hover:border-indigo-400 transition-all duration-200 cursor-pointer"
-                      onClick={() => openCharacterRel(rel.charId)}
+              <div className="flex grid grid-cols-3 sm:grid-cols-5 lg:grid-cols-3 gap-3 notes-scroll">
+                {editingCharacter.relationships
+                  ?.slice(
+                    relatedCharactersPage * relatedCharactersPerPage,
+                    (relatedCharactersPage + 1) * relatedCharactersPerPage
+                  )
+                  .map((rel, i) => {
+                    const relatedName = allCharacters.find((char) => char.id === rel.charId)?.name || `ID ${rel.charId}`;
+                  return (
+                    <div
+                      key={`${rel.charId}-${i}`}
+                      className="group relative grid place-items-center"
                     >
-                      <img
-                        src={imageMap[rel.charId]?.find(img => img.isDisplayed)?.url ||
-                            imageMap[rel.charId]?.[0]?.url ||
-                            char_image}
-                        className="w-full h-full object-cover"
-                        alt="relationship"
-                      />
+                      <div 
+                        className="h-20 w-20 lg:w-18 lg:h-18 rounded-full overflow-hidden shadow-lg border-2 border-slate-700 group-hover:scale-105 group-hover:border-blue-600/70 transition-all duration-200 cursor-pointer"
+                        onClick={() => openCharacterRel(rel.charId)}
+                      >
+                        <img
+                          src={imageMap[rel.charId]?.find(img => img.isDisplayed)?.url ||
+                              imageMap[rel.charId]?.[0]?.url ||
+                              char_image}
+                          className="w-full h-full object-cover"
+                          alt="relationship"
+                        />
+                      </div>  
+
+                      {/* Tooltip on hover */}
+                      <div className="absolute group-hover:bg-blue-200 dark:group-hover:bg-blue-600/70 group-hover:scale-105 justify-center -bottom-1 transition-all dark:text-white text-[10px] px-1 rounded-md whitespace-nowrap shadow-xl">
+                        <span>
+                          {upcaseLetter(relatedName || "Unknown").split(' ')[0]}
+                        </span>
+                      </div>  
                     </div>
-                    {/* Tooltip on hover */}
-                    <div className="absolute left-0 -bottom-2 scale-0 group-hover:scale-100 transition-all bg-indigo-900 text-white text-[10px] py-1 px-2 rounded-md z-50 whitespace-nowrap shadow-xl">
-                      <span>
-                        {upcaseLetter(rel.type || "unknown")}
-                      </span>
-                    </div>
-                  </div>
-                  
-                ))}
+                  );
+                })}
               </div> 
+
             </div>
           )}
 
@@ -1377,19 +1448,23 @@ export default function CharEditPage() {
               <h2 className="text-lg font-bold">Build Summary</h2>
               <button
                 type="button"
-                className={`rounded-lg px-3 py-2 text-sm font-semibold ${isEditMode ? "border border-indigo-300 text-indigo-700 hover:bg-purple-200 dark:border-indigo-700 dark:text-purple-300 dark:hover:bg-indigo-900/20" : "bg-emerald-600 text-white hover:bg-emerald-700"}`}
-                onClick={() => setIsEditMode((prev) => !prev)}
-              > <FontAwesomeIcon icon={faMagicWandSparkles} />
-                {isEditMode ? " View" : " Edit"}
+                className={`
+                  rounded-lg px-3 py-2 text-sm font-semibold 
+                  ${isEditMode 
+                    ? "border border-cyan-300 text-cyan-700 hover:bg-cyan-200 dark:border-cyan-700 dark:text-cyan-200 dark:hover:bg-cyan-900/20" 
+                    : "border border-blue-300 text-blue-700 hover:bg-blue-200 dark:border-blue-700 dark:text-blue-200 dark:hover:bg-blue-900/20"}`}
+                onClick={() => toogleEditMode()}
+              > <FontAwesomeIcon icon={isEditMode ? faToggleOn : faToggleOff} />
+                {!isEditMode ? " Browsing" : " Editing"}
               </button>
             </div>
 
             
             <p className="text-sm text-gray-500 dark:text-gray-300">Progression completion</p>
             <div className="h-2 w-full overflow-hidden rounded-full bg-gray-200 dark:bg-gray-700">
-              <div className="h-full rounded-full bg-indigo-600 transition-all" style={{ width: `${completion}%` }} />
+              <div className="h-full rounded-full bg-gradient-to-r from-blue-500 to-cyan-400 transition-all" style={{ width: `${completion}%` }} />
             </div>
-            <p className="text-sm font-semibold text-indigo-600 dark:text-indigo-300">{completion}% complete</p>
+            <p className="text-sm font-semibold text-blue-600 dark:text-blue-200">{completion}% complete</p>
 
             {/* MISSING FIELDS CHECK CARD */}
             <div className="rounded-md border border-emerald-300 bg-emerald-50/80 p-3 dark:border-emerald-700 dark:bg-emerald-900/20">
@@ -1422,7 +1497,7 @@ export default function CharEditPage() {
               <div className="flex flex-col gap-2 pt-1">
                 <button
                   type="button"
-                  className={`w-full rounded-lg px-3 py-2 text-sm font-semibold text-white ${isEditMode ? "bg-indigo-600 hover:bg-indigo-700" : "bg-indigo-400 disabled:opacity-50 cursor-not-allowed"}`}
+                  className={`w-full rounded-lg px-3 py-2 text-sm font-semibold text-white ${isEditMode ? "bg-blue-600 hover:bg-blue-700" : "bg-blue-400 disabled:opacity-50 cursor-not-allowed"}`}
                   disabled={!isEditMode}
                   onClick={() => void saveCharacter()}
                 >
@@ -1431,7 +1506,7 @@ export default function CharEditPage() {
 
                 <button
                   type="button"
-                  className={`w-full rounded-lg px-3 py-2 text-sm font-semibold text-white ${isEditMode ? "bg-gray-800 hover:bg-gray-800/50" : "disabled:opacity-80 cursor-not-allowed"}`}
+                  className={`w-full rounded-lg px-3 py-2 text-sm font-semibold text-white ${isEditMode ? "bg-gray-800/50 hover:bg-gray-800" : "disabled:opacity-80 cursor-not-allowed"}`}
                   disabled={!isEditMode}
                   onClick={() => void navigate(`/book/${currentBookId}`)}
                 >

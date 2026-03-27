@@ -22,10 +22,21 @@ export type { NavbarAction };
 export default function Navbar({ actions, className = "" }: NavbarProps) {
   return (
     <aside
-      className={`hidden xxs:block fixed -left-1 top-14 z-50 h-[calc(100vh-4rem)] w-17 flex-col overflow-auto scroll-left justify-between rounded-r-2xl border border-blue-300/80 dark:border-gray-900/60 bg-blue-400/50 dark:bg-gray-900 p-1 shadow-2xl backdrop-blur ${className}`}
+      className={`
+        fixed z-50 flex overflow-auto backdrop-blur border shadow-2xl
+        border-blue-300/80 dark:border-gray-900/60 bg-blue-400/50 dark:bg-gray-900 
+
+        /* Mobile: Fixed Bottom Navbar */
+        bottom-0 left-0 right-0 h-11 w-full flex-row justify-around p-1
+        
+        /* Desktop (Large Dimensions): Vertical Left Sidebar */
+        xxs:top-14 xxs:left-0 xxs:bottom-auto xxs:h-[calc(100vh-4rem)] xxs:w-17 xxs:flex-col xxs:justify-between xxs:rounded-r-2xl xxs:p-1 scroll-left
+        
+        ${className}
+      `}
       aria-label="Page actions"
     >
-      <div className="space-y-1">
+      <div className="flex flex-row space-x-4 xxs:space-y-2 xxs:flex-col xxs:space-x-0">
         {actions.map(action => (
           <button
             key={action.id}
@@ -33,7 +44,7 @@ export default function Navbar({ actions, className = "" }: NavbarProps) {
             onClick={action.onClick}
             disabled={action.disabled}
             title={action.title}
-            className={`group flex w-full flex-col items-center gap-1 rounded-xl px-1 py-2 text-[11px] font-semibold transition ${
+            className={`group flex w-full flex-col items-center gap-1 rounded-xl px-1 xxs:py-2 text-[11px] font-semibold transition ${
               action.isActive
                 ? "bg-blue-600/30 text-blue-100"
                 : "text-gray-800 dark:text-slate-100 hover:bg-blue-500/20"
@@ -42,8 +53,8 @@ export default function Navbar({ actions, className = "" }: NavbarProps) {
             <span className="flex h-10 w-10 items-center justify-center rounded-xl border border-gray-300/30 bg-gray-800 text-lg transition group-hover:border-gray-200/60">
               <FontAwesomeIcon icon={action.icon} className="text-white"/>
             </span>
-            <span className="leading-tight text-center">{action.label}</span>
-            {action.badge && <span className="text-[9px] uppercase tracking-wide text-gray-800/70 dark:text-gray-200/70">{action.badge}</span>}
+            <span className="hidden xxs:block leading-tight text-center">{action.label}</span>
+            {action.badge && <span className="hidden xxs:block text-[9px] uppercase tracking-wide text-gray-800/70 dark:text-gray-200/70">{action.badge}</span>}
           </button>
         ))}
       </div>
