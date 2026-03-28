@@ -715,16 +715,21 @@ export default function Header({ showGalaxy, onToggle }: HeaderProps) {
                             <div 
                                 className="flex items-center gap-2 text-white cursor-pointer select-none h-full"
                             >
-                                <div className="h-9 overflow-hidden flex items-center">
+                                <div className="h-15 overflow-hidden flex items-center">
                                     <img 
                                     src="/textures/logo/logo2.png" 
                                     alt="📖" 
                                     className="w-full h-full object-cover" 
                                     />
                                 </div>
-                                <span className="hidden md:block text-xl font-semibold tracking-tight leading-none">
-                                    Story Dreamer
-                                </span>
+
+                                <div className="h-20 -ml-2 overflow-hidden flex items-center">
+                                    <img 
+                                    src="/textures/logo/logo3.png" 
+                                    alt="Story Dreamer" 
+                                    className="w-full h-full object-cover" 
+                                    />
+                                </div>
                             </div>
                         </>
                     )}

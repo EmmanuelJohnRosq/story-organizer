@@ -3,13 +3,15 @@ import Layout from "./components/Layout";
 
 import UserPage from "./pages/UserPage";
 import ExperimentPage from "./pages/ExperimentPage";
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 
 import { useGoogleAuth} from "./context/GoogleAuthContext";
 import CharEditPage from "./pages/CharEditPage";
 import CharacterPageCopy from "./pages/CharacterPageCopy";
+import LoadingScreen from "./components/LoadingScreen";
 
 export default function StoryOrganizer() {
+  const [showLoadingScreen, setShowLoadingScreen] = useState(true);
 
   const { initialize } = useGoogleAuth();
 
@@ -25,11 +27,23 @@ export default function StoryOrganizer() {
     initialize(clientId);
   }, [initialize]);
 
+  useEffect(() => {
+    const loadingDelay = window.setTimeout(() => {
+      setShowLoadingScreen(false);
+    }, 1000);
+
+    return () => window.clearTimeout(loadingDelay);
+  }, []);
+
 const { pathname } = useLocation();
 
 useEffect(() => {
   window.scrollTo(0, 0);
 }, [pathname]);
+
+if (showLoadingScreen) {
+  return <LoadingScreen />;
+}
 
   // ROUTING CODE
   return (
