@@ -106,6 +106,7 @@ export default function Header({ showGalaxy, onToggle }: HeaderProps) {
     const [displayExpiringAuth, setDisplayExpiringAuth] = useState(false);
 
     const [tokenAccessStatus, setTokenAccessStatus] = useState<"active" | "expired" | "missing">("missing");
+    const [isSigningIn, setIsSigningIn] = useState(false);
 
     // MODALS
     const [showRestoreBackupModal, setshowRestoreBackupModal] = useState(false);
@@ -144,10 +145,17 @@ export default function Header({ showGalaxy, onToggle }: HeaderProps) {
     }, [user]);
 
     const updateTokenAccessStatus = useCallback(() => {
+        if (isSigningIn) {
+            return tokenAccessStatus;
+        }
         const token = localStorage.getItem("googleAccessToken");
         const expiresAtRaw = localStorage.getItem("googleAccessTokenExpiresAt");
         const authState = sessionStorage.getItem("googleAuth");
         const expiresAt = expiresAtRaw ? Number(expiresAtRaw) : NaN;
+
+        if (authState === "pending") {
+            return tokenAccessStatus;
+        }
 
         if (!token || Number.isNaN(expiresAt)) {
             setTokenAccessStatus("missing");
@@ -168,7 +176,7 @@ export default function Header({ showGalaxy, onToggle }: HeaderProps) {
         setTokenAccessStatus("active");
         setDisplayExpiringAuth(false);
         return "active" as const;
-    }, [googleUser]);
+    }, [googleUser, isSigningIn, tokenAccessStatus]);
 
     useEffect(() => {
         updateTokenAccessStatus();
@@ -240,13 +248,14 @@ export default function Header({ showGalaxy, onToggle }: HeaderProps) {
 
     useEffect(() => {
         const checkBackup = async () => {
+            if (isSigningIn) return;
             const status = updateTokenAccessStatus();
             if (status !== "active") return;
             setDisplayExpiringAuth(false);
         };
 
     checkBackup();
-    }, [showAccountSettings, updateTokenAccessStatus]);
+    }, [showAccountSettings, isSigningIn, updateTokenAccessStatus]);
     
 
     // DARK MODE EFFECT
@@ -575,12 +584,19 @@ export default function Header({ showGalaxy, onToggle }: HeaderProps) {
     }
 
     async function logIn() {
+        if (isSigningIn) return;
+
+        setIsSigningIn(true);
         try {
-            signIn(); 
+            await signIn();
             setTokenAccessStatus("active");
+            setDisplayExpiringAuth(false);
+            setShowAccountSettings(false);
 
         } catch (error) {
             console.error("Login failed or was cancelled:", error);
+        } finally {
+            setIsSigningIn(false);
         }
     }
 

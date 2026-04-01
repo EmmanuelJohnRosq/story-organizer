@@ -9,7 +9,7 @@ export interface GoogleUser {
 
 interface AuthContextType {
   user: GoogleUser | null;
-  signIn: () => void;
+  signIn: () => Promise<void>;
   initialize: (clientId: string) => void;
 }
 
@@ -25,7 +25,7 @@ export function GoogleAuthProvider({ children }: { children: React.ReactNode }) 
   }
 
   function signIn() {
-    googleSignIn();
+    return googleSignIn();
   }
 
   return (
