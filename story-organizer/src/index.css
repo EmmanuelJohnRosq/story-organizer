@@ -128,7 +128,7 @@ button:disabled {
   transform: rotate(120deg);
   filter: blur(1px);
 
-  animation: meteorFall 6s linear infinite;
+  animation: meteorFall 15s linear infinite;
 }
 
 .bigmeteor-diagonal {
@@ -144,7 +144,7 @@ button:disabled {
   
   box-shadow: 0 0 20px rgba(255, 0, 0, 0.4);
 
-  animation: meteorDiagonal 12s linear infinite;
+  animation: meteorDiagonal 20s linear infinite;
 }
 
 @keyframes meteorFall {
@@ -191,7 +191,7 @@ button:disabled {
   height: 40vw;
   margin-top: -10vw;
   margin-left: 50vw;
-  animation: orbit-spin 120s linear infinite;
+  animation: orbit-spin 200s linear infinite;
 }
 
 /* 4. Planet 2: Smaller Orbit (Faster) */
@@ -200,7 +200,7 @@ button:disabled {
   height: 50vw;
   margin-top: -30vw;
   margin-left: -54vw;
-  animation: orbit-spin 160s linear infinite reverse; /* Moves opposite way */
+  animation: orbit-spin 500s linear infinite reverse; /* Moves opposite way */
 }
 
 /* The Planet Styles */

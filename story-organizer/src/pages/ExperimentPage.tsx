@@ -1151,14 +1151,18 @@ export default function ExperimentPage() {
     const openWorldAtlas = () => {
       setShowWorldAtlas(true);
       setShowSettingsMenu(false);
+      setShowEditWorldbuildingModal(false);
+      setShowWorldbuildingModal(false);
     };
 
     const closeWorldAtlas = () => {
       setShowWorldAtlas(false);
       setShowWorldbuildingModal(false);
+      closeEditWorldbuildingModal();
     };
 
     const openWorldbuildingModal = () => {
+      setShowEditWorldbuildingModal(false);
       openWorldAtlas();
       setWorldSectionTitle("");
       setShowWorldbuildingModal(true);
@@ -1190,13 +1194,6 @@ export default function ExperimentPage() {
       setEditWorldDraftEntries([{ label: "", value: "" }]);
     };
 
-    const openEditWorldbuildingModal = () => {
-      if (worldbuildingSections.length < 1) return;
-
-      setShowEditWorldbuildingModal(true);
-      setShowSettingsMenu(false);
-    };
-
     const addEditWorldDraftEntry = () => {
       setEditWorldDraftEntries(prev => [...prev, { label: "", value: "" }]);
     };
@@ -1215,8 +1212,14 @@ export default function ExperimentPage() {
     };
 
     const selectWorldSectionForEdit = (sectionId: string) => {
+      if (!sectionId) return;
+      if (worldbuildingSections.length < 1) return;
+
       const section = worldbuildingSections.find(item => item.id === sectionId);
       if (!section) return;
+
+      setShowWorldbuildingModal(false);
+      setShowEditWorldbuildingModal(true);
 
       setSelectedWorldSectionId(section.id);
       setEditWorldSectionTitle(section.title);
@@ -2323,14 +2326,6 @@ export default function ExperimentPage() {
                 </div>
                 
                 <div className="flex gap-2">
-                  <button
-                    type="button"
-                    className="rounded-xl border border-gray-300 px-3 py-2 text-xs font-semibold uppercase tracking-[0.2em] transition hover:bg-gray-100 dark:border-gray-700 dark:hover:bg-gray-800"
-                    onClick={openEditWorldbuildingModal}
-                    disabled={worldbuildingSections.length < 1}
-                  >
-                    <FontAwesomeIcon icon={faPen} /> Edit
-                  </button>
 
                   <button
                     type="button"
@@ -2403,7 +2398,7 @@ export default function ExperimentPage() {
           </div>
       )}
 
-      {/* CHANGES SAVED POPUP */}
+      {/* CHANGES SAVED POPUP */} 
       {showStatePopup && (
       <div className="fixed top-14 z-50 left-1/2 bg-gray-300 py-1 px-5 transform -translate-x-1/2 rounded shadow-lg flex justify-center space-x-4 animate-fadeDown">
           <span>
@@ -2501,158 +2496,6 @@ export default function ExperimentPage() {
         document.body
       )}
 
-      {/* WORLD BUILDING EDIT MODAL */}
-      {showEditWorldbuildingModal && (
-        <div
-          className="fixed inset-0 z-70 flex items-center justify-center bg-slate-950/75 p-3 backdrop-blur-md"
-          onMouseDown={(e) => {
-            if (e.target === e.currentTarget) {
-              closeEditWorldbuildingModal();
-            }
-          }}
-        >
-          <div className="w-full max-w-2xl max-h-[90vh] overflow-y-auto rounded-3xl border border-cyan-400/20 bg-gradient-to-b from-[#020617] via-[#020617] to-[#0a1628] p-5 text-white shadow-[0_0_80px_rgba(34,211,238,0.12)] notes-scroll" onMouseDown={(e) => e.stopPropagation()}>
-            {/* title */}
-            <div className="flex items-start justify-between gap-3 border-b border-white/10 pb-3">
-
-                {selectedWorldSectionId ?
-                  (<button 
-                    className="rounded-full border border-white/20 px-3 py-1 text-sm text-slate-200 transition hover:bg-white/10"
-                    onClick={() => setSelectedWorldSectionId(null)}
-                  > <FontAwesomeIcon icon={faArrowLeft} size="lg"/>
-                  </button>
-                  )
-                  :
-                  (
-                  <div>
-                    <h2 className="mt-1 text-lg font-semibold bg-gradient-to-r from-white via-cyan-100 to-slate-400 bg-clip-text text-transparent">Edit World Setting Section</h2>
-                    <p className="text-xs text-slate-300 mt-1">Choose one section, then update its title and entries.</p>
-                  </div>
-                  )
-                }
-
-              <button
-                type="button"
-                className="rounded-full border border-white/20 px-3 py-1 text-sm text-slate-200 transition hover:bg-white/10"
-                onClick={closeEditWorldbuildingModal}
-              >
-                Close
-              </button>
-            </div>
-
-            {/* world sections list */}
-            <div className="mt-2 space-y-3">
-              {/* list */}
-              {!selectedWorldSectionId && (
-                <div>
-                  <label className="text-xs font-semibold uppercase tracking-[0.22em] text-cyan-300/80">Choose Section</label>
-                  <div className="grid gap-2 sm:grid-cols-3">
-                    {worldbuildingSections.map((section) => (
-                      <button
-                        key={`edit-selector-${section.id}`}
-                        type="button"
-                        className="group rounded-2xl border border-white/15 bg-white/[0.03] px-3 py-2 text-left transition hover:border-cyan-400/40 hover:bg-white/[0.06]"
-                        onClick={() => selectWorldSectionForEdit(section.id)}
-                      >
-                        <span className="text-sm font-medium text-cyan-100 group-hover:text-cyan-200 line-clamp-1">{section.title}</span>
-                        <span className="block text-xs text-slate-400">{section.entries.length} entr{section.entries.length === 1 ? "y" : "ies"}</span>
-                      </button>
-                    ))}
-                  </div>
-                </div>
-              )}
-
-              {/* chosen section edit */}
-              {selectedWorldSectionId && (
-                <form onSubmit={saveEditedWorldbuildingSection} className="space-y-3">
-                  <div>
-                    <label className="text-xs font-semibold uppercase tracking-[0.22em] text-cyan-300/80">Section Title</label>
-                    <input
-                      type="text"
-                      className="mt-1 w-full rounded-2xl border border-cyan-400/30 bg-white/[0.03] px-3 py-2 text-slate-100 placeholder:text-slate-500 focus:border-cyan-300/70 focus:outline-none focus:ring-2 focus:ring-cyan-300/20"
-                      placeholder="ex: Economy, Politics, Religion..."
-                      value={editWorldSectionTitle}
-                      onChange={(e) => setEditWorldSectionTitle(e.target.value)}
-                      required
-                    />
-                  </div>
-
-                  <div className="space-y-2">
-                    <div className="flex items-center justify-between">
-                      <label className="text-xs font-semibold uppercase tracking-[0.22em] text-cyan-300/80">Entries (Label + Value)</label>
-                      <button
-                        type="button"
-                        className="rounded-full border border-cyan-400/30 bg-cyan-400/10 px-3 py-1 text-xs font-medium text-cyan-100 transition hover:bg-cyan-400/20 hover:shadow-[0_0_12px_rgba(34,211,238,0.3)]"
-                        onClick={addEditWorldDraftEntry}
-                      >
-                        <FontAwesomeIcon icon={faPlus} /> Add entry
-                      </button>
-                    </div>
-
-                    {editWorldDraftEntries.map((entry, index) => (
-                      <div key={`edit-draft-entry-${index}`} className="rounded-2xl border border-white/15 bg-white/[0.03] p-2.5 space-y-2">
-                        <div className="flex items-center justify-between">
-                          <span className="text-xs text-slate-400">Entry #{index + 1}</span>
-                          <button
-                            type="button"
-                            className="text-xs text-rose-300 transition hover:text-rose-200 disabled:opacity-40"
-                            onClick={() => removeEditWorldDraftEntry(index)}
-                            disabled={editWorldDraftEntries.length === 1}
-                          >
-                            Remove
-                          </button>
-                        </div>
-
-                        <input
-                          type="text"
-                          className="w-full rounded-xl border border-cyan-400/25 bg-white/[0.03] px-2 py-1 text-slate-100 placeholder:text-slate-500 focus:border-cyan-300/70 focus:outline-none"
-                          placeholder="Label (ex: Cost, Rule, Limitation)"
-                          value={entry.label}
-                          onChange={(e) => updateEditWorldDraftEntry(index, "label", e.target.value)}
-                        />
-                        <textarea
-                          rows={2}
-                          className="w-full rounded-xl border border-cyan-400/25 bg-white/[0.03] px-2 py-1 text-slate-100 placeholder:text-slate-500 focus:border-cyan-300/70 focus:outline-none"
-                          placeholder="Value / detail"
-                          value={entry.value}
-                          onChange={(e) => updateEditWorldDraftEntry(index, "value", e.target.value)}
-                        />
-                      </div>
-                    ))}
-                  </div>
-
-                  <div className="flex items-center justify-between gap-2 pt-1">
-                    <button
-                      type="button"
-                      className="rounded-full border border-rose-300/40 bg-rose-500/10 px-4 py-1.5 text-sm text-rose-200 transition hover:bg-rose-500/20"
-                      onClick={() => deleteWorldbuildingSection(selectedWorldSectionId)}
-                    >
-                      Delete Section
-                    </button>
-
-                    <div className="flex gap-2">
-                      <button
-                        type="button"
-                        className="rounded-full border border-white/20 px-4 py-1.5 text-sm text-slate-200 transition hover:bg-white/10"
-                        onClick={() => setSelectedWorldSectionId(null)}
-                      >
-                        Cancel
-                      </button>
-                      <button
-                        type="submit"
-                        className="rounded-full border border-cyan-400/30 bg-cyan-400/10 px-4 py-1.5 text-sm font-medium text-cyan-100 transition hover:bg-cyan-400/20 hover:shadow-[0_0_12px_rgba(34,211,238,0.3)]"
-                      >
-                        Save Changes
-                      </button>
-                    </div>
-                  </div>
-                </form>
-              )}
-            </div>
-          </div>
-        </div>
-      )}
-
       {/* world atlas slide bar */}
       {isWorldAtlasMounted && (
         <div
@@ -2705,13 +2548,13 @@ export default function ExperimentPage() {
             
             <div className="flex h-full flex-col overflow-hidden">
               <div className="border-b border-white/10 px-5 py-4">
-                <div className="flex items-start justify-between gap-3">
-                  <div>
-                    <p className="text-[11px] uppercase tracking-[0.45em] text-cyan-300/60">Archive of Worlds</p>
-                    <h2 className="mt-2 text-2xl font-semibold bg-gradient-to-r from-white via-cyan-100 to-slate-400 bg-clip-text text-transparent">
+                <div className="flex sm:items-start justify-between gap-3">
+                  <div className="">
+                    <p className="hidden sm:block text-[11px] uppercase tracking-[0.45em] text-cyan-300/60">Archive of Worlds</p>
+                    <h2 className="sm:mt-2 text-2xl font-semibold bg-gradient-to-r from-white via-cyan-100 to-slate-400 bg-clip-text text-transparent">
                       {currentBook?.title || "Your Story"} — Atlas
                     </h2>
-                    <p className="mt-2 max-w-2xl text-sm text-slate-300">
+                    <p className="hidden sm:block mt-2 max-w-2xl text-sm text-slate-300">
                       Reveal your setting like a guided discovery: regions, rules, legends, factions, religions, magic systems, and hidden truths.
                     </p>
                   </div>
@@ -2742,16 +2585,17 @@ export default function ExperimentPage() {
                       bg-cyan-400/10 px-3 py-1 text-xs font-medium text-cyan-100 
                       transition-all duration-300 
                       hover:bg-cyan-400/20 hover:shadow-[0_0_12px_rgba(34,211,238,0.4)]"
-                    onClick={openEditWorldbuildingModal}
+                    onClick={() => selectWorldSectionForEdit(activeWorldSectionId!)}
                     disabled={worldbuildingSections.length < 1}
+                    title="Edit selected section"
                   >
-                    <FontAwesomeIcon icon={faPen} /> Edit sections
+                    <FontAwesomeIcon icon={faPen} /> Edit section
                   </button>
                 </div>
               </div>
 
               {worldbuildingSections.length > 0 ? (
-                <div className="grid min-h-0 flex-1 lg:grid-cols-[0.6fr_1.4fr]">
+                <div className="grid min-h-0 flex-1 xxs:grid-cols-[0.6fr_1.4fr]">
                   <div className="overflow-y-auto border-b border-white/10 lg:border-b-0 lg:border-r notes-scroll">
                     <p className="p-2 text-xs uppercase tracking-[0.3em] text-slate-400">Lore paths</p>
                     <div className="">
@@ -2759,7 +2603,13 @@ export default function ExperimentPage() {
                         <button
                           key={`atlas-section-${section.id}`}
                           type="button"
-                          onClick={() => setActiveWorldSectionId(section.id)}
+                          onClick={() => {
+                            setActiveWorldSectionId(section.id); 
+                            if (showEditWorldbuildingModal) { 
+                              if(!section.id) return;
+                              selectWorldSectionForEdit(section.id);
+                            };
+                          }}
                           className={`group relative w-full border-y px-2 py-1 text-left transition-all duration-300
                             ${activeWorldSectionId === section.id
                                 ? "border-cyan-300/60 bg-gradient-to-br from-cyan-400/10 to-transparent shadow-[0_0_25px_rgba(34,211,238,0.15)]"
@@ -2933,6 +2783,123 @@ export default function ExperimentPage() {
               </div>
             </div>
           )}
+
+          {/* WORLD BUILDING EDIT MODAL */}
+          {showEditWorldbuildingModal && (
+            <div 
+              className="flex items-center w-full
+              
+              fixed inset-0 z-60 justify-center bg-slate-950/70 backdrop-blur-md
+              
+              xxs:static xxs:justify-start xxs:inset-auto xxs:z-0 xxs:bg-transparent backdrop-blur-none"
+            >
+              {/* title */}
+              <div className="w-full h-screen xxs:max-w-xl xxs:max-h-[95vh] overflow-y-auto rounded-3xl xxs:rounded-l-xs border border-cyan-400/20 bg-gradient-to-b from-[#020617] via-[#020617] to-[#0a1628] p-5 text-white shadow-[0_0_80px_rgba(34,211,238,0.12)] notes-scroll">
+
+                <div className="flex items-start justify-between gap-3 border-b border-white/10 pb-3">
+                  {selectedWorldSectionId && (
+                    <div>
+                      <h2 className="mt-1 text-lg font-semibold bg-gradient-to-r from-white via-cyan-100 to-slate-400 bg-clip-text text-transparent">Edit World Setting Section</h2>
+                      <p className="text-xs text-slate-300 mt-1">Choose one section, then update its title and entries.</p>
+                    </div>
+                  )}
+
+                  <button
+                    type="button"
+                    className="rounded-full border border-white/20 px-3 py-1 text-sm text-slate-200 transition hover:bg-white/10"
+                    onClick={closeEditWorldbuildingModal}
+                  >
+                    Close
+                  </button>
+                </div>
+              
+
+                {/* world sections list */}
+                <div className="mt-2 space-y-3">
+                  {/* chosen section edit */}
+                  {selectedWorldSectionId && (
+                    <form onSubmit={saveEditedWorldbuildingSection} className="space-y-3">
+                      <div>
+                        <label className="text-xs font-semibold uppercase tracking-[0.22em] text-cyan-300/80">Section Title</label>
+                        <input
+                          type="text"
+                          className="mt-1 w-full rounded-2xl border border-cyan-400/30 bg-white/[0.03] px-3 py-2 text-slate-100 placeholder:text-slate-500 focus:border-cyan-300/70 focus:outline-none focus:ring-2 focus:ring-cyan-300/20"
+                          placeholder="ex: Economy, Politics, Religion..."
+                          value={editWorldSectionTitle}
+                          onChange={(e) => setEditWorldSectionTitle(e.target.value)}
+                          required
+                        />
+                      </div>
+
+                      <div className="space-y-2">
+                        <div className="flex items-center justify-between">
+                          <label className="text-xs font-semibold uppercase tracking-[0.22em] text-cyan-300/80">Entries (Label + Value)</label>
+                          <button
+                            type="button"
+                            className="rounded-full border border-cyan-400/30 bg-cyan-400/10 px-3 py-1 text-xs font-medium text-cyan-100 transition hover:bg-cyan-400/20 hover:shadow-[0_0_12px_rgba(34,211,238,0.3)]"
+                            onClick={addEditWorldDraftEntry}
+                          >
+                            <FontAwesomeIcon icon={faPlus} /> Add entry
+                          </button>
+                        </div>
+
+                        {editWorldDraftEntries.map((entry, index) => (
+                          <div key={`edit-draft-entry-${index}`} className="rounded-2xl border border-white/15 bg-white/[0.03] p-2.5 space-y-2">
+                            <div className="flex items-center justify-between">
+                              <span className="text-xs text-slate-400">Entry #{index + 1}</span>
+                              <button
+                                type="button"
+                                className="text-xs text-rose-300 transition hover:text-rose-200 disabled:opacity-40"
+                                onClick={() => removeEditWorldDraftEntry(index)}
+                                disabled={editWorldDraftEntries.length === 1}
+                              >
+                                Remove
+                              </button>
+                            </div>
+
+                            <input
+                              type="text"
+                              className="w-full rounded-xl border border-cyan-400/25 bg-white/[0.03] px-2 py-1 text-slate-100 placeholder:text-slate-500 focus:border-cyan-300/70 focus:outline-none"
+                              placeholder="Label (ex: Cost, Rule, Limitation)"
+                              value={entry.label}
+                              onChange={(e) => updateEditWorldDraftEntry(index, "label", e.target.value)}
+                            />
+                            <textarea
+                              rows={2}
+                              className="w-full rounded-xl border border-cyan-400/25 bg-white/[0.03] px-2 py-1 text-slate-100 placeholder:text-slate-500 focus:border-cyan-300/70 focus:outline-none"
+                              placeholder="Value / detail"
+                              value={entry.value}
+                              onChange={(e) => updateEditWorldDraftEntry(index, "value", e.target.value)}
+                            />
+                          </div>
+                        ))}
+                      </div>
+
+                      <div className="flex items-center justify-between gap-2 pt-1">
+                        <button
+                          type="button"
+                          className="rounded-full border border-rose-300/40 bg-rose-500/10 px-4 py-1.5 text-sm text-rose-200 transition hover:bg-rose-500/20"
+                          onClick={() => deleteWorldbuildingSection(selectedWorldSectionId)}
+                        >
+                          Delete Section
+                        </button>
+
+                        <div className="flex gap-2">
+                          <button
+                            type="submit"
+                            className="rounded-full border border-cyan-400/30 bg-cyan-400/10 px-4 py-1.5 text-sm font-medium text-cyan-100 transition hover:bg-cyan-400/20 hover:shadow-[0_0_12px_rgba(34,211,238,0.3)]"
+                          >
+                            Save Changes
+                          </button>
+                        </div>
+                      </div>
+                    </form>
+                  )}
+                </div>
+              </div>
+            </div>
+          )}
+
         </div>
       )}
 
