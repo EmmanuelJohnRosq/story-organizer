@@ -492,7 +492,7 @@ export default function Header({ showGalaxy, onToggle }: HeaderProps) {
                 setSuccessGoogle(false);
                 setIsGoogleSaving(false);
                 setShowAccountSettings(false);
-            }, 2000);
+            }, 1500);
         } catch (err) {
             console.error(err);
             alert("Upload failed. Try to login again.");
@@ -506,6 +506,7 @@ export default function Header({ showGalaxy, onToggle }: HeaderProps) {
     const closeRestoreModal = () => {
         if (isRestoringBackup) return;
         setshowRestoreBackupModal(false);
+        document.body.classList.toggle('overflow-hidden', false);
         setRestoreStatus("idle");
         setRestoreStatusMessage("");
     };
@@ -570,6 +571,7 @@ export default function Header({ showGalaxy, onToggle }: HeaderProps) {
         setRestoreStatus("idle");
         setRestoreStatusMessage("");
         setshowRestoreBackupModal(true);
+        document.body.classList.toggle('overflow-hidden', true);
     }
 
     async function googleLogout() {
@@ -580,6 +582,8 @@ export default function Header({ showGalaxy, onToggle }: HeaderProps) {
         setGoogleUser(null);
         setShowAccountSettings(false);
         setDisplayExpiringAuth(false); // optional cleanup
+        setManualBackups([]);
+        setRestoreBackups([]);
         setTokenAccessStatus("missing"); // if you use this state
     }
 
@@ -1074,21 +1078,22 @@ export default function Header({ showGalaxy, onToggle }: HeaderProps) {
                     showModalFile(false);
                     }
                 }}>
-                <div className="w-9/10 min-w-0 md:max-w-120 mx-auto bg-white dark:bg-gray-100 max-h-[90vh] overflow-y-auto p-6 rounded-md shadow-lg" onMouseDown={(e) => e.stopPropagation()}>
-                    
+                <div className="w-9/10 min-w-0 md:max-w-120 mx-auto bg-white dark:bg-gray-900 max-h-[90vh] overflow-y-auto p-6 rounded-md shadow-lg" onMouseDown={(e) => e.stopPropagation()}>
+
                     {/* DOWNLOAD YOUR DATA as JSON */}
-                    <div className="flex justify-between">
-                    <div>
-                        <h2 className="text-x1 font-bold">SAVE YOUR BOOKS</h2>
-                        <p className="text-sm text-gray-500">From your impulsive actions, download your file now.</p>
-                    </div>
-                    <div className="px-2">
-                        <button
-                        onClick={exportData}
-                        className="border bg-blue-500 px-4 py-2 text-white rounded-md hover:border hover:border-blue-900"> 
-                        Export Books
-                        </button>
-                    </div>
+                    <div className="">
+                        <div>
+                            <h2 className="text-base font-bold text-gray-800 dark:text-gray-200">SAVE PROJECTS</h2>
+                            <p className="text-sm text-gray-400">From your impulsive actions, download your file now.</p>
+                        </div>
+                        <div className="mt-3">
+                            <button
+                                onClick={exportData}
+                                className="flex-1 px-4 py-2.5 w-full rounded font-medium transition-all bg-blue-600 text-white hover:bg-blue-700 shadow-md shadow-blue-500/20 dark:bg-blue-500 dark:hover:bg-blue-600 disabled:opacity-50 flex items-center justify-center gap-2"
+                            > 
+                            Download
+                            </button>
+                        </div>
                     </div>
 
                     {/* DIVIDER LINE OR */}
@@ -1098,8 +1103,16 @@ export default function Header({ showGalaxy, onToggle }: HeaderProps) {
                     <div className="flex-grow border-t border-gray-300"></div>
                     </div>
 
+                    {/* Submit */}
+                    <div className="flex justify-between">
+                        <div>
+                        <h2 className="text-base font-bold text-gray-800 dark:text-gray-200">EXTRICATE YOUR CHARACTERS</h2>
+                        <p className="text-sm text-gray-400">Importing saved files will overwrite the present data.</p>
+                        </div>
+                    </div>
+
                     {/* UPLOAD YOUR DOWNLOADED JSON FILE TO use in OTHER BROWSER */}
-                    <div className="flex items-center justify-center w-full">
+                    <div className="flex items-center justify-center w-full mt-2">
                         <div 
                         {...getRootProps()}
                         className={`flex flex-col items-center justify-center w-full h-35 bg-neutral-secondary-medium border border-dashed border-default-strong rounded-base cursor-pointer hover:bg-neutral-tertiary-medium ${isDragActive ? "border-blue-500 bg-blue-50" : "border-gray-300"}`}>
@@ -1118,7 +1131,7 @@ export default function Header({ showGalaxy, onToggle }: HeaderProps) {
                                 {selectedFile.name}
                                 </span>
                             ) : (
-                            <div className="flex flex-col items-center justify-center text-body pt-5 pb-6">
+                            <div className="flex flex-col items-center justify-center text-body pt-5 pb-6 text-gray-500 dark:text-gray-400">
                                 <svg className="w-8 h-8 mb-4" aria-hidden="true" xmlns="http://www.w3.org/2000/svg" width="24" height="24" fill="none" viewBox="0 0 24 24"><path stroke="currentColor" d="M15 17h3a3 3 0 0 0 0-6h-.025a5.56 5.56 0 0 0 .025-.5A5.5 5.5 0 0 0 7.207 9.021C7.137 9.017 7.071 9 7 9a4 4 0 1 0 0 8h2.167M12 19v-9m0 0-2 2m2-2 2 2"/></svg>
                                 <p className="mb-2 text-sm"><span className="font-semibold">Click to upload</span></p>
                                 <p className="text-xs">Exported file only, Json file.</p>
@@ -1127,21 +1140,14 @@ export default function Header({ showGalaxy, onToggle }: HeaderProps) {
                         </div>
                     </div> 
 
-                    {/* Submit */}
-                    <div className="flex justify-between mt-3">
-                        <div>
-                        <h2 className="text-x1 font-bold">EXTRICATE YOUR CHARACTERS</h2>
-                        <p className="text-sm text-gray-500">From your own chaotic life, upload data now.</p>
-                        </div>
-                        <div className="px-2">
+                    <div className="mt-3">
                         <button
-                            disabled={!selectedFile}
-                            onClick={() => importData(selectedFile!)}
-                            className="border bg-blue-500 px-4 py-2 text-white rounded-md hover:border hover:border-blue-900 disabled:opacity-40 disabled:cursor-not-allowed
-                            text-white"> 
+                                disabled={!selectedFile}
+                                onClick={() => importData(selectedFile!)}
+                                className="flex-1 px-4 py-2.5 w-full rounded font-medium transition-all bg-blue-600 text-white hover:bg-blue-700 shadow-md shadow-blue-500/20 dark:bg-blue-500 dark:hover:bg-blue-600 disabled:opacity-50 flex items-center justify-center gap-2"
+                            > 
                             Import Books
                         </button>
-                        </div>
                     </div>
                 </div>
                 </div>
@@ -1155,67 +1161,79 @@ export default function Header({ showGalaxy, onToggle }: HeaderProps) {
                     if (isGoogleSaving === true) return;
                     if (e.target === e.currentTarget) {
                         setShowGoogleSaveModal(false);
+                        document.body.classList.toggle('overflow-hidden', false);
                     }
                 }}
             >
                 <div 
-                    className="w-9/10 min-w-0 md:max-w-120 mx-auto bg-white dark:bg-gray-100 max-h-[90vh] overflow-y-auto p-4 rounded-md shadow-lg" onMouseDown={(e) => e.stopPropagation()}
+                    className="w-9/10 min-w-0 md:max-w-120 mx-auto bg-white dark:bg-gray-900 max-h-[90vh] overflow-y-auto p-4 rounded-md shadow-lg" onMouseDown={(e) => e.stopPropagation()}
                 >
-                    <h2 className="text-2xl font-bold">Backup data in Google Drive</h2>
-                    <p className="text-base text-gray-500">
-                        {googleUser.email} 
-                    </p>
-                    <p className="text-xl text-black text-center">
-                        Manual backup slots in Google Drive
-                    </p>
-                    <p className="text-sm text-center text-gray-500 pt-1">
-                        {manualBackupCountLabel}
-                    </p>
+                     {/* Header Section */}
+                    <div className="p-1 pb-3 border-b border-gray-100 dark:border-gray-800">
+                        <div className="flex justify-between">
+                            <h2 className="text-xl font-bold text-gray-800 dark:text-white">Backup to Google Drive</h2>
 
-                    {!successGoogle && !isGoogleSaving && manualBackups.length >= 3 && (
-                    <>
-                        <p className="text-lg text-gray-600 px-5 pt-3">
-                            It is detected that you have 3 manual backups saved.
-                            <br/>
-                            When you upload next time, the oldest manual backup is deleted automatically.
-                        </p>
-                    </>
-                    )}
+                            <button
+                                type="button"
+                                className="px-2 py-1 rounded border border-gray-400 dark:text-gray-400 hover:bg-gray-200 dark:hover:bg-gray-700"
+                                onClick={() => !isGoogleSaving && showSaveGoogleModal(false)}
+                            >
+                            Close
+                            </button>
+                        </div>
+                        
+                        <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">{googleUser.email}</p>
+                    </div>
 
-                    {!successGoogle && (
-                        <div className="">
-                            {errorGoogle && (
-                            <div className="mb-3 text-sm text-red-600 bg-red-50 p-2 rounded-lg">
+                    <div className="p-3 space-y-4">
+                        {/* Status Card */}
+                        {!successGoogle && (
+                            <div className="bg-blue-50/50 dark:bg-blue-900/10 rounded-lg p-4 text-center border border-blue-100 dark:border-blue-900/30">
+                                <p className="text-sm font-medium text-blue-800 dark:text-blue-300 uppercase tracking-wider">
+                                    Manual Backup Slots
+                                </p>
+                                <p className="text-3xl font-bold text-blue-600 dark:text-blue-400 mt-1">
+                                    {manualBackupCountLabel}
+                                </p>
+                            </div>
+                        )}
+
+                        {/* Warning/Info Alert */}
+                        {!successGoogle && manualBackups.length >= 3 && (
+                            <div className="flex gap-3 text-sm text-blue-800 dark:text-blue-200 bg-indigo-50 dark:bg-indigo-900/20 p-4 rounded-lg border border-indigo-100 dark:border-indigo-800">
+                                <span className="shrink-0 flex items-center text-blue-400">⚠︎</span>
+                                <p>Oldest manual backup will be replaced and deleted after uploading.</p>
+                            </div>
+                        )}
+
+                        {/* Error Handling */}
+                        {!successGoogle && errorGoogle && (
+                            <div className="text-sm text-red-600 bg-red-50 dark:bg-red-900/20 p-3 rounded-lg border border-red-100 dark:border-red-900/30">
                                 {errorGoogle}
                             </div>
-                            )}
-                        
-                            <div className="flex justify-center gap-5 pt-5 px-3">
-                                <button
-                                    className="px-3 py-2 rounded-lg bg-red-400 w-full hover:bg-red-500 text-semibold"
-                                    onClick={() => !isGoogleSaving && showSaveGoogleModal(false)}
-                                    disabled={isGoogleSaving}
-                                >
-                                Cancel
-                                </button>
+                        )}
+
+                        {/* Actions */}
+                        {!successGoogle && (
+                            <div className="flex gap-3 pt-2">
 
                                 <button
-                                    className="px-3 py-2 rounded-lg bg-emerald-400 w-full hover:bg-emerald-500 text-semibold"
+                                    className="flex-1 px-4 py-2.5 rounded font-medium transition-all bg-blue-600 text-white hover:bg-blue-700 shadow-md shadow-blue-500/20 dark:bg-blue-500 dark:hover:bg-blue-600 disabled:opacity-50 flex items-center justify-center gap-2"
                                     onClick={() => backupData()}
                                     disabled={isGoogleSaving}   
                                 >
-                                {isGoogleSaving ? (
-                                    <>
-                                    <span> <FontAwesomeIcon icon={faSpinner} size="xl" spin /></span>
-                                    Saving...
-                                    </>
-                                ) : (
-                                    "Confirm"
-                                )}
+                                    {isGoogleSaving ? (
+                                        <>
+                                            <FontAwesomeIcon icon={faSpinner} spin />
+                                            <span>Uploading...</span>
+                                        </>
+                                    ) : (
+                                        "Backup Now"
+                                    )}
                                 </button>
                             </div>
-                        </div>
-                    )}
+                        )}
+                    </div>
 
                     {/* Success Animation */}
                     {successGoogle && (
@@ -1258,7 +1276,7 @@ export default function Header({ showGalaxy, onToggle }: HeaderProps) {
 
                     <div className="space-y-4 px-2 py-2 rounded">
                         <div className="flex justify-between">
-                            <p className="text-xs text-blue-700 dark:text-blue-200">Restore one of your Google Drive backups.</p>
+                            <p className="text-xl font-semibold text-gray-800 dark:text-white">Restore one of your Google Drive backups.</p>
 
                             <button
                                 type="button"
@@ -1268,6 +1286,7 @@ export default function Header({ showGalaxy, onToggle }: HeaderProps) {
                             Close
                             </button>
                         </div>
+
                         <select
                             value={selectedBackupId}
                             onChange={(e) => setSelectedBackupId(e.target.value)}
@@ -1330,7 +1349,7 @@ export default function Header({ showGalaxy, onToggle }: HeaderProps) {
                                 onClick={() => handleRestoreFromDrive()}
                                 title="Restore backup data from google drive save"
                                 disabled={!selectedBackupId || isRestoringBackup || restoreStatus === "success"}
-                                className="items-end px-3 py-2 rounded hover:bg-blue-300 bg-blue-500 text-white disabled:cursor-not-allowed disabled:opacity-60 dark:bg-blue-400"
+                                className="items-end px-4 py-2.5 rounded font-medium transition-all bg-blue-600 text-white hover:bg-blue-700 shadow-md shadow-blue-500/20 dark:bg-blue-500 dark:hover:bg-blue-600 disabled:opacity-50"
                             >
                                 {isRestoringBackup ? (
                                     <>

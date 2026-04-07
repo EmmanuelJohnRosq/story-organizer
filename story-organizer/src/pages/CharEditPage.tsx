@@ -1361,7 +1361,7 @@ export default function CharEditPage() {
                 <TimeCard label="System Entry" date={formatDate(editingCharacter.createdAt)} type="created" />
               </div>
               <div className="flex flex-col gap-1">
-                <TimeCard label="Last Synced" date={getRelativeTime(editingCharacter.updatedAt)} type="modified" />
+                <TimeCard label="Last Updated" date={getRelativeTime(editingCharacter.updatedAt)} type="modified" />
               </div>
             </div>
           </div>
