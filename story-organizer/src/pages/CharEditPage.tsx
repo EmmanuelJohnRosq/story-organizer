@@ -2,7 +2,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { useLocation, useNavigate, useParams } from "react-router-dom";
 import { db, type Book, type Character, type CharacterDescription, type CharImage, type Notes, type WorldbuildingEntry, type WorldbuildingSection } from "../db";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
-import { faArrowLeft, faArrowRight, faCircle, faEdit, faEye, faFile, faFileLines, faGlobe, faHouse, faImages, faMinus, faPen, faPlus, faProjectDiagram, faTableColumns, faToggleOff, faToggleOn, faWandMagicSparkles, faX } from "@fortawesome/free-solid-svg-icons";
+import { faArrowLeft, faArrowRight, faCheck, faCircle, faEdit, faGlobe, faHouse, faImages, faMinus, faNoteSticky, faPen, faPlus, faToggleOff, faToggleOn } from "@fortawesome/free-solid-svg-icons";
 import { createPortal } from "react-dom";
 import type { EditableNote } from "../components/NotesCollection";
 import NotesCollection from "../components/NotesCollection";
@@ -190,7 +190,7 @@ export default function CharEditPage() {
   const [editWorldDraftEntries, setEditWorldDraftEntries] = useState<WorldbuildingEntry[]>([{ label: "", value: "" }]);
   const [activeWorldSectionId, setActiveWorldSectionId] = useState<string | null>(null);
 
-  const [openWorldSections, setOpenWorldSections] = useState<Record<string, boolean>>({});
+  const [_openWorldSections, setOpenWorldSections] = useState<Record<string, boolean>>({});
 
   useEffect(() => {
     const loadData = async () => {
@@ -1181,10 +1181,6 @@ export default function CharEditPage() {
     }
   };
 
-  const toggleWorldSection = (sectionId: string) => {
-    setOpenWorldSections(prev => ({ ...prev, [sectionId]: !prev[sectionId] }));
-  };
-
   // navbar pass actions and logic
   const navbarActions: NavbarAction[] = [
     {
@@ -1202,6 +1198,13 @@ export default function CharEditPage() {
       title: "Switch edit mode",
     },
     {
+      id: "open-notes",
+      label: "Notes",
+      icon: faNoteSticky,
+      onClick: displayNotes,
+      title: "Open notes",
+    },
+    {
       id: "world-building",
       label: "World",
       icon: faGlobe,
@@ -1209,38 +1212,38 @@ export default function CharEditPage() {
       isActive: showWorldAtlas,
       title: "Open world atlas",
     },
-    {
-      id: "dashboard",
-      label: "Dashboard",
-      icon: faTableColumns,
-      onClick: () => window.alert("Currently, in development..."),
-      badge: "Soon",
-      title: "Dashboard",
-    },
-    {
-      id: "ai-assist",
-      label: "AI",
-      icon: faWandMagicSparkles,
-      onClick: () => window.alert("Currently, in development..."),
-      badge: "Soon",
-      title: "AI-assist",
-    },
-    {
-      id: "character-graph",
-      label: "Graph",
-      icon: faProjectDiagram,
-      onClick: () => window.alert("Currently, in development..."),
-      badge: "Soon",
-      title: "Characters map graph",
-    },
-    {
-      id: "chapter-prep",
-      label: "Prepare",
-      icon: faFileLines,
-      onClick: () => window.alert("Currently, in development..."),
-      badge: "Soon",
-      title: "Chapter Preparation workspace",
-    },
+    // {
+    //   id: "dashboard",
+    //   label: "Dashboard",
+    //   icon: faTableColumns,
+    //   onClick: () => window.alert("Currently, in development..."),
+    //   badge: "Soon",
+    //   title: "Dashboard",
+    // },
+    // {
+    //   id: "ai-assist",
+    //   label: "AI",
+    //   icon: faWandMagicSparkles,
+    //   onClick: () => window.alert("Currently, in development..."),
+    //   badge: "Soon",
+    //   title: "AI-assist",
+    // },
+    // {
+    //   id: "character-graph",
+    //   label: "Graph",
+    //   icon: faProjectDiagram,
+    //   onClick: () => window.alert("Currently, in development..."),
+    //   badge: "Soon",
+    //   title: "Characters map graph",
+    // },
+    // {
+    //   id: "chapter-prep",
+    //   label: "Prepare",
+    //   icon: faFileLines,
+    //   onClick: () => window.alert("Currently, in development..."),
+    //   badge: "Soon",
+    //   title: "Chapter Preparation workspace",
+    // },
   ];
 
   function toogleEditMode() {
@@ -1393,8 +1396,8 @@ export default function CharEditPage() {
           <div className="rounded-xl border border-gray-200 bg-white p-4 shadow-sm dark:border-gray-700 dark:bg-gray-900">
             {activeTab === "profile" && (
               <div className="grid gap-3 md:grid-cols-2">
-                <label className="space-y-1 text-sm"><span className="font-medium text-gray-600 dark:text-gray-500">Role</span><input className="w-full rounded-lg border p-2 dark:bg-gray-800 disabled:opacity-80" placeholder="Role" value={editingCharacter.role} disabled={!isEditMode} onChange={(e) => setEditingCharacter({ ...editingCharacter, role: e.target.value })} /></label>
                 <label className="space-y-1 text-sm"><span className="font-medium text-gray-600 dark:text-gray-500">Name</span><input className="w-full rounded-lg border p-2 dark:bg-gray-800 disabled:opacity-80" placeholder="Name" value={editingCharacter.name} disabled={!isEditMode} onChange={(e) => setEditingCharacter({ ...editingCharacter, name: e.target.value })} /></label>
+                <label className="space-y-1 text-sm"><span className="font-medium text-gray-600 dark:text-gray-500">Role</span><input className="w-full rounded-lg border p-2 dark:bg-gray-800 disabled:opacity-80" placeholder="Role" value={editingCharacter.role} disabled={!isEditMode} onChange={(e) => setEditingCharacter({ ...editingCharacter, role: e.target.value })} /></label>
                 <label className="space-y-1 text-sm"><span className="font-medium text-gray-600 dark:text-gray-500">Status</span><input className="w-full rounded-lg border p-2 dark:bg-gray-800 disabled:opacity-80" placeholder="Status" value={editingCharacter.status} disabled={!isEditMode} onChange={(e) => setEditingCharacter({ ...editingCharacter, status: e.target.value })} /></label>
                 <label className="space-y-1 text-sm"><span className="font-medium text-gray-600 dark:text-gray-500">Importance</span><input className="w-full rounded-lg border p-2 dark:bg-gray-800 disabled:opacity-80" placeholder="Importance" value={editingCharacter.importance} disabled={!isEditMode} onChange={(e) => setEditingCharacter({ ...editingCharacter, importance: e.target.value })} /></label>
                 <label className="space-y-1 text-sm"><span className="font-medium text-gray-600 dark:text-gray-500">Occupation</span><input className="w-full rounded-lg border p-2 dark:bg-gray-800 disabled:opacity-80" placeholder="Occupation" value={editingCharacter.occupation} disabled={!isEditMode} onChange={(e) => setEditingCharacter({ ...editingCharacter, occupation: e.target.value })} /></label>
@@ -1873,7 +1876,7 @@ export default function CharEditPage() {
               ref={notesFabRef}
               onClick={displayNotes}
               className={`
-                fixed bottom-5 right-5 z-50
+                fixed bottom-5 right-5 xxs:z-50 hidden xxs:block
                 border border-gray-200 bg-gradient-to-br from-blue-600 to-cyan-500
                 hover:border-gray-100 hover:from-blue-600/80 hover:to-cyan-400
                 text-white rounded-full
@@ -2151,7 +2154,7 @@ export default function CharEditPage() {
               xxs:static xxs:justify-start xxs:inset-auto xxs:z-0 xxs:bg-transparent backdrop-blur-none
               " 
             >
-              <div className="w-full max-w-lg max-h-[90vh] overflow-y-auto rounded-3xl xxs:rounded-l-xs border border-cyan-400/20 bg-gradient-to-b from-[#020617] via-[#020617] to-[#0a1628] p-5 text-white shadow-[0_0_80px_rgba(34,211,238,0.12)] notes-scroll" onMouseDown={(e) => e.stopPropagation()}>
+              <div className="w-full max-w-lg h-screen overflow-y-auto rounded-3xl xxs:rounded-l-xs border border-cyan-400/20 bg-gradient-to-b from-[#020617] via-[#020617] to-[#0a1628] p-5 text-white shadow-[0_0_80px_rgba(34,211,238,0.12)] notes-scroll" onMouseDown={(e) => e.stopPropagation()}>
                 <div className="flex items-start justify-between gap-3 border-b border-white/10 pb-3">
                   <div>
                     <h2 className="mt-1 text-lg font-semibold bg-gradient-to-r from-white via-cyan-100 to-slate-400 bg-clip-text text-transparent">Add Worldbuilding Section</h2>
@@ -2246,7 +2249,7 @@ export default function CharEditPage() {
               xxs:static xxs:justify-start xxs:inset-auto xxs:z-0 xxs:bg-transparent backdrop-blur-none"
             >
               {/* title */}
-              <div className="w-full h-screen xxs:max-w-xl xxs:max-h-[95vh] overflow-y-auto rounded-3xl xxs:rounded-l-xs border border-cyan-400/20 bg-gradient-to-b from-[#020617] via-[#020617] to-[#0a1628] p-5 text-white shadow-[0_0_80px_rgba(34,211,238,0.12)] notes-scroll">
+              <div className="w-full h-screen xxs:max-w-xl overflow-y-auto rounded-3xl xxs:rounded-l-xs border border-cyan-400/20 bg-gradient-to-b from-[#020617] via-[#020617] to-[#0a1628] p-5 text-white shadow-[0_0_80px_rgba(34,211,238,0.12)] notes-scroll">
 
                 <div className="flex items-start justify-between gap-3 border-b border-white/10 pb-3">
                   {selectedWorldSectionId && (
@@ -2353,6 +2356,38 @@ export default function CharEditPage() {
           )}
 
         </div>
+      )}
+
+      {/* CHANGES SAVED POPUP */}
+      {showStatePopup && (
+      <div className="fixed z-100 top-14 left-1/2 bg-gray-800 py-1 px-5 transform -translate-x-1/2 rounded shadow-lg flex justify-center space-x-4 animate-fadeDown">
+          <span>
+          {alert}
+          <FontAwesomeIcon className="text-green-500" size="lg" icon={faCheck}/>
+          </span>
+      </div>
+      )}
+
+      {/* Undo Popup */}
+      {showUndoPopup && (
+          <div className="fixed z-100 top-14 left-1/2 bg-gray-800 py-4 px-8 transform -translate-x-1/2 rounded shadow-lg flex justify-center space-x-4 animate-fadeDown">
+          <span>Deleted</span>
+          <button 
+              className="bg-blue-500 hover:bg-blue-400 px-3 py-1 rounded text-sm font-semibold flex"
+              onClick={handleUndo}
+              >
+              <svg
+              xmlns="http://www.w3.org/2000/svg"
+              fill="none"
+              viewBox="0 0 24 24"
+              strokeWidth={2}
+              stroke="currentColor"
+              className="w-4 h-5"
+              >
+              <path d="M9 15L3 9m0 0l6-6M3 9h12a6 6 0 010 12h-3" />
+              </svg> Undo
+          </button>
+          </div>
       )}
     </div>
   );

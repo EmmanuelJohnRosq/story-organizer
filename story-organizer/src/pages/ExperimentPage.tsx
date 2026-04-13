@@ -6,7 +6,7 @@ import Navbar, { type NavbarAction } from "../components/Navbar";
 import { db, type Book, type Character, type EditableCharacter, type Notes, type CharacterDescription, type CharImage, type WorldbuildingSection, type WorldbuildingEntry } from "../db";
 
 import { FontAwesomeIcon} from "@fortawesome/react-fontawesome";
-import { faCheck, faPlus, faMinus, faEllipsis, faUserPlus, faTableColumns, faWandMagicSparkles, faProjectDiagram, faGlobe, faPenToSquare, faFileLines, faHouse, faStar, faPen, faArrowLeft, faUpload } from "@fortawesome/free-solid-svg-icons";
+import { faCheck, faPlus, faMinus, faEllipsis, faUserPlus, faGlobe, faPenToSquare, faHouse, faStar, faPen, faArrowLeft, faUpload, faNoteSticky } from "@fortawesome/free-solid-svg-icons";
 import { createPortal } from "react-dom";
 import Cropper, { type Area, type Point } from "react-easy-crop";
 
@@ -52,20 +52,18 @@ export default function ExperimentPage() {
     const [currentBook, setCurrentBook] = useState<Book | null>(null);
   
     // Constant Variable
-    const [showAddCharacter, setShowAddCharacter] = useState(true);
+    const [_showAddCharacter, setShowAddCharacter] = useState(true);
   
     // CHARACTER DATA
-    const [selectedCharacter, setSelectedCharacter] = useState<number | null>(null);
-    const [editingCharacter, setEditingCharacter] = useState<EditableCharacter | null>(null);
-    const [originalCharacter, setOriginalCharacter] = useState<Character | null>(null);
+    const [selectedCharacter, _setSelectedCharacter] = useState<number | null>(null);
+    const [_editingCharacter, setEditingCharacter] = useState<EditableCharacter | null>(null);
+    const [_originalCharacter, setOriginalCharacter] = useState<Character | null>(null);
   
     // CHARACTER IMAGE GENERATION w/ PUTER.js
     const [imageMap, setImageMap] = useState<Record<string, CharImage[]>>({});
   
     // EDITING OF BOOK TITLE
     const [titleDraft, setTitleDraft] = useState("");
-    const [savedTitle, setSavedTitle] = useState(false);
-    const [titleEditing, settitleEditing] = useState(false);
   
     // BOOK DETAILS
     const [bookSummary, setBookSummary] = useState("");
@@ -218,7 +216,7 @@ export default function ExperimentPage() {
     const [name, setName] = useState("");
     const [role, setRole] = useState("");
     const [notes, setNotes] = useState("");
-    const [abilities, setAbilities] = useState("");
+    const [_abilities, setAbilities] = useState("");
     const [race, setRace] = useState("");
     const [status, setStatus] = useState("");
     const [chapterAppearance, setChapterAppearance] = useState("");
@@ -236,7 +234,7 @@ export default function ExperimentPage() {
     const [charTitles, setCharTitles] = useState<string[]>([]); // input as string -> array on save
     const [charPersonalityTraits, setCharPersonalityTraits] = useState<string[]>([]);
     const [charTags, setCharTags] = useState<string[]>([]);
-    const [charSetRace, setCharSetRace] = useState<string[]>([]);
+    const [_charSetRace, setCharSetRace] = useState<string[]>([]);
     const [charChapterAppearances, setCharChapterAppearances] = useState<string[]>([]);
 
   const [charAbilities, setCharAbilities] = useState<
@@ -334,14 +332,6 @@ export default function ExperimentPage() {
       navigate("/");
 
     }
-  
-    // The main function that accepts a string and returns a processed array
-    const stringToArray = (inputString: string) => {
-      if (typeof inputString !== 'string') {
-        return [];
-      }
-      return inputString.split(",").map(a => normalizeWhitespace(a));
-    };
 
     const toggleBookArrayValue = (
       value: string,
@@ -1349,6 +1339,13 @@ export default function ExperimentPage() {
         title: "Edit book content",
       },
       {
+        id: "open-notes",
+        label: "Notes",
+        icon: faNoteSticky,
+        onClick: displayNotes,
+        title: "Open notes",
+      },
+      {
         id: "world-building",
         label: "World",
         icon: faGlobe,
@@ -1356,38 +1353,38 @@ export default function ExperimentPage() {
         isActive: showWorldAtlas,
         title: "Open world atlas",
       },
-      {
-        id: "dashboard",
-        label: "Dashboard",
-        icon: faTableColumns,
-        onClick: () => alert("Currently, in development..."),
-        badge: "Soon",
-        title: "Dashboard",
-      },
-      {
-        id: "ai-assist",
-        label: "AI",
-        icon: faWandMagicSparkles,
-        onClick: () => alert("Currently, in development..."),
-        badge: "Soon",
-        title: "AI-assist",
-      },
-      {
-        id: "character-graph",
-        label: "Graph",
-        icon: faProjectDiagram,
-        onClick: () => alert("Currently, in development..."),
-        badge: "Soon",
-        title: "Characters map graph",
-      },
-      {
-        id: "chapter-prep",
-        label: "Prepare",
-        icon: faFileLines,
-        onClick: () => alert("Currently, in development..."),
-        badge: "Soon",
-        title: "Chapter Preparation workspace",
-      },
+      // {
+      //   id: "dashboard",
+      //   label: "Dashboard",
+      //   icon: faTableColumns,
+      //   onClick: () => alert("Currently, in development..."),
+      //   badge: "Soon",
+      //   title: "Dashboard",
+      // },
+      // {
+      //   id: "ai-assist",
+      //   label: "AI",
+      //   icon: faWandMagicSparkles,
+      //   onClick: () => alert("Currently, in development..."),
+      //   badge: "Soon",
+      //   title: "AI-assist",
+      // },
+      // {
+      //   id: "character-graph",
+      //   label: "Graph",
+      //   icon: faProjectDiagram,
+      //   onClick: () => alert("Currently, in development..."),
+      //   badge: "Soon",
+      //   title: "Characters map graph",
+      // },
+      // {
+      //   id: "chapter-prep",
+      //   label: "Prepare",
+      //   icon: faFileLines,
+      //   onClick: () => alert("Currently, in development..."),
+      //   badge: "Soon",
+      //   title: "Chapter Preparation workspace",
+      // },
     ];
 
     useEffect(() => {
@@ -2378,7 +2375,7 @@ export default function ExperimentPage() {
       {/* MODALS */}
       {/* Undo Popup */}
       {showUndoPopup && (
-          <div className="fixed top-14 left-1/2 bg-gray-300 py-4 px-8 transform -translate-x-1/2 rounded shadow-lg flex justify-center space-x-4 animate-fadeDown">
+          <div className="fixed z-100 top-14 left-1/2 bg-gray-800 py-4 px-8 transform -translate-x-1/2 rounded shadow-lg flex justify-center space-x-4 animate-fadeDown">
           <span>Deleted</span>
           <button 
               className="bg-blue-500 hover:bg-blue-400 px-3 py-1 rounded text-sm font-semibold flex"
@@ -2398,9 +2395,9 @@ export default function ExperimentPage() {
           </div>
       )}
 
-      {/* CHANGES SAVED POPUP */} 
+      {/* CHANGES SAVED POPUP */}
       {showStatePopup && (
-      <div className="fixed top-14 z-50 left-1/2 bg-gray-300 py-1 px-5 transform -translate-x-1/2 rounded shadow-lg flex justify-center space-x-4 animate-fadeDown">
+      <div className="fixed z-100 top-14 left-1/2 bg-gray-800 py-1 px-5 transform -translate-x-1/2 rounded shadow-lg flex justify-center space-x-4 animate-fadeDown">
           <span>
           {alertMessage}
           <FontAwesomeIcon className="text-green-500" size="lg" icon={faCheck}/>
@@ -2416,7 +2413,7 @@ export default function ExperimentPage() {
             ref={notesFabRef}
             onClick={displayNotes}
             className={`
-              fixed bottom-5 right-5 z-50
+              fixed bottom-5 right-5 xxs:z-50 hidden xxs:block
               border border-gray-200 bg-gradient-to-br from-blue-600 to-cyan-500
               hover:border-gray-100 hover:from-blue-600/80 hover:to-cyan-400
               text-white rounded-full
@@ -2699,7 +2696,7 @@ export default function ExperimentPage() {
               xxs:static xxs:justify-start xxs:inset-auto xxs:z-0 xxs:bg-transparent backdrop-blur-none
               " 
             >
-              <div className="w-full max-w-lg max-h-[90vh] overflow-y-auto rounded-3xl xxs:rounded-l-xs border border-cyan-400/20 bg-gradient-to-b from-[#020617] via-[#020617] to-[#0a1628] p-5 text-white shadow-[0_0_80px_rgba(34,211,238,0.12)] notes-scroll" onMouseDown={(e) => e.stopPropagation()}>
+              <div className="w-full max-w-lg h-full overflow-y-auto rounded-3xl xxs:rounded-l-xs border border-cyan-400/20 bg-gradient-to-b from-[#020617] via-[#020617] to-[#0a1628] p-5 text-white shadow-[0_0_80px_rgba(34,211,238,0.12)] notes-scroll" onMouseDown={(e) => e.stopPropagation()}>
                 <div className="flex items-start justify-between gap-3 border-b border-white/10 pb-3">
                   <div>
                     <h2 className="mt-1 text-lg font-semibold bg-gradient-to-r from-white via-cyan-100 to-slate-400 bg-clip-text text-transparent">Add Worldbuilding Section</h2>

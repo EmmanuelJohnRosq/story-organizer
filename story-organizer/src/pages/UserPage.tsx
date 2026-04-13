@@ -673,7 +673,6 @@ export default function UserPage() {
     const titleRef = useRef<HTMLInputElement>(null);
 
     const ongoingBooks = books.filter(book => book.status === "ongoing").length;
-    const totalChapters = books.reduce((sum, book) => sum + (book.chapterCount ?? 0), 0);
     const latestBook = [...books].sort((a, b) => b.createdAt - a.createdAt)[0] ?? null;
 
     // SCROLL BEHAVIOR AFTER opening create book form
@@ -1247,7 +1246,7 @@ export default function UserPage() {
             
             {/* Undo Popup */}
             {showUndoPopup && (
-                <div className="fixed top-14 left-1/2 bg-gray-300 py-4 px-8 transform -translate-x-1/2 rounded shadow-lg flex justify-center space-x-4 animate-fadeDown">
+                <div className="fixed z-100 top-14 left-1/2 bg-gray-800 py-4 px-8 transform -translate-x-1/2 rounded shadow-lg flex justify-center space-x-4 animate-fadeDown">
                 <span>Deleted</span>
                 <button 
                     className="bg-blue-500 hover:bg-blue-400 px-3 py-1 rounded text-sm font-semibold flex"
@@ -1269,7 +1268,7 @@ export default function UserPage() {
     
             {/* CHANGES SAVED POPUP */}
             {showStatePopup && (
-            <div className="fixed top-14 left-1/2 bg-gray-300 py-1 px-5 transform -translate-x-1/2 rounded shadow-lg flex justify-center space-x-4 animate-fadeDown">
+            <div className="fixed z-100 top-14 left-1/2 bg-gray-800 py-1 px-5 transform -translate-x-1/2 rounded shadow-lg flex justify-center space-x-4 animate-fadeDown">
                 <span>
                 {alertMessage}
                 <FontAwesomeIcon className="text-green-500" size="lg" icon={faCheck}/>

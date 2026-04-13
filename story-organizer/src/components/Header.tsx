@@ -1,5 +1,5 @@
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
-import { faFileImport, faCircleUser, faUpload, faSpinner, faDownload, faArrowLeft, faUser, faAngleRight, faLink, faX, faGears, faGear, faPanorama, faExplosion, faBomb, faRotate } from "@fortawesome/free-solid-svg-icons";
+import { faFileImport, faCircleUser, faUpload, faSpinner, faDownload, faArrowLeft, faUser, faAngleRight, faLink, faX, faGear, faPanorama, faBomb, faRotate } from "@fortawesome/free-solid-svg-icons";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { db } from "../db";
 import { useNavigate, useParams, useLocation } from "react-router-dom";
