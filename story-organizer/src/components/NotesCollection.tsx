@@ -1,6 +1,6 @@
 import { useEffect, useRef, type FormEvent } from "react";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
-import { faPlus, faStar } from "@fortawesome/free-solid-svg-icons";
+import { faStar } from "@fortawesome/free-solid-svg-icons";
 import type { Notes } from "../db";
 
 export type EditableNote = Notes & { isDraft?: boolean };

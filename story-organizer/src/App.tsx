@@ -1,13 +1,12 @@
 import { Routes, Route, useLocation } from "react-router-dom";
 import Layout from "./components/Layout";
 
-import UserPage from "./pages/UserPage";
-import ExperimentPage from "./pages/ExperimentPage";
+import UserPage from "./pages/Library";
+import ExperimentPage from "./pages/BookPage";
 import { useEffect, useState } from "react";
 
 import { useGoogleAuth} from "./context/GoogleAuthContext";
-import CharEditPage from "./pages/CharEditPage";
-import CharacterPageCopy from "./pages/CharacterPageCopy";
+import CharEditPage from "./pages/CharacterPage";
 import LoadingScreen from "./components/LoadingScreen";
 
 export default function StoryOrganizer() {
@@ -61,10 +60,6 @@ if (showLoadingScreen) {
         <Route
           path="book/:currentBookId/:characterSlug"
           element={<CharEditPage />}
-        />
-        <Route
-          path="book/:currentBookId/:characterSlug/copy"
-          element={<CharacterPageCopy />}
         />
       </Route>
     </Routes>

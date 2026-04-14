@@ -1,13 +1,16 @@
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, type FormEvent } from "react";
 import { useNavigate } from "react-router-dom";
 
 import { db, type Book, type Notes, type Character } from "../db";
 
 import { FontAwesomeIcon} from "@fortawesome/react-fontawesome";
-import { faPlus, faMinus, faTrashCan} from "@fortawesome/free-solid-svg-icons";
+import { faPlus, faMinus, faTrashCan, faWandMagicSparkles, faBookOpen, faImages, faPenNib, faUpload } from "@fortawesome/free-solid-svg-icons";
 import { faCheck } from "@fortawesome/free-solid-svg-icons/faCheck";
 import NotesCollection, { type EditableNote } from "../components/NotesCollection";
 import { createPortal } from "react-dom";
+
+import Cropper, { type Area, type Point } from "react-easy-crop";
+import getCroppedImg from "../components/cropImage";
 
 export default function UserPage() {
     // FUNCTIONS AND LOGIC OF USER PAGE
@@ -17,7 +20,6 @@ export default function UserPage() {
     const [draggingId, setDraggingId] = useState<string | null>(null);
 
     // BOOK DETAILS INITIALIZE
-    const [bookAdded, setBookAdded] = useState(false);
     const [bookTitle, setBookTitle] = useState("");
     const [bookSummary, setBookSummary] = useState("");
     const [bookVolume, setBookVolume] = useState<string>("0");
@@ -32,6 +34,9 @@ export default function UserPage() {
 
     const [characters, setCharacters] = useState<Character[]>([])
     const [tipIndex, setTipIndex] = useState(0);
+    const [bookCoverMap, setBookCoverMap] = useState<Record<string, string>>({});
+    const [bookCoverFile, setBookCoverFile] = useState<File | null>(null);
+    const [bookCoverPreview, setBookCoverPreview] = useState<string | null>(null);
 
     const [calendarMonth, setCalendarMonth] = useState(() => {
         const now = new Date();
@@ -154,11 +159,39 @@ export default function UserPage() {
         const allBooks = await db.books.toArray();
         allBooks.sort((a, b) => a.createdAt - b.createdAt);
         setBooks(allBooks);
+        await loadBookCovers(allBooks.map(book => book.id));
     }
 
     const loadCharacter = async () => {
         const allCharacters = await db.characters.toArray();
         setCharacters(allCharacters);
+    };
+
+    const loadBookCovers = async (bookIds: string[]) => {
+        if (!bookIds.length) {
+            setBookCoverMap({});
+            return;
+        }
+
+        const images = await db.images
+            .where("bookId")
+            .anyOf(bookIds)
+            .toArray();
+
+        images.sort((a, b) => b.createdAt - a.createdAt);
+
+        setBookCoverMap(prev => {
+            Object.values(prev).forEach(url => URL.revokeObjectURL(url));
+
+            const next: Record<string, string> = {};
+
+            images.forEach(img => {
+                if (!img.bookId || next[img.bookId]) return;
+                next[img.bookId] = URL.createObjectURL(img.imageBlob);
+            });
+
+            return next;
+        });
     };
 
     // FILTERS USER NOTES FOR USER PAGE
@@ -238,7 +271,8 @@ export default function UserPage() {
     };
 
     // CREATE NEW BOOK/ ASYNC WITH DEXIEDB
-    async function addBook() {
+    async function addBook(event?: FormEvent<HTMLFormElement>) {
+        event?.preventDefault();
         const normalizedTitle = normalizeWhitespace(bookTitle);
 
         if (!normalizedTitle) return;
@@ -260,7 +294,7 @@ export default function UserPage() {
             summary: bookSummary,
             volume: Number(bookVolume) || 0,
             volumeName: bookVolName,
-            createdAt: Date.now(),
+            createdAt: new Date().getTime(),
             tags: bookTags,
             genre: bookGenre,
             chapterCount: bookChapterCount,
@@ -270,10 +304,20 @@ export default function UserPage() {
         // add new book to IndexedDB
         const id = await db.books.add(newBook);
 
+        if (bookCoverFile) {
+            await db.images.add({
+                imageId: crypto.randomUUID(),
+                charId: 0,
+                bookId: newBook.id,
+                createdAt: new Date().getTime(),
+                imageBlob: bookCoverFile,
+                isDisplayed: true,
+            });
+        }
+
         // Update React state: call set state, get prev array => assign new array, put the previous arrays/data, and new book data...
         setBooks(prev => [...prev, { ...newBook, id }]);
-        
-        console.log(newBook);
+        await loadBookCovers([...books.map(book => book.id), newBook.id]);
 
         // UI stuff
         setAlert("Book Added");
@@ -286,8 +330,9 @@ export default function UserPage() {
         setBookGenre([]);
         setBookChapterCount(0);
         setBookStatus("ongoing");
-        setBookAdded(true);
-        setTimeout(() => {setBookAdded(false); setStatePopup(false); setAlert("");}, 2000);
+        setBookCoverFile(null);
+        setBookCoverPreview(null);
+        setTimeout(() => {setStatePopup(false); setAlert("");}, 2000);
     }
 
     // select book function, navigate to book page
@@ -313,7 +358,9 @@ export default function UserPage() {
             try {
             const parsed = JSON.parse(recentBookRaw);
             recentBookId = parsed.bookId ?? null;
-            } catch {}
+            } catch {
+            recentBookId = null;
+            }
         }
 
         if (recentCharRaw) {
@@ -321,7 +368,10 @@ export default function UserPage() {
             const parsed = JSON.parse(recentCharRaw);
             recentCharId = Number(parsed.charId ?? NaN);
             recentCharBookId = parsed.bookId ?? null;
-            } catch {}
+            } catch {
+            recentCharId = null;
+            recentCharBookId = null;
+            }
         }
 
         const book = recentBookId ? books.find(b => b.id === recentBookId) : null;
@@ -357,9 +407,9 @@ export default function UserPage() {
     const [isNotesDrawerMounted, setIsNotesDrawerMounted] = useState(false);
     const [isNotesDrawerVisible, setIsNotesDrawerVisible] = useState(false);
     const notesFabRef = useRef<HTMLButtonElement | null>(null);
-    const notesDrawerPanelRef = useRef<HTMLDivElement | null>(null);
 
     const notesDrawerTimeoutRef = useRef<number | null>(null);
+    const notesDrawerPanelRef = useRef<HTMLDivElement | null>(null);
 
     const openNotesDrawer = () => {
       if (notesDrawerTimeoutRef.current) {
@@ -369,7 +419,6 @@ export default function UserPage() {
 
       setIsNotesDrawerMounted(true);
       setNotesShowState(true);
-      addDraftNotes();
 
       requestAnimationFrame(() => {
         setIsNotesDrawerVisible(true);
@@ -405,6 +454,86 @@ export default function UserPage() {
       };
     }, []);
 
+    useEffect(() => {
+        return () => {
+            Object.values(bookCoverMap).forEach(url => URL.revokeObjectURL(url));
+            if (bookCoverPreview) URL.revokeObjectURL(bookCoverPreview);
+        };
+    }, [bookCoverMap, bookCoverPreview]);
+
+    function resetCropState() {
+        setImageSrc(null);
+        setSelectedFile(null);
+        setCrop({ x: 0, y: 0 });
+        setZoom(0.5);
+        setCroppedAreaPixels(null);
+        setShowCropper(false);
+    }
+    
+    const [selectedFile, setSelectedFile] = useState<File | null>(null);
+
+    function handleBookCoverChange(event: React.ChangeEvent<HTMLInputElement>) {
+        const input = event.currentTarget;
+        const file = event.target.files?.[0] ?? null;
+        if (event.target.files?.[0]) {
+            setSelectedFile(event.target.files[0]);
+        }
+
+        if (!file) {
+            if (bookCoverPreview) {
+                URL.revokeObjectURL(bookCoverPreview);
+            }
+
+            setBookCoverFile(null);
+            setBookCoverPreview(null);
+            resetCropState();
+            return;
+        }
+
+        const reader = new FileReader();
+
+        reader.onload = () => {
+            const result = reader.result;
+
+            if (typeof result !== "string") {
+                alert("Could not read that image file.");
+                return;
+            }
+
+        setImageSrc(result);
+            setCrop({ x: 0, y: 0 });
+            setZoom(0.6);
+            setCroppedAreaPixels(null);
+            setShowCropper(true);
+        };
+        reader.readAsDataURL(file);
+        input.value = "";
+    }
+
+    const onCropComplete = (_croppedArea: Area, croppedPixels: Area) => {
+        setCroppedAreaPixels(croppedPixels);
+    };
+
+    const handleCropSave = async () => {
+        if (!imageSrc || !croppedAreaPixels) return;
+
+        try {
+            const croppedFile = await getCroppedImg(imageSrc, croppedAreaPixels, bookCoverFile?.name ?? "book-cover.jpg");
+
+            if (bookCoverPreview) {
+                URL.revokeObjectURL(bookCoverPreview);
+            }
+
+            const previewUrl = URL.createObjectURL(croppedFile);
+            setBookCoverFile(croppedFile);
+            setBookCoverPreview(previewUrl);
+            resetCropState();
+        } catch (error) {
+            console.error("Failed to crop book cover", error);
+            alert("We couldn't crop that image. Please try another image.");
+        }
+    };
+
     async function addDraftNotes() {
         if (draftNote) return;
         
@@ -415,7 +544,7 @@ export default function UserPage() {
             notesId: crypto.randomUUID(),
             subject: notesSubject,
             content: notesContent,
-            createdAt: Date.now(),
+            createdAt: new Date().getTime(),
             color: randomColor,
             isDraft: true,
             bookId: "",
@@ -543,373 +672,525 @@ export default function UserPage() {
 
     const titleRef = useRef<HTMLInputElement>(null);
 
+    const ongoingBooks = books.filter(book => book.status === "ongoing").length;
+    const latestBook = [...books].sort((a, b) => b.createdAt - a.createdAt)[0] ?? null;
+
     // SCROLL BEHAVIOR AFTER opening create book form
     useEffect(() => {
         if (Addnewbooks && titleRef.current) {
-            titleRef.current?.scrollIntoView({behavior: "smooth" });
+            const headerHeight = 165; // Change this to your actual header height
+            const elementPosition = titleRef.current.getBoundingClientRect().top + window.scrollY;
+            const offsetPosition = elementPosition - headerHeight;
+
+            window.scrollTo({
+            top: offsetPosition,
+            behavior: "smooth"
+            });
+
             titleRef.current.focus();
         }
     }, [Addnewbooks]);
+
+    const [imageSrc, setImageSrc] = useState<string | null>(null);
+    const [crop, setCrop] = useState<Point>({ x: 0, y: 0 });
+    const [zoom, setZoom] = useState(1);
+    const [croppedAreaPixels, setCroppedAreaPixels] = useState<Area | null>(null);
+    const [showCropper, setShowCropper] = useState(false);
     
     return (
 
     // MAIN PARENT CONTAINER DIV CLOSER
-    <div className="max-w-6xl mx-auto flex justify-center gap-2 pt-15">
+    <div className="mx-auto flex w-full max-w-7xl flex-col gap-3 px-3 pt-15 pb-6 lg:flex-row">
     
         {/* LEFT SIDE CONTAINER */}
-        <div className="hidden xs:block flex-1 relative">
+        <aside className="hidden lg:block lg:w-[320px] xl:w-[360px]">
+            <div className="sticky top-15 space-y-3">
 
-            {/* LEFT SIDE INNER CONTAINER */}
-            <div className="space-y-2">
+                {/* 1st section ongoing progress bar */}
+                <section className="rounded-3xl border border-gray-200 bg-white p-4 shadow-lg dark:border-gray-800 dark:bg-gray-900">
+                    <div className="mb-3 flex items-center gap-2">
+                        <div className="flex h-10 w-10 items-center justify-center rounded-2xl bg-blue-100 text-blue-600 dark:bg-blue-900/30 dark:text-blue-300">
+                            <FontAwesomeIcon icon={faBookOpen} />
+                        </div>
+                        <div>
+                            <h2 className="font-semibold">Story rhythm</h2>
+                            <p className="text-xs text-gray-500 dark:text-gray-400">A quick pulse check for your library.</p>
+                        </div>
+                    </div>
 
-                <div className="h-[calc(100vh-4rem)] overflow-y-auto overflow-x-hidden notes-scroll overflow-contain">
-                    {/* TOP DASHBOARD SECTION */}
-                    <section className="rounded-md shadow-lg bg-gray-100 dark:bg-gray-900 p-3 space-y-3 mb-2">
-                        {!Addnewbooks && (
-                        <>
-                            <div className="flex flex-wrap items-center justify-between gap-2">
-                                <p className="text-sm font-semibold text-cyan-300/70">Welcome back — keep your story momentum.</p>
+                    <div className="space-y-3">
+                        <div className="rounded-2xl bg-gray-50 p-3 dark:bg-gray-800/70">
+                            <div className="mb-2 flex items-center justify-between text-xs uppercase tracking-[0.2em] text-gray-400">
+                                <span>Ongoing projects</span>
+                                <span>{ongoingBooks}/{books.length || 1}</span>
                             </div>
-
-                            {/* Stats Row */}
-                            <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
-                                <div className="rounded-md border border-gray-200 dark:border-gray-700 p-3">
-                                    <p className="text-xs text-gray-500">Projects</p>
-                                    <p className="text-xl font-bold">{books.length}</p>
-                                </div>
-                                <div className="rounded-md border border-gray-200 dark:border-gray-700 p-3">
-                                    <p className="text-xs text-gray-500">UserNotes</p>
-                                    <p className="text-xl font-bold">{userNotes.length}</p>
-                                </div>
-                                <div className="rounded-md border border-gray-200 dark:border-gray-700 p-3">
-                                    <p className="text-xs text-gray-500">Characters</p>
-                                    <p className="text-xl font-semibold">{characters.length}</p>
-                                </div>
+                            <div className="h-2 overflow-hidden rounded-full bg-gray-200 dark:bg-gray-700">
+                                <div className="h-full rounded-full bg-gradient-to-r from-cyan-500 to-blue-600" style={{ width: `${books.length ? (ongoingBooks / books.length) * 100 : 0}%` }} />
                             </div>
+                        </div>
+                    </div>
+                </section>
 
-                            {/* Quick Actions + Continue Writing */}
-                            <div className="grid grid-cols-1 lg:grid-cols-1 gap-2">
-                                <div className="rounded-md border border-gray-200 dark:border-gray-700 p-3">
-                                    <h3 className="font-semibold">Continue Writing</h3>
-                                    <div className="">
-                                        <label className="text-xs text-gray-400">Recent book:</label>
-                                        <div className="flex items-center justify-between gap-2">
-                                            <p className="text-sm truncate indent-2">{recentBookTitle ? recentBookTitle : "Check your books..."}</p>
-                                            {recentBook && (
-                                                <button
-                                                    type="button"
-                                                    className="px-2 py-1 text-xs rounded-md bg-gray-800 text-white hover:bg-gray-700 transition"
-                                                    onClick={() => selectBook(recentBook)}
-                                                >
-                                                    Open
-                                                </button>
-                                            )}
-                                        </div>
-                                        <label className="text-xs text-gray-400">Recent character:</label>
-                                        <div className="flex items-center justify-between gap-2">
-                                            <p className="text-sm truncate indent-2">{recentCharName ? recentCharName : "See your characters..."}</p>
-                                            {recentCharacter && (
-                                                <button
-                                                    type="button"
-                                                    className="px-2 py-1 text-xs rounded-md bg-gray-800 text-white hover:bg-gray-700 transition"
-                                                    onClick={openRecentCharacter}
-                                                >
-                                                    Open
-                                                </button>
-                                            )}
-                                        </div>
-                                    </div>
-                                </div>
-                            </div>
-                        </>
-                        )}
+                {/* 2nd section continue writing quick path */}
+                <section className="rounded-3xl border border-gray-200 bg-white p-4 shadow-lg dark:border-gray-800 dark:bg-gray-900">
+                    <div className="flex items-center gap-2">
+                        <div className="flex h-10 w-10 items-center justify-center rounded-2xl bg-blue-100 text-blue-600 dark:bg-blue-900/30 dark:text-blue-300">
+                            <FontAwesomeIcon icon={faPenNib} />
+                        </div>
+                        <div>
+                            <h2 className="font-semibold">Continue writing</h2>
+                            <p className="text-xs text-gray-500 dark:text-gray-400">Jump back into your last active spaces.</p>
+                        </div>
+                    </div>
 
-                        {/* CREATE BOOK FORM TITLE */}
-                        <div className="flex justify-between rounded-md border border-gray-200 dark:border-gray-700 p-3">
-                            <h3 className="text-2xl font-semibold">Create New Book</h3>
-
-                            <div className="flex justify-center">
-                                <button 
-                                    value={bookTitle}
-                                    className="border-gray-500 border-1 text-black rounded hover:bg-gray-300 hover:text-gray-950 px-2 dark:border-white dark:text-white"
-                                    onClick={addBooksState}
-                                    title="Add a book"
+                        <div className="mt-4 space-y-3">
+                        <div className="rounded-2xl border border-gray-200 p-3 dark:border-gray-800">
+                            <p className="text-xs uppercase tracking-[0.2em] text-gray-400">Recent book</p>
+                            <p className="mt-1 truncate text-sm font-semibold">{recentBookTitle || latestBook?.title || "Start a new world"}</p>
+                            <div className="flex justify-end">
+                                <button
+                                    type="button"
+                                    className="mt-3 rounded-xl bg-gray-900 px-3 py-2 text-xs font-semibold text-white transition hover:bg-gray-700 dark:bg-white dark:text-gray-900 dark:hover:bg-gray-300"
+                                    onClick={() => recentBook ? selectBook(recentBook) : latestBook && selectBook(latestBook.id)}
                                 >
-                                    {Addnewbooks ? <FontAwesomeIcon icon={faMinus} size="xs" className="transition duration-500"/> : <FontAwesomeIcon icon={faPlus} size="xs"/>}
+                                    Open workspace
                                 </button>
                             </div>
                         </div>
 
-                    </section>
-
-                    {/* CREATE NEW BOOK FORM */}
-                    {(Addnewbooks && 
-                    
-                    <div className="flex-1 rounded-md shadow-lg p-3 mb-2 bg-gray-100 dark:bg-gray-900 transition duration-300 animate-fadeDown">
-                    <form className="space-y-2">
-                    
-                    {/* Title */}
-                    <div>
-                        <label className="block text-sm font-medium mb-1">
-                        Title
-                        </label>
-                        <input
-                        ref={titleRef}
-                        className="w-full border rounded-md px-4 py-2 focus:outline-none focus:ring-2 focus:ring-blue-400 placeholder-gray-400 dark:placeholder-gray-600"
-                        value={bookTitle}
-                        onChange={e => setBookTitle(e.target.value)}
-                        onKeyDown={(e) => {
-                            if (e.key === "Enter") addBook();
-                            }}
-                        title="Add new book"
-                        placeholder="Enter book title"
-                        />
-                    </div>
-
-                    {/* Summary */}
-                    <div>
-                        <label className="block text-sm font-medium mb-1">
-                        Summary
-                        </label>
-                        <textarea
-                        rows={4}
-                        className="w-full border rounded-md px-4 py-2 focus:outline-none focus:ring-2 focus:ring-blue-400 placeholder-gray-400 dark:placeholder-gray-600"
-                        placeholder="Enter book summary"
-                        onFocus={(e) => autoResize(e)}
-                        value={bookSummary}
-                        onChange={e => setBookSummary(e.target.value)}
-                        onBlur={(e) => { e.currentTarget.style.height = "auto";}}
-                        />
-                    </div>
-
-                    {/* Current Volume */}
-                    <div>
-                        <label className="block text-sm font-medium mb-1">
-                        Current Volume
-                        </label>
-                        <input
-                        type="number"
-                        className="w-full border rounded-md px-4 py-2 focus:outline-none focus:ring-2 focus:ring-blue-400 placeholder-gray-400 dark:placeholder-gray-600"
-                        placeholder="0"
-                        onChange={e => setBookVolume(e.target.value)}
-                        />
-                    </div>
-
-                    <button
-                        type="button"
-                        className="w-full bg-blue-500 text-white py-2 rounded-md hover:bg-blue-600 transition"
-                        onClick={addBook}
-                    >
-                        SAVE
-                    </button>
-                    </form>
-                    </div>)}
-
-                    {/* SIMPLE INTERACTIVE CALENDAR */}
-                    <div className="rounded-md shadow-lg bg-gray-100 dark:bg-gray-900 p-3">
-                        <div className="flex items-center justify-between mb-1">
-                            <button
-                                type="button"
-                                onClick={() => setCalendarMonth(prev => new Date(prev.getFullYear(), prev.getMonth() - 1, 1))}
-                                className="px-2 text-center rounded-md border border-gray-300 dark:border-gray-600 hover:bg-gray-200 dark:hover:bg-gray-700 transition"
-                                title="Previous month"
-                            >
-                                ‹
-                            </button>
-
-                            <p className="text-sm font-semibold">{calendarLabel}</p>
-
-                            <button
-                                type="button"
-                                onClick={() => setCalendarMonth(prev => new Date(prev.getFullYear(), prev.getMonth() + 1, 1))}
-                                className="px-2 text-center rounded-md border border-gray-300 dark:border-gray-600 hover:bg-gray-200 dark:hover:bg-gray-700 transition"
-                                title="Next month"
-                            >
-                                ›
-                            </button>
-                        </div>
-
-                        <div className="grid grid-cols-7 text-center text-xs text-gray-500">
-                            {weekDays.map(day => (
-                                <span key={day}>{day}</span>
-                            ))}
-                        </div>
-
-                        <div className="grid grid-cols-7">
-                            {calendarCells.map((dateValue, index) => {
-                                if (!dateValue) {
-                                    return <div key={`empty-${index}`} />;
-                                }
-
-                                const selected = isSameDate(dateValue, selectedDate);
-                                const isToday = isSameDate(dateValue, today);
-
-                                return (
+                            <div className="rounded-2xl border border-gray-200 p-3 dark:border-gray-800">
+                            <p className="text-xs uppercase tracking-[0.2em] text-gray-400">Recent character</p>
+                            <p className="mt-1 truncate text-sm font-semibold">{recentCharName || "No character opened yet"}</p>
+                            {recentCharacter && (
+                                <div className="flex justify-end">
                                     <button
-                                        key={dateValue.toISOString()}
                                         type="button"
-                                        onClick={() => setSelectedDate(dateValue)}
-                                        className={`h-7 rounded-md text-xs transition ${selected
-                                            ? "bg-blue-600 text-white"
-                                            : isToday
-                                            ? "bg-blue-100 text-blue-900 dark:bg-blue-900/40 dark:text-blue-200"
-                                            : "hover:bg-gray-200 dark:hover:bg-gray-700"}`}
+                                        className="mt-3 rounded-xl border border-gray-300 px-3 py-2 text-xs font-semibold transition hover:bg-gray-100 dark:border-gray-700 dark:hover:bg-gray-800"
+                                        onClick={openRecentCharacter}
                                     >
-                                        {dateValue.getDate()}
+                                        Open profile
                                     </button>
-                                );
-                            })}
+                                </div>
+                            )}
                         </div>
+                    </div>
+                </section>
 
-                        <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">
-                            Selected date: {selectedDate.toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })}
-                        </p>
+                {/* 3rd create new book section */}
+                <section className="rounded-3xl border border-gray-200 bg-white p-4 shadow-lg dark:border-gray-800 dark:bg-gray-900">
+                    <div className="flex items-center justify-between">
+                        <div>
+                            <h2 className="font-semibold">Create new book</h2>
+                            <p className="text-xs text-gray-500 dark:text-gray-400">Give each story its own visual identity.</p>
+                        </div>
+                        <button 
+                            value={bookTitle}
+                            className="flex h-10 w-10 items-center justify-center rounded-2xl border border-gray-300 text-black transition hover:bg-gray-100 dark:border-gray-700 dark:text-white dark:hover:bg-gray-800"
+                            onClick={addBooksState}
+                            title="Add a book"
+                        >
+                            {Addnewbooks ? <FontAwesomeIcon icon={faMinus} size="xs" className="transition duration-500"/> : <FontAwesomeIcon icon={faPlus} size="xs"/>}
+                        </button>
                     </div>
 
+                    {Addnewbooks && (
+                        <form 
+                            className="mt-3 space-y-3 rounded-2xl border border-dashed border-indigo-300 bg-indigo-50/60 px-2 py-4 dark:border-indigo-800 dark:bg-indigo-950/20"
+                            onSubmit={addBook}
+                        >
+                            <div>
+                                <label className="mb-1 block text-sm font-medium">Title</label>
+                                <input
+                                    ref={titleRef}
+                                    className="w-full rounded-2xl border px-4 py-3 focus:outline-none focus:ring-2 focus:ring-blue-400 placeholder-gray-400 dark:border-gray-700 dark:bg-gray-900 dark:placeholder-gray-600"
+                                    value={bookTitle}
+                                    onChange={e => setBookTitle(e.target.value)}
+                                    onKeyDown={(e) => { if (e.key === "Enter") e.preventDefault(); }}
+                                    title="Add new book"
+                                    placeholder="Enter book title"
+                                    required
+                                />
+                            </div>
+
+                            <div>
+                                <label className="mb-1 block text-sm font-medium">Summary</label>
+                                <textarea
+                                    rows={4}
+                                    className="w-full rounded-2xl border px-4 py-3 focus:outline-none focus:ring-2 focus:ring-blue-400 placeholder-gray-400 dark:border-gray-700 dark:bg-gray-900 dark:placeholder-gray-600"
+                                    placeholder="What makes this story compelling?"
+                                    onFocus={(e) => autoResize(e)}
+                                    value={bookSummary}
+                                    onChange={e => setBookSummary(e.target.value)}
+                                    onBlur={(e) => { e.currentTarget.style.height = "auto";}}
+                                />
+                            </div>
+
+                            <div className="grid grid-cols-2 gap-3">
+                                <div>
+                                    <label className="mb-1 block text-sm font-medium">Current Volume</label>
+                                    <input
+                                        type="number"
+                                        className="w-full rounded-2xl border px-4 py-3 focus:outline-none focus:ring-2 focus:ring-blue-400 placeholder-gray-400 dark:border-gray-700 dark:bg-gray-900 dark:placeholder-gray-600"
+                                        placeholder="0"
+                                        value={bookVolume}
+                                        onChange={e => setBookVolume(e.target.value)}
+                                    />
+                                </div>
+                                <div>
+                                    <label className="mb-1 block text-sm font-medium">Status</label>
+                                    <select
+                                        className="w-full rounded-2xl border px-4 py-3 focus:outline-none focus:ring-2 focus:ring-blue-400 dark:border-gray-700 dark:bg-gray-900"
+                                        value={bookStatus}
+                                        onChange={e => setBookStatus(e.target.value)}
+                                    >
+                                        <option value="ongoing">Ongoing</option>
+                                        <option value="completed">Completed</option>
+                                        <option value="hiatus">Hiatus</option>
+                                        <option value="dropped">Dropped</option>
+                                    </select>
+                                </div>
+                            </div>
+
+                            <div>
+                                <label className="mb-1 block text-sm font-medium">Book cover</label>
+                                <label className="flex cursor-pointer items-center justify-center gap-3 rounded-2xl border border-dashed border-gray-300 bg-white/70 px-4 py-4 text-sm text-gray-600 transition hover:border-indigo-400 hover:text-indigo-600 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-300">
+                                    <FontAwesomeIcon icon={faUpload} />
+                                    <span>{selectedFile ? selectedFile.name : "Upload a cover image"}</span>
+                                    <input type="file" accept="image/*" className="hidden" onChange={handleBookCoverChange} />
+                                </label>
+                                {bookCoverPreview && (
+                                    <div className="mt-3 overflow-hidden rounded-2xl border border-gray-200 dark:border-gray-700">
+                                        <img src={bookCoverPreview} alt="Book cover preview" className="h-44 w-full object-cover" />
+                                    </div>
+                                )}
+                            </div>
+
+                            <button
+                                type="submit"
+                                className="w-full rounded-2xl bg-gradient-to-r from-indigo-500 to-cyan-500 py-3 font-semibold text-white shadow-lg transition hover:scale-[1.01] hover:shadow-xl"
+                            >
+                                Save book to library
+                            </button>
+                        </form>
+                    )}
+                </section>
+
+                {/* 5th section calendar/ features soon */}
+                <div className="rounded-3xl border border-gray-200 bg-white p-4 shadow-lg dark:border-gray-800 dark:bg-gray-900">
+                    <div className="flex items-center justify-between mb-1">
+                        <button
+                            type="button"
+                            onClick={() => setCalendarMonth(prev => new Date(prev.getFullYear(), prev.getMonth() - 1, 1))}
+                            className="rounded-xl border border-gray-300 px-3 py-1 text-center transition hover:bg-gray-100 dark:border-gray-700 dark:hover:bg-gray-800"
+                            title="Previous month"
+                        >‹</button>
+                        <p className="text-sm font-semibold">{calendarLabel}</p>
+                        <button
+                            type="button"
+                            onClick={() => setCalendarMonth(prev => new Date(prev.getFullYear(), prev.getMonth() + 1, 1))}
+                            className="rounded-xl border border-gray-300 px-3 py-1 text-center transition hover:bg-gray-100 dark:border-gray-700 dark:hover:bg-gray-800"
+                            title="Next month"
+                        >›</button>
+                    </div>
+                    <div className="grid grid-cols-7 text-center text-xs text-gray-500">
+                        {weekDays.map(day => <span key={day}>{day}</span>)}
+                    </div>
+                    <div className="mt-2 grid grid-cols-7 gap-1">
+                        {calendarCells.map((dateValue, index) => {
+                            if (!dateValue) return <div key={`empty-${index}`} />;
+                            const selected = isSameDate(dateValue, selectedDate);
+                            const isToday = isSameDate(dateValue, today);
+                            return (
+                                <button
+                                    key={dateValue.toISOString()}
+                                    type="button"
+                                    onClick={() => setSelectedDate(dateValue)}
+                                    className={`h-9 rounded-xl text-xs transition ${selected ? "bg-blue-600 text-white" : isToday ? "bg-blue-100 text-blue-900 dark:bg-blue-900/40 dark:text-blue-200" : "hover:bg-gray-100 dark:hover:bg-gray-800"}`}
+                                >
+                                    {dateValue.getDate()}
+                                </button>
+                            );
+                        })}
+                    </div>
+                    <p className="mt-3 text-xs text-gray-500 dark:text-gray-400">Selected date: {selectedDate.toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })}</p>
                 </div>
-
-                
-
             </div>
-        </div>
+        </aside>
         
         {/* CENTER CONTAINER */}
-        <div className="w-full max-w-3xl mx-auto">
-            
-             {/* Rotating Tip Card */}
-                <div className="rounded-md border border-emerald-300 dark:border-emerald-700 bg-emerald-50/80 dark:bg-emerald-900/20 p-2 mb-2">
-                    <p className="text-xs font-semibold text-emerald-700 dark:text-emerald-300">Creative Prompts.</p>
-                    <p className="text-sm min-h-6 transition-all duration-300">{dashboardTips[tipIndex]}</p>
+        <main className="min-w-0 flex-1">
+            {/* center section header web app details */}
+            <section className="rounded-3xl border border-gray-200 p-4 shadow-lg bg-gradient-to-br dark:from-gray-300 dark:from-gray-900 dark:via-blue-900/30 dark:to-cyan-950 border border-indigo-800/30">
+                <div className="flex flex-col gap-4 justify-between">
+                    <div>
+                        <p className="text-xs uppercase tracking-[0.3em] dark:text-blue-200">Your library</p>
+                        <h2 className="mt-2 text-3xl font-black">A visual shelf for every world you're building.</h2>
+                        <p className="mt-2 max-w-2xl text-sm text-gray-500 dark:text-gray-300">Inspired by modern writing dashboards, this layout gives each project a stronger identity. Plan books, protect ideas, and keep every project visually alive with quick access to your latest work.</p>
+                    </div>
+                    <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
+                        <div className="rounded-2xl shadow-xl g-gray-50 px-4 py-3 text-center border border-blue-800/70 bg-gradient-to-br dark:from-blue-800 dark:via-blue-900 dark:to-cyan-950">
+                            <p className="text-xs uppercase tracking-[0.2em] dark:text-gray-200">Books</p>
+                            <p className="mt-1 text-xl font-bold">{books.length}</p>
+                        </div>
+                        <div className="rounded-2xl shadow-xl bg-gray-50 px-4 py-3 text-center border border-blue-800/70 bg-gradient-to-br dark:from-blue-800 dark:via-blue-900 dark:to-cyan-950">
+                            <p className="text-xs uppercase tracking-[0.2em] dark:text-gray-200">Characters</p>
+                            <p className="mt-1 text-xl font-bold">{characters.length}</p>
+                        </div>
+                        <div className="rounded-2xl shadow-xl bg-gray-50 px-4 py-3 text-center border border-blue-800/70 bg-gradient-to-br dark:from-blue-800 dark:via-blue-900 dark:to-cyan-950">
+                            <p className="text-xs uppercase tracking-[0.2em] dark:text-gray-200">Notes</p>
+                            <p className="mt-1 text-xl font-bold">{userNotes.length}</p>
+                        </div>
+                        <div className="rounded-2xl shadow-xl bg-gray-50 px-4 py-3 text-center border border-blue-800/70 bg-gradient-to-br dark:from-blue-800 dark:via-blue-900 dark:to-cyan-950">
+                            <p className="text-xs uppercase tracking-[0.2em] dark:text-gray-200">Covers</p>
+                            <p className="mt-1 text-xl font-bold">{Object.keys(bookCoverMap).length}</p>
+                        </div>
+                    </div>
                 </div>
-            
-            {/* LIBRARY SECTION BOOK LIST / HOMEPAGE */}
-                <div className="p-3 mb-3 rounded-md shadow-lg bg-gray-100 dark:bg-gray-900">
-                    
-                    <div className="py-4 gap-2 flex xs:hidden">
+            </section>
 
-                    <input
-                    className="border-b-1 border-gray-200 px-1 w-full outline-none hover:border-gray-500 transition text-gray-500 dark:text-white placeholder-gray-400 dark:placeholder-gray-600"
-                    placeholder="New Book Title"
-                    value={bookTitle}
-                    onChange={e => setBookTitle(e.target.value)}
-                    onKeyDown={(e) => {
-                        if (e.key === "Enter") addBook();
-                        }}
-                    title="Add new book"
-                    />
-
+            {/*create new book section on mobile*/}
+            <section className="mt-3 block lg:hidden rounded-3xl border border-gray-200 bg-white p-4 shadow-lg dark:border-gray-800 dark:bg-gray-900">
+                <div className="flex items-center justify-between">
+                    <div>
+                        <h2 className="font-semibold">Create new book</h2>
+                        <p className="text-xs text-gray-500 dark:text-gray-400">Give each story its own visual identity.</p>
+                    </div>
                     <button 
-                        onClick={addBook} 
-                        title="Add book title"
-                        className="border-gray-200 border-1 text-black rounded hover:bg-gray-300 hover:text-gray-950 p-1 transition dark:border-white dark:text-white"
+                        value={bookTitle}
+                        className="flex h-10 w-10 items-center justify-center rounded-2xl border border-gray-300 text-black transition hover:bg-gray-100 dark:border-gray-700 dark:text-white dark:hover:bg-gray-800"
+                        onClick={addBooksState}
+                        title="Add a book"
                     >
-                        <FontAwesomeIcon icon={faPlus} size="lg"/>
+                        {Addnewbooks ? <FontAwesomeIcon icon={faMinus} size="xs" className="transition duration-500"/> : <FontAwesomeIcon icon={faPlus} size="xs"/>}
                     </button>
+                </div>
 
-                    {/* Conditional "Successfully Added" message */}
-                    <div className="absolute mt-9">
-                        {bookAdded && (
-                        <span className="mt-2 text-sm text-green-600 font-semibold animate-pulse">
-                            Book Successfully Added!
-                        </span>
-                        )}
-                    </div>
-                    
+                {Addnewbooks && (
+                    <form 
+                        className="mt-3 space-y-3 rounded-2xl border border-dashed border-indigo-300 bg-indigo-50/60 px-2 py-4 dark:border-indigo-800 dark:bg-indigo-950/20"
+                        onSubmit={addBook}
+                    >
+                        <div>
+                            <label className="mb-1 block text-sm font-medium">Title</label>
+                            <input
+                                className="w-full rounded-2xl border px-4 py-3 focus:outline-none focus:ring-2 focus:ring-blue-400 placeholder-gray-400 dark:border-gray-700 dark:bg-gray-900 dark:placeholder-gray-600"
+                                value={bookTitle}
+                                onChange={e => setBookTitle(e.target.value)}
+                                onKeyDown={(e) => { if (e.key === "Enter") e.preventDefault(); }}
+                                title="Add new book"
+                                placeholder="Enter book title"
+                                required
+                            />
+                        </div>
+
+                        <div>
+                            <label className="mb-1 block text-sm font-medium">Summary</label>
+                            <textarea
+                                rows={4}
+                                className="w-full rounded-2xl border px-4 py-3 focus:outline-none focus:ring-2 focus:ring-blue-400 placeholder-gray-400 dark:border-gray-700 dark:bg-gray-900 dark:placeholder-gray-600"
+                                placeholder="What makes this story compelling?"
+                                onFocus={(e) => autoResize(e)}
+                                value={bookSummary}
+                                onChange={e => setBookSummary(e.target.value)}
+                                onBlur={(e) => { e.currentTarget.style.height = "auto";}}
+                            />
+                        </div>
+
+                        <div className="grid grid-cols-2 gap-3">
+                            <div>
+                                <label className="mb-1 block text-sm font-medium">Current Volume</label>
+                                <input
+                                    type="number"
+                                    className="w-full rounded-2xl border px-4 py-3 focus:outline-none focus:ring-2 focus:ring-blue-400 placeholder-gray-400 dark:border-gray-700 dark:bg-gray-900 dark:placeholder-gray-600"
+                                    placeholder="0"
+                                    value={bookVolume}
+                                    onChange={e => setBookVolume(e.target.value)}
+                                />
+                            </div>
+                            <div>
+                                <label className="mb-1 block text-sm font-medium">Status</label>
+                                <select
+                                    className="w-full rounded-2xl border px-4 py-3 focus:outline-none focus:ring-2 focus:ring-blue-400 dark:border-gray-700 dark:bg-gray-900"
+                                    value={bookStatus}
+                                    onChange={e => setBookStatus(e.target.value)}
+                                >
+                                    <option value="ongoing">Ongoing</option>
+                                    <option value="completed">Completed</option>
+                                    <option value="hiatus">Hiatus</option>
+                                    <option value="dropped">Dropped</option>
+                                </select>
+                            </div>
+                        </div>
+
+                        <div>
+                            <label className="mb-1 block text-sm font-medium">Book cover</label>
+                            <label className="flex cursor-pointer items-center justify-center gap-3 rounded-2xl border border-dashed border-gray-300 bg-white/70 px-4 py-4 text-sm text-gray-600 transition hover:border-indigo-400 hover:text-indigo-600 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-300">
+                                <FontAwesomeIcon icon={faUpload} />
+                                <span>{selectedFile ? selectedFile.name : "Upload a cover image"}</span>
+                                <input type="file" accept="image/*" className="hidden" onChange={handleBookCoverChange} />
+                            </label>
+                            {bookCoverPreview && (
+                                <div className="mt-3 overflow-hidden rounded-2xl border border-gray-200 dark:border-gray-700">
+                                    <img src={bookCoverPreview} alt="Book cover preview" className="h-44 w-full object-cover" />
+                                </div>
+                            )}
+                        </div>
+
+                        <button
+                            type="submit"
+                            className="w-full rounded-2xl bg-gradient-to-r from-indigo-500 to-cyan-500 py-3 font-semibold text-white shadow-lg transition hover:scale-[1.01] hover:shadow-xl"
+                        >
+                            Save book to library
+                        </button>
+                    </form>
+                )}
+            </section>
+            
+            {/* library shelf list */}
+            <section className="mt-3 rounded-3xl border border-gray-200 bg-white p-4 shadow-lg dark:border-gray-800 dark:bg-gray-900">
+                <div className="mb-4 flex items-center justify-between gap-3">
+                    <div>
+                        <h2 className="text-2xl font-bold">Library</h2>
+                        <p className="text-sm text-gray-500 dark:text-gray-400">Click any book to open its story workspace.</p>
                     </div>
 
-                    {/* SHOW BOOK LIST */}
-                    {/* BOOK CARDS */}
-                    <h2 className="text-2xl font-semibold">Library</h2>
-
-                    {!books.length && (
-                    <div className="w-full flex justify-center items-center py-20 px-10"> 
-                        <h1 className="text-3xl font-bold text-gray-400 text-center">
-                            PLEASE ADD BOOKS HERE. INSTEAD OF JUST LETTING THEM GATHER DUST IN YOUR INSANE MIND...
-                        </h1>
+                    <div className="hidden items-center gap-2 rounded-2xl border border-gray-200 bg-gray-50 px-3 py-2 text-xs text-gray-500 dark:border-gray-700 dark:bg-gray-800/70 dark:text-gray-300 sm:flex">
+                        <FontAwesomeIcon icon={faImages} />
+                        Covers make the shelf feel alive.
                     </div>
-                    )}
-                    
-                    <div className="grid grid-cols-2 px-15 pt-2 sm:grid-cols-2 md:grid-cols-3 gap-2 md:gap-x-20 md:gap-y-5 pb-1 place-items-center overflow-y-auto notes-scroll">
-                        {books.map(book => (
-                        <div
+
+                </div>
+
+                {!books.length && (
+                    <div className="flex min-h-[360px] w-full flex-col items-center justify-center rounded-3xl border border-dashed border-gray-300 bg-gradient-to-br from-gray-50 to-indigo-50 px-10 py-20 text-center dark:border-gray-700 dark:from-gray-900 dark:to-indigo-950/20"> 
+                        <div className="flex h-16 w-16 items-center justify-center rounded-3xl bg-indigo-500 text-white shadow-lg">
+                            <FontAwesomeIcon icon={faBookOpen} size="lg" />
+                        </div>
+                        <h3 className="mt-5 text-2xl font-bold">Your story shelf is waiting.</h3>
+                        <p className="mt-2 max-w-xl text-sm text-gray-500 dark:text-gray-400">Create your first book, upload a cover, and turn this page into a visual command center for your worlds, characters, and notes.</p>
+                    </div>
+                )}
+
+                <div className="grid grid-cols-2 gap-5 sm:grid-cols-3 xl:grid-cols-2 items-stretch place-items-center">
+                    {books.map(book => (
+                        <article
                         role="list"
-                        key={book.id} 
+                        key={book.id}
                         draggable
                         onDragStart={handleDragStart}
                         data-id={book.id}
                         data-title={book.title}
-                        onDragEnd={() => { setDraggingId(null); setIsDraggingBook(false);}}
+                        onDragEnd={() => { setDraggingId(null); setIsDraggingBook(false); }}
                         onClick={() => selectBook(book.id!)}
                         className={`
-                            relative group cursor-pointer
-                            w-55 h-70 rounded-tl-xl rounded-bl-xl
-                            bg-gradient-to-br from-gray-100 to-gray-50
-                            dark:bg-gradient-to-br dark:from-gray-600 dark:to-gray-500
-                            shadow-lg
-                            hover:-translate-y-2 hover:shadow-2xl
+                            relative group cursor-pointer overflow-hidden
+                            w-45 h-60 sm:w-60 sm:h-75 rounded-tl-xl rounded-bl-lg
+                            bg-white dark:bg-gray-800
+                            shadow-lg hover:-translate-y-2 hover:shadow-2xl
                             transition-all duration-300 animate-fadeDown
-                            ${draggingId === book.id ? "opacity-0" : ""}
-                        `}>
-                            {/* Spine and bottom pages design */}
-                            <div
-                                className="absolute -bottom-0 w-full h-0.5
-                                bg-gray-400
-                                rounded-tl-lg"/>
-                            <div
-                                className="absolute -left-1 top-0 h-full w-4
-                                bg-gray-400
-                                rounded-tl-lg"/>
-                            
-                            {/* Main Content Container */}
-                            <div className="flex-1 flex flex-col p-12">
+                            ${draggingId === book.id ? "opacity-0" : ""}`}
+                        >
+                            {/* Spine/Edge Design (Always visible or tucked behind) */}
+                            {bookCoverMap[book.id] ? (
+                                <div className="absolute -left-1 top-0 h-75 w-4 bg-gray-800 rounded-tl-lg z-20"/>
+                            ) : (
+                                <div className="absolute -left-1 top-0 h-75 w-4 bg-gray-600 rounded-tl-lg z-20" />
+                            )}
+
+                            {/* 1. FRONT COVER LAYER: Fades out on hover */}
+                            <div className="absolute inset-0 z-10 transition-opacity duration-500 group-hover:opacity-15">
+                                {bookCoverMap[book.id] ? (
+                                    <div className="relative w-full h-full">
+
+                                        {/* full image */}
+                                        <img
+                                            src={bookCoverMap[book.id]}
+                                            alt={`${book.title} cover`}
+                                            className="relative w-full h-full object-cover"
+                                        />
+
+                                    </div>
+                                ) : (
+                                    <div className="flex h-full w-full flex-col justify-between bg-gradient-to-br from-slate-900 via-blue-900/30 to-cyan-950 border border-indigo-500/30 p-5 text-white">
+                                        <div className="flex items-start justify-between group-hover:opacity-0"> 
+                                            <span className="rounded-full bg-white/15 px-3 py-1 text-[10px] uppercase tracking-[0.25em] ">Story</span>
+                                            <FontAwesomeIcon icon={faWandMagicSparkles} />
+                                        </div>
+                                        <p className="text-xs uppercase text-center mb-30 tracking-[0.2em] text-white/70 group-hover:opacity-0">No cover yet</p>
+                                    </div>
+                                )}
+                                {/* Overlay for Title on Cover */}
+                                <div className="absolute inset-0 bg-gradient-to-t from-black/90 via-black/20 to-transparent" />
+                                <div className="absolute inset-x-0 bottom-0 p-4 text-white">
+                                    <h3 className="text-lg font-black text-gray-300 leading-tight line-clamp-2 group-hover:opacity-0">{upcaseLetter(book.title)}</h3>
+                                </div>
+                            </div>
+
+                            {/* 2. BACK/CONTENT LAYER: Rises up and fades in on hover */}
+                            <div className="absolute inset-0 p-5 flex flex-col justify-between bg-gray-50 dark:bg-gray-700 
+                                            translate-y-4 opacity-0 transition-all duration-500 
+                                            group-hover:translate-y-0 group-hover:opacity-100">
                                 
-                                {/* Title Section */}
-                                <div className="flex-1 flex items-center justify-center pb-2">
-                                    <h2 className="text-base text-center font-bold line-clamp-4 leading-tight">
-                                        {book.title}
-                                    </h2>
+                                <div className="space-y-3">
+                                    <div className="flex justify-between items-start">
+                                        <span className="rounded-full bg-white/10 px-3 py-1 text-[10px] font-bold uppercase tracking-widest dark:text-gray-200">Details</span>
+                                        <span className="text-[10px] dark:text-gray-400">Vol {book.volume || 0}</span>
+                                    </div>
                                     
-                                        {/* Vertical TITLE */}
-                                    <div className="absolute text-white text-outline-2 -left-2 top-1/2 -translate-y-1/2 rotate-180 [writing-mode:vertical-rl] truncate line-clamp-1 max-h-50">
-                                        <span className="text-xs font-bold">{book.title}</span>
+                                    <h3 className="text-md font-bold dark:text-white line-clamp-2">{book.title}</h3>
+                                    
+                                    <p className="text-xs text-gray-600 dark:text-gray-300 line-clamp-3 leading-relaxed">
+                                        {book.summary || "Open this workspace and shape the next scenes, chapters, and arcs."}
+                                    </p>
+
+                                    <div className="flex flex-wrap gap-1.5">
+                                        {(book.genre || []).slice(0, 2).map((genre, i) => (
+                                            <span key={i} className="rounded-md bg-indigo-100 px-2 py-0.5 text-[10px] font-semibold text-gray-700 dark:bg-stale-900/40">
+                                                {genre}
+                                            </span>
+                                        ))}
+                                        {book.genre.length > 2 && (
+                                            <span className="rounded-full bg-gray-100 px-2 py-0.5 text-[10px] font-semibold text-gray-500 dark:bg-gray-800 dark:text-gray-300">+{book.genre.length - 2}</span>
+                                        )}
                                     </div>
                                 </div>
 
-                                {/* Metadata Section */}
-                                <div className="space-y-3 pb-2">
-                                    <p className="text-center text-xs font-medium uppercase tracking-tighter">
-                                        Status: {upcaseLetter(book.status)}
-                                    </p>
+                                <div className="space-y-1 mt-1">
+                                    <div className="flex items-center justify-between text-[10px] text-gray-200">
+                                        <span>{book.chapterCount ?? 0} Chapters</span>
+                                        <span className="uppercase">{book.status}</span>
+                                    </div>
                                     
-                                    {/* Genres - Wrapped for small space */}
-                                    {book.genre?.length >= 1 && (
-                                        <div className="flex flex-wrap justify-center gap-1">
-                                            {book.genre?.slice(0 , 8).map((genre, i) => (
-                                            <span
-                                                key={i}
-                                                className="rounded bg-black/20 px-1.5 py-0.5 text-[10px] dark:text-white whitespace-nowrap border border-white/10"
-                                            >
-                                                {genre}
-                                            </span>
-                                            ))}
-                                            {book.genre?.length > 8 && (
-                                            <span className="px-1.5 py-1 text-[9px] dark:text-gray-200 whitespace-nowrap">Show more...</span>
-                                            )}
-                                        </div>
-                                    )}
+                                    <div className="flex items-center justify-between rounded-xl bg-gray-800 p-2 text-white shadow-md">
+                                        <span className="text-[11px] font-bold ml-2">Open Workspace</span>
+                                        <span className="bg-white text-gray-950 rounded-lg px-2 py-1 text-[10px] font-bold">Enter</span>
+                                    </div>
                                 </div>
-
                             </div>
-                        
-                        </div>
-                        ))}
-                    </div>  
-                    
-
-
+                        </article>
+                    ))}
                 </div>
-            
-        </div>
+            </section>
+        </main>
+
+        {/* RIGHT CONTAINER */}
+        <aside className="hidden xl:block xl:w-[280px]">
+            <div className="sticky top-15 space-y-3">
+                <div className="rounded-3xl border border-cyan-300 bg-blue-50/80 p-4 shadow-lg dark:border-blue-700 dark:bg-blue-900/20">
+                    <h3 className="font-semibold">Creative prompt</h3>
+                    <p className="mt-2 text-sm leading-6">{dashboardTips[tipIndex]}</p>
+                </div>
+
+                <div className="rounded-3xl border border-gray-200 bg-white p-4 shadow-lg dark:border-gray-800 dark:bg-gray-900">
+                    <h3 className="font-semibold">Shape your universe faster.</h3>
+                    <ul className="mt-3 space-y-2 text-sm text-gray-500 dark:text-gray-400">
+                        <li>• Hero dashboard styling inspired by creative workspace apps.</li>
+                        <li>• Visual shelf cards so each project feels collectible and distinct.</li>
+                        <li>• Metadata grouped by writing flow: status, chapter progress, and genre identity.</li>
+                    </ul>  
+                </div>
+            </div>
+        </aside>
 
         {/* MODALS */}
             {/* TRASHCAN FEATURE/DELETION OF BOOK CARD ONDROP */}
@@ -965,7 +1246,7 @@ export default function UserPage() {
             
             {/* Undo Popup */}
             {showUndoPopup && (
-                <div className="fixed top-14 left-1/2 bg-gray-300 py-4 px-8 transform -translate-x-1/2 rounded shadow-lg flex justify-center space-x-4 animate-fadeDown">
+                <div className="fixed z-100 top-14 left-1/2 bg-gray-800 py-4 px-8 transform -translate-x-1/2 rounded shadow-lg flex justify-center space-x-4 animate-fadeDown">
                 <span>Deleted</span>
                 <button 
                     className="bg-blue-500 hover:bg-blue-400 px-3 py-1 rounded text-sm font-semibold flex"
@@ -987,7 +1268,7 @@ export default function UserPage() {
     
             {/* CHANGES SAVED POPUP */}
             {showStatePopup && (
-            <div className="fixed top-14 left-1/2 bg-gray-300 py-1 px-5 transform -translate-x-1/2 rounded shadow-lg flex justify-center space-x-4 animate-fadeDown">
+            <div className="fixed z-100 top-14 left-1/2 bg-gray-800 py-1 px-5 transform -translate-x-1/2 rounded shadow-lg flex justify-center space-x-4 animate-fadeDown">
                 <span>
                 {alertMessage}
                 <FontAwesomeIcon className="text-green-500" size="lg" icon={faCheck}/>
@@ -1004,8 +1285,8 @@ export default function UserPage() {
                     onClick={displayNotes}
                     className={`
                     fixed bottom-5 right-5 z-50
-                    bg-blue-600 hover:bg-blue-700
-                    border border-blue-600 hover:border-blue-400
+                    border border-gray-200 bg-gradient-to-br from-blue-600 to-cyan-500
+                    hover:border-gray-100 hover:from-blue-600/80 hover:to-cyan-400
                     text-white rounded-full
                     px-4 py-3.5 shadow-xl
                     transition-transform duration-600 
@@ -1019,58 +1300,123 @@ export default function UserPage() {
                 {/* Collapsible notes drawer*/}
                 {isNotesDrawerMounted && (
                     <div
-                    className={`text-black dark:text-white fixed inset-0 z-40 transition-opacity duration-300 justify-items-center ${isNotesDrawerVisible ? "opacity-100" : "opacity-0"}`}
+                    className={`text-black dark:text-white fixed inset-0 z-70 transition-opacity duration-300 justify-items-center ${isNotesDrawerVisible ? "opacity-100" : "opacity-0"}`}
                     role="dialog"
                     aria-modal="true"
                     >
-                    <button
-                        className="absolute inset-0 bg-black/50"
-                        aria-label="Close notes drawer"
-                        onClick={closeNotesDrawer}
-                    />
-    
-                    {/* THIS IS FOR THE USER NOTES */}
-                    { notesShowState && (
-                    <NotesCollection
-                        className={`absolute bottom-0 xxs:right-15
-                        bg-gray-100 dark:bg-gray-800
-                        shadow-2xl p-3
-                        w-full max-w-[60vh] max-h-[90vh]
-                        transition-all duration-500
-                        ${isNotesDrawerVisible ? "translate-y-0" : "translate-y-full"}
+                        <button
+                            className="absolute inset-0 bg-black/50"
+                            aria-label="Close notes drawer"
+                            onClick={closeNotesDrawer}
+                        />
+
+                        {/* notes content */}
+                        <div
+                        ref={notesDrawerPanelRef}
+                        className={`
+                            absolute bottom-0 xxs:right-15
+                            bg-gray-100 dark:bg-gray-800
+                            shadow-2xl p-3 rounded-t-2xl
+                            w-full max-w-[60vh] max-h-[90vh]
+                            transition-all duration-500
+                            ${isNotesDrawerVisible ? "translate-y-0" : "translate-y-full"}
                         `}
-                        title="Author Notes"
-                        notes={userNotes}
-                        draftNote={draftNote}
-                        draftNoteState={draftNoteState}
-                        noteToDelete={noteToDelete}
-                        hideSave={hideSave}
-                        onFocusId={onFocusId}
-                        contentClassName="h-[calc(75vh-3.5rem)] xxs:h-[calc(85vh-3.5rem)] overflow-y-auto overflow-x-hidden notes-scroll overflow-contain mt-2"
-                        noteContent={noteContent}
-                        emptyMessage="Add notes, references, future scenarios, book plans, etc..."
-                        onAddDraft={addDraftNotes}
-                        onCloseDraft={closeNotesDrawer}
-                        onChangeDraft={(content) => setDraftNote(prev => (prev ? { ...prev, content } : prev))}
-                        onChangeNote={(noteId, content) => setUserNotes(prev => prev.map(note => note.id === noteId ? { ...note, content } : note))}
-                        onSaveNote={saveNote}
-                        onDeleteRequest={setNoteToDelete}
-                        onDeleteConfirm={handleDeleteNote}
-                        onDeleteCancel={() => setNoteToDelete(null)}
-                        onFocusNote={(note) => {
-                            setOnFocusId(String(note.id ?? ""));
-                            setNoteContent(note.content);
-                            setHideSave(true);
-                            setDraftstate(!note.id);
-                        }}
-                        onCancelEditing={() => { setHideSave(false); setDraftNote(null); }}
-                    />
-                    )}
+                        >
+
+                            {/* THIS IS FOR THE USER NOTES */}
+                            { notesShowState && (
+                            <NotesCollection
+                                title="Author Notes"
+                                notes={userNotes}
+                                draftNote={draftNote}
+                                draftNoteState={draftNoteState}
+                                noteToDelete={noteToDelete}
+                                hideSave={hideSave}
+                                onFocusId={onFocusId}
+                                contentClassName="h-[calc(75vh-3.5rem)] xxs:h-[calc(85vh-3.5rem)] overflow-y-auto overflow-x-hidden notes-scroll overflow-contain mt-2"
+                                noteContent={noteContent}
+                                emptyMessage="Add notes, references, future scenarios, book plans, etc..."
+                                onAddDraft={addDraftNotes}
+                                onCloseDraft={closeNotesDrawer}
+                                onChangeDraft={(content) => setDraftNote(prev => (prev ? { ...prev, content } : prev))}
+                                onChangeNote={(noteId, content) => setUserNotes(prev => prev.map(note => note.id === noteId ? { ...note, content } : note))}
+                                onSaveNote={saveNote}
+                                onDeleteRequest={setNoteToDelete}
+                                onDeleteConfirm={handleDeleteNote}
+                                onDeleteCancel={() => setNoteToDelete(null)}
+                                onFocusNote={(note) => {
+                                    setOnFocusId(String(note.id ?? ""));
+                                    setNoteContent(note.content);
+                                    setHideSave(true);
+                                    setDraftstate(!note.id);
+                                }}
+                                onCancelEditing={() => { setHideSave(false); setDraftNote(null); }}
+                            />
+                            )}
+
+                        </div>
     
                     {/* notes closer */}
                     </div>
                 )}
                 </>,
+                document.body
+            )}
+
+            {showCropper && imageSrc && createPortal(
+                <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 px-4">
+                    <div className="w-full max-w-lg rounded-3xl bg-white p-4 shadow-2xl dark:bg-gray-900">
+                        <div className="text-gray-500 dark:text-gray-200">
+                            <h3 className="text-lg font-semibold">Crop book cover</h3>
+                            <p className="mt-1 text-sm">
+                                Select the part of the image that should appear on your book cards.
+                            </p>
+                        </div>
+
+                        <div className="relative mt-4 h-96 w-full overflow-hidden rounded-2xl bg-gray-950">
+                            <Cropper
+                                image={imageSrc}
+                                crop={crop}
+                                zoom={zoom}
+                                aspect={3 / 4}
+                                objectFit="cover"
+                                onCropChange={setCrop}
+                                onZoomChange={setZoom}
+                                onCropComplete={onCropComplete}
+                            />
+                        </div>
+
+                        <div className="mt-4">
+                            <label className="mb-2 block text-sm font-medium">Zoom</label>
+                            <input
+                                type="range"
+                                min={0.5}
+                                max={3}
+                                step={0.05}
+                                value={zoom}
+                                onChange={(e) => setZoom(Number(e.target.value))}
+                                className="w-full"
+                            />
+                        </div>
+
+                        <div className="mt-5 flex justify-end gap-3">
+                            <button
+                                type="button"
+                                onClick={resetCropState}
+                                className="rounded-xl border border-gray-300 px-4 py-2 text-sm font-medium transition text-gray-500 dark:text-gray-200 hover:bg-gray-100 dark:border-gray-700 dark:hover:bg-gray-800"
+                            >
+                                Cancel
+                            </button>
+                            <button
+                                type="button"
+                                onClick={handleCropSave}
+                                className="rounded-xl bg-indigo-600 px-4 py-2 text-sm font-semibold text-white transition hover:bg-indigo-500"
+                            >
+                                Use this crop
+                            </button>
+                        </div>
+                    </div>
+                </div>,
                 document.body
             )}
 
