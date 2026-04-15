@@ -1212,38 +1212,6 @@ export default function CharEditPage() {
       isActive: showWorldAtlas,
       title: "Open world atlas",
     },
-    // {
-    //   id: "dashboard",
-    //   label: "Dashboard",
-    //   icon: faTableColumns,
-    //   onClick: () => window.alert("Currently, in development..."),
-    //   badge: "Soon",
-    //   title: "Dashboard",
-    // },
-    // {
-    //   id: "ai-assist",
-    //   label: "AI",
-    //   icon: faWandMagicSparkles,
-    //   onClick: () => window.alert("Currently, in development..."),
-    //   badge: "Soon",
-    //   title: "AI-assist",
-    // },
-    // {
-    //   id: "character-graph",
-    //   label: "Graph",
-    //   icon: faProjectDiagram,
-    //   onClick: () => window.alert("Currently, in development..."),
-    //   badge: "Soon",
-    //   title: "Characters map graph",
-    // },
-    // {
-    //   id: "chapter-prep",
-    //   label: "Prepare",
-    //   icon: faFileLines,
-    //   onClick: () => window.alert("Currently, in development..."),
-    //   badge: "Soon",
-    //   title: "Chapter Preparation workspace",
-    // },
   ];
 
   function toogleEditMode() {
@@ -1259,7 +1227,7 @@ export default function CharEditPage() {
 
   return (
     // MAIN EDIT PAGE CONTAINER
-    <div className="mx-auto w-full max-w-full xxs:max-w-7xl p-4 mt-10 xxs:pl-20 pb-14 xxs:pb-3">
+    <div className="mx-auto w-full max-w-full xxs:max-w-7xl pt-4 px-0 mobile:px-4 mt-10 xxs:pl-20 pb-14 xxs:pb-3">
       <Navbar actions={navbarActions} />
 
       {/* HERO CARD HEADER */}

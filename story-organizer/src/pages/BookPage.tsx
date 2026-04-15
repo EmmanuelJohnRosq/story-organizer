@@ -1353,38 +1353,6 @@ export default function ExperimentPage() {
         isActive: showWorldAtlas,
         title: "Open world atlas",
       },
-      // {
-      //   id: "dashboard",
-      //   label: "Dashboard",
-      //   icon: faTableColumns,
-      //   onClick: () => alert("Currently, in development..."),
-      //   badge: "Soon",
-      //   title: "Dashboard",
-      // },
-      // {
-      //   id: "ai-assist",
-      //   label: "AI",
-      //   icon: faWandMagicSparkles,
-      //   onClick: () => alert("Currently, in development..."),
-      //   badge: "Soon",
-      //   title: "AI-assist",
-      // },
-      // {
-      //   id: "character-graph",
-      //   label: "Graph",
-      //   icon: faProjectDiagram,
-      //   onClick: () => alert("Currently, in development..."),
-      //   badge: "Soon",
-      //   title: "Characters map graph",
-      // },
-      // {
-      //   id: "chapter-prep",
-      //   label: "Prepare",
-      //   icon: faFileLines,
-      //   onClick: () => alert("Currently, in development..."),
-      //   badge: "Soon",
-      //   title: "Chapter Preparation workspace",
-      // },
     ];
 
     useEffect(() => {
@@ -1414,7 +1382,7 @@ export default function ExperimentPage() {
 
   return (
     // MAIN PARENT CONTAINER DIV CLOSER
-    <div className="mx-auto w-full max-w-7xl px-3 pb-6 pt-2 xxs:pl-20 xxs:px-6">
+    <div className="mx-auto w-full max-w-7xl px-0 mobile:px-3 pb-6 pt-2 xxs:pl-20 xxs:px-6">
       <Navbar actions={navbarActions}/>
 
       {/* CONTENT CONTAINER */}

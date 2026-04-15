@@ -984,11 +984,12 @@ export default function Header({ showGalaxy, onToggle }: HeaderProps) {
 
                                 {/* settings... more dropdown options */}
                                 {googleUser && (
-                                    <div onMouseOver={() => setOpenMoreSettings(true)}
-                                        onMouseLeave={() => setTimeout(() => {setOpenMoreSettings(false),3000})}
+                                    <div 
+                                        onMouseLeave={() => setOpenMoreSettings(false)}
                                     >
                                         <button
                                             className="w-full text-left px-2 py-1 rounded hover:bg-gray-100 dark:hover:bg-gray-700"
+                                            onMouseOver={() => setOpenMoreSettings(true)}
                                         > 
                                             <FontAwesomeIcon icon={faGear} className="mr-2"/>
                                             Settings

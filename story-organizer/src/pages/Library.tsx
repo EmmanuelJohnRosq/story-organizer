@@ -700,7 +700,7 @@ export default function UserPage() {
     return (
 
     // MAIN PARENT CONTAINER DIV CLOSER
-    <div className="mx-auto flex w-full max-w-7xl flex-col gap-3 px-3 pt-15 pb-6 lg:flex-row">
+    <div className="mx-auto flex w-full max-w-7xl flex-col gap-3 px-0 mobile:px-3 pt-15 pb-6 lg:flex-row">
     
         {/* LEFT SIDE CONTAINER */}
         <aside className="hidden lg:block lg:w-[320px] xl:w-[360px]">
@@ -1084,7 +1084,7 @@ export default function UserPage() {
                         onClick={() => selectBook(book.id!)}
                         className={`
                             relative group cursor-pointer overflow-hidden
-                            w-45 h-60 sm:w-60 sm:h-75 rounded-tl-xl rounded-bl-lg
+                            w-35 h-45 mobile:w-45 mobile:h-60 md:w-60 md:h-75 rounded-tl-xl rounded-bl-lg
                             bg-white dark:bg-gray-800
                             shadow-lg hover:-translate-y-2 hover:shadow-2xl
                             transition-all duration-300 animate-fadeDown
