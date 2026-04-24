@@ -385,7 +385,7 @@ export default function UserPage() {
 
         setRecentCharacter(char ? `${recentCharBookId}/${char.id}-${char.name}` : "");
         setRecentCharName(char?.name ?? "");
-    }, [books, characters]);
+    }, [books, characters]);    
     
 
     function openRecentCharacter() {
@@ -549,7 +549,7 @@ export default function UserPage() {
             isDraft: true,
             bookId: "",
             charId: null,
-            };
+        };
 
         // Update React state
         setDraftNote(newNotes);
@@ -563,13 +563,14 @@ export default function UserPage() {
         // GOES HERE IF THE NOTE IS A NEW NOTE
         if (note.isDraft) {
             // first time saving
+            // eslint-disable-next-line @typescript-eslint/no-unused-vars
             const { isDraft, ...noteData } = note;
 
             const dbId = await db.notes.add(noteData);
             setUserNotes(prev => [
                 { ...noteData, id: dbId }, ...prev
             ]);
-
+            
             setDraftNote(null);
             setDraftstate(false);
             setHideSave(false);

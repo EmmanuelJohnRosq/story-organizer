@@ -37,7 +37,7 @@ export async function isTokenActive(accessToken: string): Promise<boolean> {
 
     sessionStorage.setItem("googleAuth", isValid ? "true" : "false");
     return isValid;
-  } catch (error) {
+  } catch {
     sessionStorage.setItem("googleAuth", "false");
     return false;
   }
