@@ -583,7 +583,7 @@ export default function UserPage() {
 
             setAlert("Changes Saved");
             setStatePopup(true);
-            setHideSave(false);
+            setHideSave(false);  
             setTimeout(() => {
             setStatePopup(false);
             setAlert("");
@@ -1052,7 +1052,7 @@ export default function UserPage() {
                 <div className="mb-4 flex items-center justify-between gap-3">
                     <div>
                         <h2 className="text-2xl font-bold">Library</h2>
-                        <p className="text-sm text-gray-500 dark:text-gray-400">Click any book to open its story workspace.</p>
+                        <p className="text-sm text-gray-500 dark:text-gray-400">Click any book to open its story workspace. Enter with</p>
                     </div>
 
                     <div className="hidden items-center gap-2 rounded-2xl border border-gray-200 bg-gray-50 px-3 py-2 text-xs text-gray-500 dark:border-gray-700 dark:bg-gray-800/70 dark:text-gray-300 sm:flex">
